@@ -1,0 +1,163 @@
+### BookFlow API - quick manual tests
+### Needs the VS Code extension "REST Client" (by Huachao Mao).
+### Start the server first: npm run dev
+### Then click "Send Request" above any request.
+
+@baseUrl = http://localhost:5000/api
+
+### 1) Health check - is the server running?
+GET http://localhost:5000/
+
+### 2) Register a business (salon + owner, in one transaction)
+# @name business
+POST {{baseUrl}}/auth/register-business
+Content-Type: application/json
+
+{
+  "businessName": "Test Salon",
+  "slug": "test-salon",
+  "ownerName": "Ahmad",
+  "email": "owner@test.com",
+  "password": "secret123"
+}
+
+### 3) Login as the owner - the token is saved automatically for the next requests
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@test.com",
+  "password": "secret123"
+}
+
+###
+@token = {{login.response.body.token}}
+
+### 4) Who am I? (uses the token)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### 5) Create a service
+# @name service
+POST {{baseUrl}}/services
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Haircut",
+  "price": 30,
+  "duration": 30
+}
+
+### 6) List my services
+GET {{baseUrl}}/services
+Authorization: Bearer {{token}}
+
+### 7) Update the service price
+PATCH {{baseUrl}}/services/{{service.response.body.service._id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "price": 35
+}
+
+### ---------- Try to break it (expect errors!) ----------
+
+### 8) Same slug again -> expect 409
+POST {{baseUrl}}/auth/register-business
+Content-Type: application/json
+
+{
+  "businessName": "Copy Salon",
+  "slug": "test-salon",
+  "ownerName": "X",
+  "email": "someone@test.com",
+  "password": "secret123"
+}
+
+### 9) Wrong password -> expect 401
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@test.com",
+  "password": "wrong-password"
+}
+
+### 10) No token -> expect 401
+GET {{baseUrl}}/services
+
+### ---------- Staff (owner only) ----------
+
+### 12) Owner adds a staff member (try adding "role": "owner" - it will be ignored!)
+# @name staff
+POST {{baseUrl}}/staff
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Khaled",
+  "email": "khaled@test.com",
+  "password": "temp1234",
+  "role": "owner"
+}
+
+### 13) List my staff
+GET {{baseUrl}}/staff
+Authorization: Bearer {{token}}
+
+### 14) Staff logs in -> then try request 5 (create service) with THIS token -> expect 403
+# @name staffLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "khaled@test.com",
+  "password": "temp1234"
+}
+
+### 15) Deactivate the staff member
+DELETE {{baseUrl}}/staff/{{staff.response.body.staff.id}}
+Authorization: Bearer {{token}}
+
+### ---------- Working hours ----------
+
+### 16) My business details + working hours
+GET {{baseUrl}}/tenants/me
+Authorization: Bearer {{token}}
+
+### 17) Update working hours (owner only) - Friday closed, other days 10:00-20:00
+PUT {{baseUrl}}/tenants/me/working-hours
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "workingHours": [
+    { "day": "saturday",  "isOpen": true,  "open": "10:00", "close": "20:00" },
+    { "day": "sunday",    "isOpen": true,  "open": "10:00", "close": "20:00" },
+    { "day": "monday",    "isOpen": true,  "open": "10:00", "close": "20:00" },
+    { "day": "tuesday",   "isOpen": true,  "open": "10:00", "close": "20:00" },
+    { "day": "wednesday", "isOpen": true,  "open": "10:00", "close": "20:00" },
+    { "day": "thursday",  "isOpen": true,  "open": "10:00", "close": "16:00" },
+    { "day": "friday",    "isOpen": false }
+  ]
+}
+
+### 18) Break it: closing before opening -> expect 400
+PUT {{baseUrl}}/tenants/me/working-hours
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "workingHours": [
+    { "day": "saturday",  "isOpen": true, "open": "18:00", "close": "09:00" },
+    { "day": "sunday",    "isOpen": true, "open": "10:00", "close": "20:00" },
+    { "day": "monday",    "isOpen": true, "open": "10:00", "close": "20:00" },
+    { "day": "tuesday",   "isOpen": true, "open": "10:00", "close": "20:00" },
+    { "day": "wednesday", "isOpen": true, "open": "10:00", "close": "20:00" },
+    { "day": "thursday",  "isOpen": true, "open": "10:00", "close": "20:00" },
+    { "day": "friday",    "isOpen": false }
+  ]
+}

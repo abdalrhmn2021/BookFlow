@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
@@ -118,5 +119,62 @@ exports.login = async (req, res) => {
     // log the real error on the server only - never send internals to the client
     console.error("[auth] error:", error);
     res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+// @route  POST /api/auth/register-business
+// @access Public (a business owner signs up their business)
+//
+// Creates the Tenant AND its owner User together inside a TRANSACTION:
+// either both are saved, or neither is. Without it, if creating the owner
+// failed (e.g. email taken) we'd be left with an orphan tenant that nobody
+// owns - and its slug would be blocked forever.
+// Note: MongoDB transactions need a replica set (MongoDB Atlas has one by default).
+exports.registerBusiness = async (req, res) => {
+  const { businessName, slug, ownerName, email, password, phone } = req.body;
+
+  if (!businessName || !slug || !ownerName || !email || !password) {
+    return res.status(400).json({
+      message: "businessName, slug, ownerName, email and password are required",
+    });
+  }
+
+  // Friendly early checks for clear messages. They are NOT the real guarantee -
+  // two requests can still race past them; the unique indexes + transaction are.
+  const [emailTaken, slugTaken] = await Promise.all([
+    User.exists({ email }),
+    Tenant.exists({ slug }),
+  ]);
+  if (emailTaken) return res.status(409).json({ message: "Email already exists" });
+  if (slugTaken) return res.status(409).json({ message: "This business URL is already taken" });
+
+  const session = await mongoose.startSession();
+  try {
+    let tenant, owner;
+
+    await session.withTransaction(async () => {
+      tenant = new Tenant({ name: businessName, slug });
+      await tenant.save({ session });
+
+      owner = new User({
+        name: ownerName,
+        email,
+        password,
+        phone,
+        role: "owner",
+        tenantId: tenant._id,
+      });
+      await owner.save({ session });
+      // if anything above throws -> the whole transaction is rolled back
+    });
+
+    res.status(201).json({
+      tenant: { id: tenant._id, name: tenant.name, slug: tenant.slug, plan: tenant.plan },
+      user: { id: owner._id, name: owner.name, email: owner.email, role: owner.role, tenantId: tenant._id },
+      token: generateToken(owner),
+    });
+  } finally {
+    // errors (duplicate key, validation) go on to the global error handler
+    await session.endSession();
   }
 };
