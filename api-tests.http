@@ -161,3 +161,108 @@ Content-Type: application/json
     { "day": "friday",    "isOpen": false }
   ]
 }
+
+### ---------- Appointments (customer books) ----------
+### Run 2, 3 and 5 first (business + owner token + a service).
+### The date must be in the FUTURE and not a Friday - change it if needed.
+
+### 19) Owner adds an ACTIVE staff member to book with (Khaled was deactivated in 15)
+# @name staff2
+POST {{baseUrl}}/staff
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Omar",
+  "email": "omar@test.com",
+  "password": "temp1234"
+}
+
+### 20) Register a customer
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Sara",
+  "email": "sara@test.com",
+  "password": "secret123"
+}
+
+### 21) Customer logs in
+# @name customerLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "sara@test.com",
+  "password": "secret123"
+}
+
+###
+@customerToken = {{customerLogin.response.body.token}}
+
+### 22) Book Haircut with Omar on Saturday at 10:00 -> expect 201
+POST {{baseUrl}}/appointments
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "slug": "test-salon",
+  "serviceId": "{{service.response.body.service._id}}",
+  "staffId": "{{staff2.response.body.staff.id}}",
+  "date": "2026-10-03",
+  "time": "10:00"
+}
+
+### 23) Break it: 10:15 overlaps with 22 -> expect 409
+POST {{baseUrl}}/appointments
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "slug": "test-salon",
+  "serviceId": "{{service.response.body.service._id}}",
+  "staffId": "{{staff2.response.body.staff.id}}",
+  "date": "2026-10-03",
+  "time": "10:15"
+}
+
+### 24) Starts exactly when 22 ends -> expect 201 (touching is NOT overlapping)
+### (the service is 30 min if you skipped request 7)
+POST {{baseUrl}}/appointments
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "slug": "test-salon",
+  "serviceId": "{{service.response.body.service._id}}",
+  "staffId": "{{staff2.response.body.staff.id}}",
+  "date": "2026-10-03",
+  "time": "10:30"
+}
+
+### 25) Break it: Friday (closed) -> expect 400
+POST {{baseUrl}}/appointments
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "slug": "test-salon",
+  "serviceId": "{{service.response.body.service._id}}",
+  "staffId": "{{staff2.response.body.staff.id}}",
+  "date": "2026-10-02",
+  "time": "11:00"
+}
+
+### 26) Break it: the OWNER tries to book -> expect 403 (customers only)
+POST {{baseUrl}}/appointments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "slug": "test-salon",
+  "serviceId": "{{service.response.body.service._id}}",
+  "staffId": "{{staff2.response.body.staff.id}}",
+  "date": "2026-10-03",
+  "time": "12:00"
+}

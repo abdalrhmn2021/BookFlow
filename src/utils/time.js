@@ -39,8 +39,65 @@ const fitsInWorkingHours = (workingHours, dayName, startHHMM, durationMin) => {
 // Check your answer with:   node practice/check-overlap.js
 // ============================================================
 const isOverlapping = (aStart, aEnd, bStart, bEnd) => {
-  // TODO: write your code here
-
+  // Free if B starts after A ends, or B ends before A starts
+  if (bStart >= aEnd || bEnd <= aStart) {
+    return false;
+  }
+  return true;
 };
 
-module.exports = { DAYS, TIME_REGEX, toMinutes, toHHMM, fitsInWorkingHours, isOverlapping };
+// ============================================================
+// Dates (for appointments)
+// ============================================================
+
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/; // "2026-09-25"
+
+// "2026-09-25" -> true,  "2026-02-31" -> false (that day doesn't exist)
+const isValidDate = (dateStr) => {
+  if (!DATE_REGEX.test(dateStr)) return false;
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === dateStr;
+};
+
+// "2026-09-25" -> "friday"
+// A calendar date has the same weekday everywhere, so UTC is safe here.
+const dayNameOf = (dateStr) => DAYS[new Date(`${dateStr}T00:00:00Z`).getUTCDay()];
+
+// How many minutes `timeZone` is ahead of UTC at a given moment
+// (e.g. Asia/Hebron = +180 in summer, +120 in winter).
+const offsetMinutes = (date, timeZone) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const get = (type) => Number(parts.find((p) => p.type === type).value);
+  const asIfUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asIfUtc - date.getTime()) / 60000);
+};
+
+// The business says "10:30 on 2026-09-25" in ITS local time.
+// MongoDB stores dates in UTC, so we convert to the real moment in time:
+//   ("2026-09-25", "10:30", "Asia/Hebron") -> 2026-09-25T07:30:00.000Z
+const localToDate = (dateStr, hhmm, timeZone) => {
+  const guess = new Date(`${dateStr}T${hhmm}:00Z`); // pretend it's UTC first
+  return new Date(guess.getTime() - offsetMinutes(guess, timeZone) * 60000);
+};
+
+module.exports = {
+  DAYS,
+  TIME_REGEX,
+  DATE_REGEX,
+  toMinutes,
+  toHHMM,
+  fitsInWorkingHours,
+  isOverlapping,
+  isValidDate,
+  dayNameOf,
+  localToDate,
+};
