@@ -148,7 +148,11 @@ exports.createAppointment = async (req, res) => {
 // @route  GET /api/appointments/me
 // @access customer
 exports.getMyAppointments = async (req, res) => {
+  // A customer can book at several businesses, so each appointment needs
+  // the business name (and slug, to link back to its booking page) + the staff name.
   const appointments = await Appointment.find({ customerId: req.user.id })
+    .populate("tenantId", "name slug timezone")
+    .populate("staffId", "name")
     .sort({ startTime: 1 });
 
   res.status(200).json({ count: appointments.length, appointments });

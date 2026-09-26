@@ -178,3 +178,29 @@ exports.registerBusiness = async (req, res) => {
     await session.endSession();
   }
 };
+
+
+// @route  GET /api/auth/me
+// @access any logged-in user
+// protect() already verified the token and that the user is active.
+// We load the full user here because req.user only holds id/role/tenantId.
+exports.getMe = async (req, res) => {
+  const user = await User.findById(req.user.id).populate("tenantId", "name slug");
+
+  // owner/staff: include their business, so the dashboard can show its name
+  // and link to the public booking page (/book/<slug>)
+  const business = user.tenantId
+    ? { id: user.tenantId._id, name: user.tenantId.name, slug: user.tenantId.slug }
+    : null;
+
+  res.status(200).json({
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      business,
+    },
+  });
+};
