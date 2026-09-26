@@ -266,3 +266,99 @@ Content-Type: application/json
   "date": "2026-10-03",
   "time": "12:00"
 }
+
+### 27) Customer cancels the appointment from 24 -> expect 200 ("cancelled")
+### Copy the appointment _id from the response of 24 and put it in the URL.
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/cancel
+Authorization: Bearer {{customerToken}}
+
+### 28) Break it: cancel the SAME appointment again -> expect 409 (already cancelled)
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/cancel
+Authorization: Bearer {{customerToken}}
+
+### 29) Break it: invalid id -> expect 400
+PATCH {{baseUrl}}/appointments/abc/cancel
+Authorization: Bearer {{customerToken}}
+
+### ---------- Public business page (no token!) ----------
+
+### 30) Open the salon page -> services + staff (names only, no emails/phones)
+GET {{baseUrl}}/public/businesses/test-salon
+
+### 31) Break it: a slug that doesn't exist -> expect 404
+GET {{baseUrl}}/public/businesses/no-such-salon
+
+### ---------- Availability (no token!) ----------
+
+### 32) Free times for Omar + the service on the day of request 22
+### -> 10:00 (and the slots overlapping it) should be MISSING from the list
+GET {{baseUrl}}/public/businesses/test-salon/availability?serviceId={{service.response.body.service._id}}&staffId={{staff2.response.body.staff.id}}&date=2026-10-03
+
+### 33) Friday (closed) -> expect 200 with isOpen: false and slots: []
+GET {{baseUrl}}/public/businesses/test-salon/availability?serviceId={{service.response.body.service._id}}&staffId={{staff2.response.body.staff.id}}&date=2026-10-02
+
+### 34) Break it: missing staffId -> expect 400
+GET {{baseUrl}}/public/businesses/test-salon/availability?serviceId={{service.response.body.service._id}}&date=2026-10-03
+
+### ---------- Business side: owner/staff manage appointments ----------
+
+### 35) Owner: the day's schedule (all staff) -> Sara's appointments with name + phone
+GET {{baseUrl}}/appointments/business?date=2026-10-03
+Authorization: Bearer {{token}}
+
+### 36) Owner: only the pending ones
+GET {{baseUrl}}/appointments/business?date=2026-10-03&status=pending
+Authorization: Bearer {{token}}
+
+### 37) Omar (staff) logs in
+# @name omarLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "omar@test.com",
+  "password": "temp1234"
+}
+
+###
+@omarToken = {{omarLogin.response.body.token}}
+
+### 38) Omar: sees ONLY his own appointments
+GET {{baseUrl}}/appointments/business?date=2026-10-03
+Authorization: Bearer {{omarToken}}
+
+### 39) Omar confirms the appointment from 22 -> expect 200 (pending -> confirmed)
+### Copy the _id of the 10:00 appointment from 35 and put it in the URL.
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/status
+Authorization: Bearer {{omarToken}}
+Content-Type: application/json
+
+{ "status": "confirmed" }
+
+### 40) Break it: "completed" before it even started -> expect 400
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/status
+Authorization: Bearer {{omarToken}}
+Content-Type: application/json
+
+{ "status": "completed" }
+
+### 41) Break it: back to "pending" -> expect 409 (not allowed by the map)
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "pending" }
+
+### 42) Break it: the CUSTOMER tries to confirm -> expect 403
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/status
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{ "status": "confirmed" }
+
+### 43) Break it: made-up status -> expect 400
+PATCH {{baseUrl}}/appointments/PUT_APPOINTMENT_ID_HERE/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "done" }

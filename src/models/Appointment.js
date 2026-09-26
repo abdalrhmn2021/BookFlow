@@ -36,6 +36,8 @@ appointmentSchema.pre("validate", function () {
 
 // Fast search for a staff member's appointments (used for the overlap check)
 appointmentSchema.index({ tenantId: 1, staffId: 1, startTime: 1 });
+// Fast business dashboard: "all of this business's appointments on a day" (owner view)
+appointmentSchema.index({ tenantId: 1, startTime: 1 });
 // Fast "my appointments" list for a customer
 appointmentSchema.index({ customerId: 1, startTime: -1 });
 

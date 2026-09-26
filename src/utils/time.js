@@ -89,6 +89,15 @@ const localToDate = (dateStr, hhmm, timeZone) => {
   return new Date(guess.getTime() - offsetMinutes(guess, timeZone) * 60000);
 };
 
+// "2026-09-30" -> "2026-10-01"  (handles month/year ends and leap years)
+// We move the CALENDAR date, not "+24 hours": on a daylight-saving day
+// the local day is 23 or 25 hours long, so +24h would land on the wrong time.
+const nextDate = (dateStr) => {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
 module.exports = {
   DAYS,
   TIME_REGEX,
@@ -100,4 +109,5 @@ module.exports = {
   isValidDate,
   dayNameOf,
   localToDate,
+  nextDate,
 };
