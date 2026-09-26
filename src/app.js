@@ -18,6 +18,7 @@ app.use("/api/tenants", require("./routes/tenant.routes"));
 app.use("/api/services", require("./routes/service.routes"));
 app.use("/api/staff", require("./routes/staff.routes"));
 app.use("/api/appointments", require("./routes/appointment.routes"));
+app.use("/api/public", require("./routes/public.routes")); // no login needed
 
 // Error handling - must come AFTER all routes
 const { notFound, errorHandler } = require("./middlewares/error.middleware");

@@ -20,3 +20,13 @@ exports.registerLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Too many accounts created from this IP, please try again later" },
 });
+
+// Public (no login) routes - generous enough for a real visitor browsing,
+// but stops a script from hammering/scraping the API.
+exports.publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many requests, please slow down" },
+});
