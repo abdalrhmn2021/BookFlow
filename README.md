@@ -14,12 +14,14 @@ Every business gets its own booking page; customers pick a service, a staff memb
 > The login page also has one-click demo buttons.
 > ⏳ The API runs on Render's free tier - if it was asleep, the first request can take ~50 seconds.
 
-<!-- Screenshots: add the PNGs to docs/screenshots/ (see docs/screenshots/README.md) -->
+<!-- SCREENSHOTS (hidden until the images exist): add the 4 PNGs to docs/screenshots/,
+     then delete these 2 lines and the closing comment line under the table.
 | Booking page | Business dashboard |
 |---|---|
 | ![Booking page](docs/screenshots/booking.png) | ![Dashboard](docs/screenshots/dashboard.png) |
 | **My appointments** | **Arabic / RTL** |
 | ![My appointments](docs/screenshots/my-appointments.png) | ![Arabic](docs/screenshots/arabic.png) |
+-->
 
 ---
 
@@ -195,4 +197,4 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Author
 
-**Your Name** - [LinkedIn](https://www.linkedin.com/in/your-profile) · [GitHub](https://github.com/your-username)
+**AbdAlrhmn ALkhlwt** - Full-Stack JavaScript Developer · [GitHub](https://github.com/abdalrhmn2021)
