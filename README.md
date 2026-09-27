@@ -3,7 +3,7 @@
 **Multi-tenant appointment booking platform** for salons, clinics, gyms and training centers.
 Every business gets its own booking page; customers pick a service, a staff member and a free time slot - and **double bookings are impossible, even under concurrent requests**.
 
-🔗 **Live demo:** _coming soon_ &nbsp;·&nbsp; 🌐 Arabic (RTL) + English
+🔗 **Live demo:** [book-flow-eight.vercel.app](https://book-flow-eight.vercel.app) &nbsp;·&nbsp; 🌐 Arabic (RTL) + English
 
 | Try it as | Email | Password |
 |---|---|---|
@@ -12,6 +12,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 | Staff member | `sara@demo.com` | `password123` |
 
 > The login page also has one-click demo buttons.
+> ⏳ The API runs on Render's free tier - if it was asleep, the first request can take ~50 seconds.
 
 <!-- Screenshots: add the PNGs to docs/screenshots/ (see docs/screenshots/README.md) -->
 | Booking page | Business dashboard |
