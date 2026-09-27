@@ -43,7 +43,7 @@ exports.updateService = async (req, res) => {
   const service = await Service.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.tenantId },
     pickAllowed(req.body),
-    { new: true, runValidators: true }
+    { returnDocument: "after", runValidators: true }
   );
   if (!service) return res.status(404).json({ message: "Service not found" });
   res.status(200).json({ service });
@@ -57,7 +57,7 @@ exports.deleteService = async (req, res) => {
   const service = await Service.findOneAndUpdate(
     { _id: req.params.id, tenantId: req.tenantId },
     { isActive: false },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!service) return res.status(404).json({ message: "Service not found" });
   res.status(200).json({ message: "Service deactivated", service });

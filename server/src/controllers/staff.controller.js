@@ -56,7 +56,7 @@ exports.updateStaff = async (req, res) => {
   const staff = await User.findOneAndUpdate(
     staffFilter(req, { _id: req.params.id }),
     pick(req.body, UPDATE_FIELDS),
-    { new: true, runValidators: true }
+    { returnDocument: "after", runValidators: true }
   );
   if (!staff) return res.status(404).json({ message: "Staff member not found" });
   res.status(200).json({ staff: toStaffDTO(staff) });
@@ -70,7 +70,7 @@ exports.deactivateStaff = async (req, res) => {
   const staff = await User.findOneAndUpdate(
     staffFilter(req, { _id: req.params.id }),
     { isActive: false },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!staff) return res.status(404).json({ message: "Staff member not found" });
   res.status(200).json({ message: "Staff member deactivated", staff: toStaffDTO(staff) });

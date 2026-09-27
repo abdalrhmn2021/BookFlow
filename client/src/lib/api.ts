@@ -69,10 +69,12 @@ export const api = {
   delete: <T>(path: string) => request<T>("DELETE", path),
 };
 
-// Turn any caught error into a message we can show the user
-export function errorMessage(err: unknown): string {
+// Turn any caught error into a message we can show the user.
+// `translate` lets the caller swap each English message for another language
+// (pages use tError() from useLanguage(), which passes the dictionary here).
+export function errorMessage(err: unknown, translate: (msg: string) => string = (msg) => msg): string {
   if (err instanceof ApiError) {
-    return err.errors?.length ? err.errors.join(" · ") : err.message;
+    return err.errors?.length ? err.errors.map(translate).join(" · ") : translate(err.message);
   }
-  return "Something went wrong";
+  return translate("Something went wrong");
 }

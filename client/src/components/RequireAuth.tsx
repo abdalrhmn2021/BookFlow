@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { homeFor, useAuth } from "@/context/AuthContext";
 import type { Role } from "@/lib/types";
+import Loading from "./Loading";
 
 export default function RequireAuth({
   roles,
@@ -31,7 +32,7 @@ export default function RequireAuth({
   }, [loading, user, roles, router]);
 
   if (loading || !allowed) {
-    return <p className="p-8 text-center text-gray-500">Loading...</p>;
+    return <Loading />;
   }
   return <>{children}</>;
 }

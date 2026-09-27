@@ -14,11 +14,21 @@ interface RegisterData {
   phone?: string;
 }
 
+interface RegisterBusinessData {
+  businessName: string;
+  slug: string;
+  ownerName: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean; // true while we check the saved token on first load
   login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
+  registerBusiness: (data: RegisterBusinessData) => Promise<User>;
   logout: () => void;
 }
 
@@ -29,6 +39,16 @@ export function homeFor(role: Role): string {
   if (role === "owner" || role === "staff") return "/dashboard";
   if (role === "customer") return "/my-appointments";
   return "/";
+}
+
+// Login/register pages accept ?next=/book/al-ward -> "after logging in, go back there".
+// NEVER redirect to whatever the URL says: /login?next=https://evil.com would send
+// our user to a fake site right after they trusted us with their password ("open redirect").
+// Only allow paths on OUR site: must start with "/" but not "//" or "/\"
+// (browsers read both of those as "another website").
+export function safeNext(next: string | null): string | null {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;
+  return next;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -77,6 +97,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return loadMe();
   };
 
+  // Creates the business AND its owner account in one request (a transaction on the backend)
+  const registerBusiness = async (data: RegisterBusinessData) => {
+    const { token } = await api.post<{ token: string }>("/auth/register-business", data);
+    tokenStorage.set(token);
+    return loadMe();
+  };
+
   const logout = () => {
     // A JWT can't be "cancelled" on the server - we just throw away our copy
     tokenStorage.clear();
@@ -84,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, registerBusiness, logout }}>
       {children}
     </AuthContext.Provider>
   );

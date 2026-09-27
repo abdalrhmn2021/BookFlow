@@ -3,6 +3,15 @@ const cors = require("cors");
 
 const app = express();
 
+// On Render/Railway/Heroku the request reaches us THROUGH their proxy.
+// Without this, req.ip = the proxy's IP for EVERY visitor -> the rate limiter would
+// count all users as one person and block everybody after 5 failed logins.
+// "1" = trust exactly one proxy hop (theirs) - trusting more would let a client
+// fake its IP with an X-Forwarded-For header and escape the limiter.
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 // Global Middlewares
 // CORS: only OUR frontend may call this API from a browser.
 // cors() with no options = "any website can call us" - fine for testing, not for real.

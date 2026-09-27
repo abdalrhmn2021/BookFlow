@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  /* Geist has no Arabic letters -> the browser falls back to IBM Plex Sans Arabic
+     for those characters only. One font stack works for both languages. */
+  --font-sans: var(--font-geist-sans), var(--font-arabic), sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 

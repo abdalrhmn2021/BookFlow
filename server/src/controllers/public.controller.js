@@ -26,6 +26,21 @@ const SLOT_STEP = 15;
 // Anything else (emails, phones, plan, isActive flags...) stays private.
 // ============================================================
 
+// @route  GET /api/public/businesses
+// @access Public
+// A simple directory, so a customer can find where to book.
+exports.listBusinesses = async (req, res) => {
+  // Same rules as the business page: active businesses only, minimum fields only.
+  // limit(): never send an unlimited list - with 10,000 businesses this would be huge.
+  // (A real directory would add pagination + search; 50 is enough for now.)
+  const tenants = await Tenant.find({ isActive: true }).select("name slug").sort({ name: 1 }).limit(50);
+
+  res.status(200).json({
+    businesses: tenants.map((t) => ({ name: t.name, slug: t.slug })),
+  });
+};
+
+
 // @route  GET /api/public/businesses/:slug
 // @access Public
 exports.getBusinessBySlug = async (req, res) => {

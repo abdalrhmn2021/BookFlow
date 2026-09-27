@@ -22,7 +22,10 @@ exports.errorHandler = (err, req, res, next) => {
   }
   // Unique index violation
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue || {})[0] || "field";
+    // Compound indexes like { tenantId, name } report BOTH keys. tenantId is never the
+    // user's mistake ("tenantId already exists" would be confusing) -> name the other field.
+    const keys = Object.keys(err.keyValue || {});
+    const field = keys.find((k) => k !== "tenantId") || keys[0] || "field";
     return res.status(409).json({ message: `${field} already exists` });
   }
 

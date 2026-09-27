@@ -1,0 +1,23 @@
+# Render "Blueprint": describes the backend service so Render can create it in one click
+# (Dashboard -> New -> Blueprint -> pick this repo).
+# Values marked `sync: false` are secrets - Render asks you for them, they never live in git.
+services:
+  - type: web
+    name: bookflow-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false # your MongoDB Atlas connection string
+      - key: JWT_SECRET
+        generateValue: true # Render creates a long random secret for you
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_URL
+        sync: false # your Vercel URL, e.g. https://bookflow.vercel.app
