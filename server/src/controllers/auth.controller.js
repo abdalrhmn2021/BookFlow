@@ -16,7 +16,9 @@ exports.register = async (req, res) => {
     const { name, email, password, phone } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ message: "name, email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "name, email and password are required" });
     }
 
     const existingUser = await User.findOne({ email });
@@ -69,7 +71,9 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "email and password are required" });
     }
 
     // password has `select: false` on the schema, so pull it in explicitly
@@ -97,7 +101,9 @@ exports.login = async (req, res) => {
     if (user.role === "owner" || user.role === "staff") {
       const tenant = await Tenant.findById(user.tenantId);
       if (!tenant || !tenant.isActive) {
-        return res.status(403).json({ message: "This business account is disabled" });
+        return res
+          .status(403)
+          .json({ message: "This business account is disabled" });
       }
     }
 
@@ -145,8 +151,12 @@ exports.registerBusiness = async (req, res) => {
     User.exists({ email }),
     Tenant.exists({ slug }),
   ]);
-  if (emailTaken) return res.status(409).json({ message: "Email already exists" });
-  if (slugTaken) return res.status(409).json({ message: "This business URL is already taken" });
+  if (emailTaken)
+    return res.status(409).json({ message: "Email already exists" });
+  if (slugTaken)
+    return res
+      .status(409)
+      .json({ message: "This business URL is already taken" });
 
   const session = await mongoose.startSession();
   try {
@@ -169,8 +179,19 @@ exports.registerBusiness = async (req, res) => {
     });
 
     res.status(201).json({
-      tenant: { id: tenant._id, name: tenant.name, slug: tenant.slug, plan: tenant.plan },
-      user: { id: owner._id, name: owner.name, email: owner.email, role: owner.role, tenantId: tenant._id },
+      tenant: {
+        id: tenant._id,
+        name: tenant.name,
+        slug: tenant.slug,
+        plan: tenant.plan,
+      },
+      user: {
+        id: owner._id,
+        name: owner.name,
+        email: owner.email,
+        role: owner.role,
+        tenantId: tenant._id,
+      },
       token: generateToken(owner),
     });
   } finally {
@@ -179,18 +200,24 @@ exports.registerBusiness = async (req, res) => {
   }
 };
 
-
 // @route  GET /api/auth/me
 // @access any logged-in user
 // protect() already verified the token and that the user is active.
 // We load the full user here because req.user only holds id/role/tenantId.
 exports.getMe = async (req, res) => {
-  const user = await User.findById(req.user.id).populate("tenantId", "name slug");
+  const user = await User.findById(req.user.id).populate(
+    "tenantId",
+    "name slug",
+  );
 
   // owner/staff: include their business, so the dashboard can show its name
   // and link to the public booking page (/book/<slug>)
   const business = user.tenantId
-    ? { id: user.tenantId._id, name: user.tenantId.name, slug: user.tenantId.slug }
+    ? {
+        id: user.tenantId._id,
+        name: user.tenantId.name,
+        slug: user.tenantId.slug,
+      }
     : null;
 
   res.status(200).json({
@@ -203,4 +230,35 @@ exports.getMe = async (req, res) => {
       business,
     },
   });
+};
+
+export const cancelBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const user = req.user; // عدّل الأسماء حسب الـ middleware عندك
+    const reason = req.body.reason?.trim();
+
+    if (!reason) { 
+      return res.status(400).json({ message: " الاسم مطلوب" });
+    }
+    if (reason.length < 3) {
+      return res
+        .stutes(400)
+        .json({ message: "الاسم يجب ان يكون اكبر من ثلاث حروف " });
+    }
+
+    // TODO 2: هات الحجز. إذا مش موجود → 404
+
+    // TODO 3: تحقق من الصلاحية (القاعدة 1)
+
+    // TODO 4: تحقق من الحالة (القاعدة 2)
+
+    // TODO 5: قاعدة الساعتين للعميل فقط (القاعدة 3)
+
+    // TODO 6: حدّث الحجز واحفظه
+
+    // TODO 7: رجّع الحجز المحدّث
+  } catch (err) {
+    next(err);
+  }
 };

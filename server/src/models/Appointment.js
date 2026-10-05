@@ -15,7 +15,8 @@ const appointmentSchema = new mongoose.Schema(
     // If the owner changes the price later, old appointments keep the original one.
     serviceName: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
-    duration: { type: Number, required: true }, // minutes
+    duration: { type: Number, required: true },
+    // minutes
 
     // --- When ---
     startTime: { type: Date, required: true },
@@ -23,8 +24,17 @@ const appointmentSchema = new mongoose.Schema(
 
     status: { type: String, enum: STATUSES, default: "pending" },
     notes: { type: String, trim: true, maxlength: [500, "Notes are too long"] },
+
+    // --- Cancellation info: filled ONLY when the appointment is cancelled ---
+    // Optional, no defaults: most appointments are never cancelled.
+    // The controller fills these at the moment of cancelling.
+    cancellation: {
+      reason: { type: String, trim: true, maxlength: [300, "Reason is too long"] },
+      cancelledBy: { type: ObjectId, ref: "User" },
+      cancelledAt: { type: Date },
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // endTime must come after startTime

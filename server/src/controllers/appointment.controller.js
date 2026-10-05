@@ -18,6 +18,13 @@ const {
 // A cancelled / no-show appointment frees the slot again.
 const ACTIVE_STATUSES = ["pending", "confirmed"];
 
+// A customer can't cancel less than 2 hours before the appointment.
+// (owner/staff have no time limit - they may need to cancel at the last minute)
+const CUSTOMER_CANCEL_LIMIT_MS = 2 * 60 * 60 * 1000; // hours * min * sec * ms
+
+// A cancellation reason must be meaningful, not just "ok"
+const MIN_REASON_LENGTH = 10;
+
 // @route  POST /api/appointments
 // @access customer
 // Body: { slug, serviceId, staffId, date: "2026-09-25", time: "10:30", notes? }
@@ -26,10 +33,16 @@ exports.createAppointment = async (req, res) => {
 
   // 0) Basic input checks
   if (!slug || !serviceId || !staffId || !date || !time) {
-    return res.status(400).json({ message: "slug, serviceId, staffId, date and time are required" });
+    return res
+      .status(400)
+      .json({
+        message: "slug, serviceId, staffId, date and time are required",
+      });
   }
   if (!isValidDate(date)) {
-    return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
+    return res
+      .status(400)
+      .json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
   if (!TIME_REGEX.test(time)) {
     return res.status(400).json({ message: "time must be HH:mm (e.g. 10:30)" });
@@ -42,10 +55,16 @@ exports.createAppointment = async (req, res) => {
   // 2 + 3) Service and staff must belong to THIS business (never trust ids alone - IDOR)
   const [service, staff] = await Promise.all([
     Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
-    User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true }),
+    User.findOne({
+      _id: staffId,
+      tenantId: tenant._id,
+      role: "staff",
+      isActive: true,
+    }),
   ]);
   if (!service) return res.status(404).json({ message: "Service not found" });
-  if (!staff) return res.status(404).json({ message: "Staff member not found" });
+  if (!staff)
+    return res.status(404).json({ message: "Staff member not found" });
 
   // 4) The server calculates the end - the client never sends it
   const startTime = localToDate(date, time, tenant.timezone);
@@ -53,12 +72,23 @@ exports.createAppointment = async (req, res) => {
 
   // 5) No bookings in the past
   if (startTime <= new Date()) {
-    return res.status(400).json({ message: "You can't book a time in the past" });
+    return res
+      .status(400)
+      .json({ message: "You can't book a time in the past" });
   }
 
   // 6) Must fit completely inside the business's working hours
-  if (!fitsInWorkingHours(tenant.workingHours, dayNameOf(date), time, service.duration)) {
-    return res.status(400).json({ message: "This time is outside working hours" });
+  if (
+    !fitsInWorkingHours(
+      tenant.workingHours,
+      dayNameOf(date),
+      time,
+      service.duration,
+    )
+  ) {
+    return res
+      .status(400)
+      .json({ message: "This time is outside working hours" });
   }
 
   // 7 + 8) Check that the staff member is free, then save - as ONE atomic step.
@@ -71,7 +101,7 @@ exports.createAppointment = async (req, res) => {
   await StaffLock.updateOne(
     { staffId: staff._id },
     { $setOnInsert: { staffId: staff._id } },
-    { upsert: true }
+    { upsert: true },
   ).catch((err) => {
     if (err.code !== 11000) throw err; // another request created it at the same moment - fine
   });
@@ -90,7 +120,11 @@ exports.createAppointment = async (req, res) => {
       // a) Take the key: write to the lock. If another booking for this staff member
       //    is in progress, MongoDB rejects this write (WriteConflict) and
       //    withTransaction retries us after that one has finished.
-      await StaffLock.updateOne({ staffId: staff._id }, { $inc: { version: 1 } }, { session });
+      await StaffLock.updateOne(
+        { staffId: staff._id },
+        { $inc: { version: 1 } },
+        { session },
+      );
 
       // b) Now nobody else can book this staff member until we finish.
       //    Same logic as isOverlapping(), written as a MongoDB query:
@@ -123,7 +157,7 @@ exports.createAppointment = async (req, res) => {
             notes,
           },
         ],
-        { session }
+        { session },
       );
     });
   } finally {
@@ -131,19 +165,20 @@ exports.createAppointment = async (req, res) => {
   }
 
   if (isTaken) {
-    return res.status(409).json({ message: "This staff member is already booked at that time" });
+    return res
+      .status(409)
+      .json({ message: "This staff member is already booked at that time" });
   }
 
   // First booking at this business? Link the customer to it (does nothing if already linked)
   await CustomerTenant.updateOne(
     { userId: req.user.id, tenantId: tenant._id },
     { $setOnInsert: { userId: req.user.id, tenantId: tenant._id } },
-    { upsert: true }
+    { upsert: true },
   );
 
   res.status(201).json({ appointment });
 };
-
 
 // @route  GET /api/appointments/me
 // @access customer
@@ -158,10 +193,24 @@ exports.getMyAppointments = async (req, res) => {
   res.status(200).json({ count: appointments.length, appointments });
 };
 
-
 // @route  PATCH /api/appointments/:id/cancel
 // @access customer
 exports.cancelMyAppointment = async (req, res) => {
+  // 0) A reason is required (trim first, so "   " counts as empty)
+  const { reason } = req.body || {};
+  const cleanReason = reason?.trim();
+
+  if (!cleanReason) {
+    return res.status(400).json({ message: "Cancellation reason is required" });
+  }
+  if (cleanReason.length < MIN_REASON_LENGTH) {
+    return res
+      .status(400)
+      .json({
+        message: `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`,
+      });
+  }
+
   // 1) Get the appointment - but ONLY if it belongs to this customer.
   //    Both conditions live in the query itself, so another customer's
   //    appointment simply "doesn't exist" for this user (prevents IDOR).
@@ -181,25 +230,36 @@ exports.cancelMyAppointment = async (req, res) => {
   if (!ACTIVE_STATUSES.includes(appointment.status)) {
     return res
       .status(409)
-      .json({ message: `Can't cancel an appointment that is ${appointment.status}` });
+      .json({
+        message: `Can't cancel an appointment that is ${appointment.status}`,
+      });
   }
 
-  // 3) Can't cancel an appointment that has already started (or is in the past)
-  if (appointment.startTime <= new Date()) {
+  // 3) Not less than 2 hours before the start.
+  //    This also covers appointments that already started or are in the past:
+  //    there timeLeft is negative, so it's always below the limit.
+  const timeLeft = appointment.startTime - Date.now();
+  if (timeLeft < CUSTOMER_CANCEL_LIMIT_MS) {
     return res
       .status(400)
-      .json({ message: "You can't cancel an appointment that has already started" });
+      .json({
+        message: "You can't cancel less than 2 hours before the appointment",
+      });
   }
 
-  // 4) Change the status and save.
+  // 4) Change the status, record who/why/when, and save.
   //    "cancelled" is not in ACTIVE_STATUSES, so the overlap check in
   //    createAppointment ignores it -> the slot is free for others again.
   appointment.status = "cancelled";
+  appointment.cancellation = {
+    reason: cleanReason,
+    cancelledBy: req.user.id,
+    cancelledAt: new Date(),
+  };
   await appointment.save();
 
   res.status(200).json({ message: "Appointment cancelled", appointment });
 };
-
 
 // ============================================================
 // BUSINESS SIDE - owner and staff manage the appointments
@@ -224,7 +284,6 @@ const ALLOWED_TRANSITIONS = {
   "no-show": [],
 };
 
-
 // @route  GET /api/appointments/business?date=2026-10-03&status=pending
 // @access owner, staff
 // The business's appointments for ONE day (the daily schedule). Default: today.
@@ -232,17 +291,26 @@ exports.getBusinessAppointments = async (req, res) => {
   const { status } = req.query;
 
   if (status && !Appointment.STATUSES.includes(status)) {
-    return res.status(400).json({ message: `status must be one of: ${Appointment.STATUSES.join(", ")}` });
+    return res
+      .status(400)
+      .json({
+        message: `status must be one of: ${Appointment.STATUSES.join(", ")}`,
+      });
   }
 
   // "Today" and the day's boundaries are in the BUSINESS's local time, not the server's.
   // The server may run in UTC: at 01:00 in Hebron it's still "yesterday" in UTC.
   const tenant = await Tenant.findById(req.tenantId).select("timezone");
   const date =
-    req.query.date || new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(new Date()); // en-CA -> "YYYY-MM-DD"
+    req.query.date ||
+    new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(
+      new Date(),
+    ); // en-CA -> "YYYY-MM-DD"
 
   if (!isValidDate(date)) {
-    return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
+    return res
+      .status(400)
+      .json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
 
   // [start of this day, start of next day) in local time -> converted to real UTC moments
@@ -265,15 +333,35 @@ exports.getBusinessAppointments = async (req, res) => {
   res.status(200).json({ date, count: appointments.length, appointments });
 };
 
-
 // @route  PATCH /api/appointments/:id/status
 // @access owner, staff
 // Body: { status: "confirmed" | "completed" | "no-show" | "cancelled" }
 exports.updateAppointmentStatus = async (req, res) => {
-  const { status } = req.body || {};
+  const { status, reason } = req.body || {};
 
   if (!status || !Appointment.STATUSES.includes(status)) {
-    return res.status(400).json({ message: `status must be one of: ${Appointment.STATUSES.join(", ")}` });
+    return res
+      .status(400)
+      .json({
+        message: `status must be one of: ${Appointment.STATUSES.join(", ")}`,
+      });
+  }
+
+  // A reason is required only when cancelling (same rule as the customer side)
+  const cleanReason = reason?.trim();
+  if (status === "cancelled") {
+    if (!cleanReason) {
+      return res
+        .status(400)
+        .json({ message: "Cancellation reason is required" });
+    }
+    if (cleanReason.length < MIN_REASON_LENGTH) {
+      return res
+        .status(400)
+        .json({
+          message: `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`,
+        });
+    }
   }
 
   // 1) Find it - only inside this business (and only his own, if he's staff)
@@ -281,23 +369,34 @@ exports.updateAppointmentStatus = async (req, res) => {
     _id: req.params.id,
     ...businessFilter(req.user, req.tenantId),
   });
-  if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+  if (!appointment)
+    return res.status(404).json({ message: "Appointment not found" });
 
   // 2) Is this move allowed by the map?
   const current = appointment.status;
   if (!ALLOWED_TRANSITIONS[current].includes(status)) {
-    return res.status(409).json({ message: `Can't change status from ${current} to ${status}` });
+    return res
+      .status(409)
+      .json({ message: `Can't change status from ${current} to ${status}` });
   }
 
   // 3) Time rules
   const hasStarted = appointment.startTime <= new Date();
   // You can't say "completed" or "didn't come" about something that hasn't happened yet
   if ((status === "completed" || status === "no-show") && !hasStarted) {
-    return res.status(400).json({ message: `Can't mark as ${status} before the appointment starts` });
+    return res
+      .status(400)
+      .json({
+        message: `Can't mark as ${status} before the appointment starts`,
+      });
   }
   // Confirming or cancelling only makes sense BEFORE it starts
   if ((status === "confirmed" || status === "cancelled") && hasStarted) {
-    return res.status(400).json({ message: `Can't mark as ${status} after the appointment started` });
+    return res
+      .status(400)
+      .json({
+        message: `Can't mark as ${status} after the appointment started`,
+      });
   }
 
   // 4) Save ATOMICALLY - only if the status is STILL what we read in step 1.
@@ -305,15 +404,31 @@ exports.updateAppointmentStatus = async (req, res) => {
   //    (or the owner and staff clicked at the same moment).
   //    A plain appointment.save() would silently overwrite that change.
   //    With the status inside the filter, MongoDB does "check + write" as one step.
+  //    When cancelling, also record who/why/when.
+  const update = { status };
+  if (status === "cancelled") {
+    update.cancellation = {
+      reason: cleanReason,
+      cancelledBy: req.user.id,
+      cancelledAt: new Date(),
+    };
+  }
+
   const updated = await Appointment.findOneAndUpdate(
     { _id: appointment._id, status: current },
-    { $set: { status } },
-    { returnDocument: "after", runValidators: true }
+    { $set: update },
+    { returnDocument: "after", runValidators: true },
   );
 
   if (!updated) {
-    return res.status(409).json({ message: "This appointment was changed by someone else, please reload" });
+    return res
+      .status(409)
+      .json({
+        message: "This appointment was changed by someone else, please reload",
+      });
   }
 
-  res.status(200).json({ message: `Appointment ${status}`, appointment: updated });
+  res
+    .status(200)
+    .json({ message: `Appointment ${status}`, appointment: updated });
 };
