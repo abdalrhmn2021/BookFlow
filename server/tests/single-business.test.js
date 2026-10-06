@@ -10,7 +10,11 @@ const h = require("./helpers");
 
 beforeAll(h.connect);
 afterEach(h.clear);
-afterAll(h.disconnect);
+afterAll(async () => {
+  // process.env مشترك بين ملفات الاختبار (--runInBand) -> نرجّعه زي ما كان
+  delete process.env.SINGLE_BUSINESS_SLUG;
+  await h.disconnect();
+});
 
 const registerBusiness = (slug, email) =>
   request(h.app).post("/api/auth/register-business").send({

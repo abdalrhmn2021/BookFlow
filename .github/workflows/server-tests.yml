@@ -15,8 +15,10 @@ jobs:
     # حماية: لو علق أي شي، وقّف بعد 15 دقيقة بدل ما يضل شغال ساعات
     timeout-minutes: 15
     env:
-      # الاختبارات بتتصل بـ MongoDB اللي بنشغّلها تحت بـ Docker
-      MONGO_URI_TEST: mongodb://localhost:27017/?replicaSet=rs0
+      # الاختبارات بتتصل بـ MongoDB اللي بنشغّلها تحت بـ Docker.
+      # 127.0.0.1 مش localhost: Node الجديد بيترجم localhost لـ IPv6 (::1)
+      # و Docker فاتح البورت على IPv4 -> الاتصال كان بينرفض.
+      MONGO_URI_TEST: mongodb://127.0.0.1:27017/?replicaSet=rs0
 
     defaults:
       run:
@@ -39,12 +41,18 @@ jobs:
             docker exec mongo mongosh --quiet --eval "db.runCommand({ ping: 1 }).ok" && break
             sleep 2
           done
-          docker exec mongo mongosh --quiet --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] })"
+          docker exec mongo mongosh --quiet --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })"
           for i in $(seq 1 30); do
-            docker exec mongo mongosh --quiet --eval "db.hello().isWritablePrimary" | grep -q true && break
+            if docker exec mongo mongosh --quiet --eval "db.hello().isWritablePrimary" | grep -q true; then
+              echo "MongoDB replica set is ready"
+              exit 0
+            fi
             sleep 2
           done
-          echo "MongoDB replica set is ready"
+          # ما جهزت -> وقّف هون برسالة واضحة بدل ما الاختبارات تستنى وتفشل بعد 6 دقايق
+          echo "MongoDB did not become ready"
+          docker logs mongo
+          exit 1
 
       - run: npm ci
 
