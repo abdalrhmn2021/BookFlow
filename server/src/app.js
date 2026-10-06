@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 
 const app = express();
 
@@ -11,6 +12,12 @@ const app = express();
 if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
+
+// Security headers (helmet): X-Content-Type-Options: nosniff, no X-Powered-By
+// (hides that we run Express), HSTS, frame protection, etc. - one line, many small holes closed.
+// crossOriginResourcePolicy "cross-origin": our API is MEANT to be read by the frontend
+// on another domain (Vercel), so we don't block that.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 // Global Middlewares
 // CORS: only OUR frontend may call this API from a browser.

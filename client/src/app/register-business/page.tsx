@@ -113,7 +113,7 @@ export default function RegisterBusinessPage() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">{r.password}</span>
-          <input name="password" type="password" required dir="ltr" minLength={6} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
+          <input name="password" type="password" required dir="ltr" minLength={8} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
         </label>
 
         {error && <p className={errorBox}>{error}</p>}

@@ -203,7 +203,7 @@ function StaffForm({
             <label className="block">
               <span className="text-sm font-medium">{st.password}</span>
               {/* autoComplete="new-password": stop the browser from filling in the OWNER's saved password */}
-              <input name="password" type="password" required minLength={6} dir="ltr" autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
+              <input name="password" type="password" required minLength={8} dir="ltr" autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
             </label>
           </>
         )}

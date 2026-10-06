@@ -73,7 +73,7 @@ function RegisterForm() {
         <label className="block">
           <span className="text-sm font-medium">{t.register.password}</span>
           {/* minLength matches the backend rule - quick feedback, but the backend still checks */}
-          <input name="password" type="password" required dir="ltr" minLength={6} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
+          <input name="password" type="password" required dir="ltr" minLength={8} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
         </label>
 
         {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

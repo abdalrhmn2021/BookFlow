@@ -23,7 +23,7 @@ export const tokenStorage = {
 // We turn them into a real Error, so pages can simply try/catch.
 export class ApiError extends Error {
   status: number;
-  errors?: string[]; // validation details, e.g. ["Password must be at least 6 characters"]
+  errors?: string[]; // validation details, e.g. ["Password must be at least 8 characters"]
 
   constructor(status: number, message: string, errors?: string[]) {
     super(message);

@@ -4,10 +4,11 @@
 # ============================================================
 name: Server tests
 
+# ⏸️ متوقف مؤقتاً: ما بيشتغل تلقائياً مع كل push لحد ما نصلّح الاتصال بـ MongoDB على GitHub.
+# بتقدر تشغّله يدوياً من تبويب Actions -> Server tests -> Run workflow.
+# لما يزبط: رجّع push و pull_request هون.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:

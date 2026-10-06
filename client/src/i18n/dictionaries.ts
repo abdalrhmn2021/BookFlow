@@ -523,7 +523,7 @@ const ar: Dictionary = {
     // validation (shown one by one from `errors`)
     "Validation failed": "البيانات المدخلة غير صحيحة",
     "Please provide a valid email": "أدخل بريداً إلكترونياً صحيحاً",
-    "Password must be at least 6 characters": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+    "Password must be at least 8 characters": "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
     "Name is required": "الاسم مطلوب",
     "Email is required": "البريد الإلكتروني مطلوب",
     "Password is required": "كلمة المرور مطلوبة",
