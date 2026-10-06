@@ -1,0 +1,37 @@
+# ============================================================
+# CI: مع كل push على main (وكل pull request) GitHub بيشغّل اختبارات السيرفر
+# على سيرفر لينكس نظيف. إذا فشل أي اختبار بتطلع ❌ حمرا جنب الـ commit.
+# ============================================================
+name: Server tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # نسخة MongoDB المؤقتة: بنحفظها بين التشغيلات عشان ما تنزل كل مرة
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+
+      - run: npm ci
+
+      # GitHub بيحط CI=true تلقائياً -> tests/helpers.js بيستخدم MongoDB بالذاكرة (مش Atlas)
+      - run: npm test

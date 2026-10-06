@@ -2,6 +2,7 @@ const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
+const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
 const {
   isValidDate,
   dayNameOf,
@@ -33,7 +34,11 @@ exports.listBusinesses = async (req, res) => {
   // Same rules as the business page: active businesses only, minimum fields only.
   // limit(): never send an unlimited list - with 10,000 businesses this would be huge.
   // (A real directory would add pagination + search; 50 is enough for now.)
-  const tenants = await Tenant.find({ isActive: true }).select("name slug").sort({ name: 1 }).limit(50);
+  // وضع البزنس الواحد: القائمة بتعرض بزنسنا بس (حماية إضافية حتى لو انضاف بزنس للداتابيس بطريقة ثانية)
+  const filter = { isActive: true };
+  if (SINGLE_BUSINESS_SLUG) filter.slug = SINGLE_BUSINESS_SLUG;
+
+  const tenants = await Tenant.find(filter).select("name slug").sort({ name: 1 }).limit(50);
 
   res.status(200).json({
     businesses: tenants.map((t) => ({ name: t.name, slug: t.slug })),

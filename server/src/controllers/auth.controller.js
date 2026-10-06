@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
+const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -145,6 +146,19 @@ exports.registerBusiness = async (req, res) => {
     });
   }
 
+  // وضع البزنس الواحد: مسموح نسجّل بزنس واحد بس، اللي الـ slug تبعه
+  // نفس SINGLE_BUSINESS_SLUG. وبما إنه الـ slug عليه unique index،
+  // بعد أول تسجيل ناجح أي محاولة ثانية بتنرفض -> مستحيل يصير بزنس ثاني.
+  // 403 (ممنوع) مش 400: الطلب مكتوب صح، بس هالعملية مسكّرة بهالنسخة.
+  if (
+    SINGLE_BUSINESS_SLUG &&
+    String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG
+  ) {
+    return res
+      .status(403)
+      .json({ message: "Business registration is disabled" });
+  }
+
   // Friendly early checks for clear messages. They are NOT the real guarantee -
   // two requests can still race past them; the unique indexes + transaction are.
   const [emailTaken, slugTaken] = await Promise.all([
@@ -230,35 +244,4 @@ exports.getMe = async (req, res) => {
       business,
     },
   });
-};
-
-export const cancelBooking = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const user = req.user; // عدّل الأسماء حسب الـ middleware عندك
-    const reason = req.body.reason?.trim();
-
-    if (!reason) { 
-      return res.status(400).json({ message: " الاسم مطلوب" });
-    }
-    if (reason.length < 3) {
-      return res
-        .stutes(400)
-        .json({ message: "الاسم يجب ان يكون اكبر من ثلاث حروف " });
-    }
-
-    // TODO 2: هات الحجز. إذا مش موجود → 404
-
-    // TODO 3: تحقق من الصلاحية (القاعدة 1)
-
-    // TODO 4: تحقق من الحالة (القاعدة 2)
-
-    // TODO 5: قاعدة الساعتين للعميل فقط (القاعدة 3)
-
-    // TODO 6: حدّث الحجز واحفظه
-
-    // TODO 7: رجّع الحجز المحدّث
-  } catch (err) {
-    next(err);
-  }
 };

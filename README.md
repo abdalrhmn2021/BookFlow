@@ -160,6 +160,15 @@ npm run dev                 # http://localhost:3000
 Generate a secret: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
 Reset the demo data any time: `npm run seed -- --reset`
 
+### Tests
+```bash
+cd server
+npm test
+```
+21 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine and cancellation rules.
+Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
+on GitHub Actions they run on an in-memory MongoDB replica set, on every push.
+
 ## Deployment
 
 | Part | Host | Settings |
@@ -188,7 +197,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [ ] Automated tests (Jest + Supertest) and CI
+- [x] Automated tests (Jest + Supertest) and CI - 21 tests: concurrent double booking, tenant isolation, status transitions
 - [ ] JWT in an httpOnly cookie instead of `localStorage`
 - [ ] Email reminders 24h before an appointment (background job queue)
 - [ ] Per-staff working hours and "which staff can do which service"

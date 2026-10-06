@@ -25,6 +25,9 @@ const CUSTOMER_CANCEL_LIMIT_MS = 2 * 60 * 60 * 1000; // hours * min * sec * ms
 // A cancellation reason must be meaningful, not just "ok"
 const MIN_REASON_LENGTH = 10;
 
+// Allowed values for ?when= in "my appointments"
+const WHEN_VALUES = ["upcoming", "past"];
+
 // @route  POST /api/appointments
 // @access customer
 // Body: { slug, serviceId, staffId, date: "2026-09-25", time: "10:30", notes? }
@@ -33,11 +36,9 @@ exports.createAppointment = async (req, res) => {
 
   // 0) Basic input checks
   if (!slug || !serviceId || !staffId || !date || !time) {
-    return res
-      .status(400)
-      .json({
-        message: "slug, serviceId, staffId, date and time are required",
-      });
+    return res.status(400).json({
+      message: "slug, serviceId, staffId, date and time are required",
+    });
   }
   if (!isValidDate(date)) {
     return res
@@ -180,15 +181,46 @@ exports.createAppointment = async (req, res) => {
   res.status(201).json({ appointment });
 };
 
-// @route  GET /api/appointments/me
+// @route  GET /api/appointments/me?status=cancelled&when=upcoming
 // @access customer
+// Both query params are optional:
+//   status -> one of Appointment.STATUSES
+//   when   -> "upcoming" (from now on) | "past" (before now)
 exports.getMyAppointments = async (req, res) => {
+  const { status, when } = req.query;
+
+  // 1) Validate the filters - a typo like ?status=canceled should be an error,
+  //    not a silent empty list
+  if (status && !Appointment.STATUSES.includes(status)) {
+    return res.status(400).json({
+      message: `Invalid status. Valid statuses are: ${Appointment.STATUSES.join(", ")}`,
+    });
+  }
+  if (when && !WHEN_VALUES.includes(when)) {
+    return res.status(400).json({
+      message: `Invalid when. Valid values are: ${WHEN_VALUES.join(", ")}`,
+    });
+  }
+
+  // 2) Build the filter step by step - only the customer's own appointments,
+  //    plus whatever the client asked for
+  const filter = { customerId: req.user.id };
+
+  if (status) filter.status = status;
+
+  const now = new Date();
+  if (when === "upcoming") filter.startTime = { $gte: now };
+  if (when === "past") filter.startTime = { $lt: now };
+
+  // 3) Upcoming: nearest first. Past: most recent first.
+  const sortOrder = when === "past" ? -1 : 1;
+
   // A customer can book at several businesses, so each appointment needs
   // the business name (and slug, to link back to its booking page) + the staff name.
-  const appointments = await Appointment.find({ customerId: req.user.id })
+  const appointments = await Appointment.find(filter)
     .populate("tenantId", "name slug timezone")
     .populate("staffId", "name")
-    .sort({ startTime: 1 });
+    .sort({ startTime: sortOrder });
 
   res.status(200).json({ count: appointments.length, appointments });
 };
@@ -204,11 +236,9 @@ exports.cancelMyAppointment = async (req, res) => {
     return res.status(400).json({ message: "Cancellation reason is required" });
   }
   if (cleanReason.length < MIN_REASON_LENGTH) {
-    return res
-      .status(400)
-      .json({
-        message: `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`,
-      });
+    return res.status(400).json({
+      message: `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`,
+    });
   }
 
   // 1) Get the appointment - but ONLY if it belongs to this customer.
@@ -228,11 +258,9 @@ exports.cancelMyAppointment = async (req, res) => {
   //    Cancelling a completed / cancelled / no-show one makes no sense.
   //    409 Conflict: the request is valid, but it conflicts with the current state.
   if (!ACTIVE_STATUSES.includes(appointment.status)) {
-    return res
-      .status(409)
-      .json({
-        message: `Can't cancel an appointment that is ${appointment.status}`,
-      });
+    return res.status(409).json({
+      message: `Can't cancel an appointment that is ${appointment.status}`,
+    });
   }
 
   // 3) Not less than 2 hours before the start.
@@ -240,25 +268,50 @@ exports.cancelMyAppointment = async (req, res) => {
   //    there timeLeft is negative, so it's always below the limit.
   const timeLeft = appointment.startTime - Date.now();
   if (timeLeft < CUSTOMER_CANCEL_LIMIT_MS) {
-    return res
-      .status(400)
-      .json({
-        message: "You can't cancel less than 2 hours before the appointment",
-      });
+    return res.status(400).json({
+      message: "You can't cancel less than 2 hours before the appointment",
+    });
   }
 
-  // 4) Change the status, record who/why/when, and save.
-  //    "cancelled" is not in ACTIVE_STATUSES, so the overlap check in
-  //    createAppointment ignores it -> the slot is free for others again.
-  appointment.status = "cancelled";
-  appointment.cancellation = {
-    reason: cleanReason,
-    cancelledBy: req.user.id,
-    cancelledAt: new Date(),
-  };
-  await appointment.save();
+  // 4) الإلغاء بشكل ذرّي (atomic): نلغي فقط إذا الموعد لسا فعّال.
+  //    بين الخطوة 1 وهلأ، ممكن يكون الموظف أو صاحب البزنس غيّر الموعد
+  //    (مثلاً لغاه هو وكتب سببه). لو استخدمنا appointment.save()
+  //    رح نكتب فوق تعديلهم بدون ما ننتبه.
+  //    لما نحط الحالة جوا الفلتر، MongoDB بيعمل "تحقق + كتابة" بخطوة وحدة.
+  //    و"cancelled" مش من ACTIVE_STATUSES، فالموعد بيرجع متاح لغيره.
+  const updated = await Appointment.findOneAndUpdate(
+    {
+      _id: appointment._id,
+      customerId: req.user.id, // لسا موعده هو بس (حماية من IDOR)
+      status: { $in: ACTIVE_STATUSES }, // لسا pending أو confirmed
+    },
+    {
+      // $set بيغيّر هالحقول بس، والباقي (السعر، الوقت...) ما بينلمس
+      $set: {
+        status: "cancelled",
+        cancellation: {
+          reason: cleanReason, // السبب بعد trim
+          cancelledBy: req.user.id, // مين لغى (من التوكن)
+          cancelledAt: new Date(), // إمتى لغى
+        },
+      },
+    },
+    // after = رجّع الموعد بعد التعديل، و runValidators = شغّل قواعد الـ Schema
+    { returnDocument: "after", runValidators: true },
+  );
 
-  res.status(200).json({ message: "Appointment cancelled", appointment });
+  // null = ما في موعد طابق الفلتر = حدا غيّر الحالة بعد ما قرأناها
+  // 409 لأنه الطلب سليم بس بيتعارض مع الحالة الحالية
+  if (!updated) {
+    return res.status(409).json({
+      message: "This appointment was changed by someone else, please reload",
+    });
+  }
+
+  // نرجّع updated (النسخة الجديدة) وليس appointment (القديمة)
+  res
+    .status(200)
+    .json({ message: "Appointment cancelled", appointment: updated });
 };
 
 // ============================================================
@@ -291,11 +344,9 @@ exports.getBusinessAppointments = async (req, res) => {
   const { status } = req.query;
 
   if (status && !Appointment.STATUSES.includes(status)) {
-    return res
-      .status(400)
-      .json({
-        message: `status must be one of: ${Appointment.STATUSES.join(", ")}`,
-      });
+    return res.status(400).json({
+      message: `status must be one of: ${Appointment.STATUSES.join(", ")}`,
+    });
   }
 
   // "Today" and the day's boundaries are in the BUSINESS's local time, not the server's.
@@ -340,11 +391,9 @@ exports.updateAppointmentStatus = async (req, res) => {
   const { status, reason } = req.body || {};
 
   if (!status || !Appointment.STATUSES.includes(status)) {
-    return res
-      .status(400)
-      .json({
-        message: `status must be one of: ${Appointment.STATUSES.join(", ")}`,
-      });
+    return res.status(400).json({
+      message: `status must be one of: ${Appointment.STATUSES.join(", ")}`,
+    });
   }
 
   // A reason is required only when cancelling (same rule as the customer side)
@@ -356,11 +405,9 @@ exports.updateAppointmentStatus = async (req, res) => {
         .json({ message: "Cancellation reason is required" });
     }
     if (cleanReason.length < MIN_REASON_LENGTH) {
-      return res
-        .status(400)
-        .json({
-          message: `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`,
-        });
+      return res.status(400).json({
+        message: `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`,
+      });
     }
   }
 
@@ -384,19 +431,15 @@ exports.updateAppointmentStatus = async (req, res) => {
   const hasStarted = appointment.startTime <= new Date();
   // You can't say "completed" or "didn't come" about something that hasn't happened yet
   if ((status === "completed" || status === "no-show") && !hasStarted) {
-    return res
-      .status(400)
-      .json({
-        message: `Can't mark as ${status} before the appointment starts`,
-      });
+    return res.status(400).json({
+      message: `Can't mark as ${status} before the appointment starts`,
+    });
   }
   // Confirming or cancelling only makes sense BEFORE it starts
   if ((status === "confirmed" || status === "cancelled") && hasStarted) {
-    return res
-      .status(400)
-      .json({
-        message: `Can't mark as ${status} after the appointment started`,
-      });
+    return res.status(400).json({
+      message: `Can't mark as ${status} after the appointment started`,
+    });
   }
 
   // 4) Save ATOMICALLY - only if the status is STILL what we read in step 1.
@@ -421,11 +464,9 @@ exports.updateAppointmentStatus = async (req, res) => {
   );
 
   if (!updated) {
-    return res
-      .status(409)
-      .json({
-        message: "This appointment was changed by someone else, please reload",
-      });
+    return res.status(409).json({
+      message: "This appointment was changed by someone else, please reload",
+    });
   }
 
   res
