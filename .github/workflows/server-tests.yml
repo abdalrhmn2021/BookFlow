@@ -11,14 +11,13 @@ on:
 
 jobs:
   test:
-    # نسخة ثابتة من أوبونتو: ubuntu-latest بيتغيّر مع الوقت،
-    # وMongoDB المؤقتة لازم يكون إلها نسخة جاهزة لنفس نظام التشغيل
     runs-on: ubuntu-24.04
     # حماية: لو علق أي شي، وقّف بعد 15 دقيقة بدل ما يضل شغال ساعات
     timeout-minutes: 15
     env:
-      # نسخة MongoDB معروفة إلها build جاهز لـ Ubuntu 24.04
-      MONGOMS_VERSION: "8.0.4"
+      # الاختبارات بتتصل بـ MongoDB اللي بنشغّلها تحت بـ Docker
+      MONGO_URI_TEST: mongodb://localhost:27017/?replicaSet=rs0
+
     defaults:
       run:
         working-directory: server
@@ -32,13 +31,21 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # نسخة MongoDB المؤقتة: بنحفظها بين التشغيلات عشان ما تنزل كل مرة
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/mongodb-binaries
-          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+      # MongoDB حقيقية بـ Docker كـ replica set (الحجز بيستخدم transactions، وهي بدها replica set)
+      - name: Start MongoDB (single-node replica set)
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval "db.runCommand({ ping: 1 }).ok" && break
+            sleep 2
+          done
+          docker exec mongo mongosh --quiet --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] })"
+          for i in $(seq 1 30); do
+            docker exec mongo mongosh --quiet --eval "db.hello().isWritablePrimary" | grep -q true && break
+            sleep 2
+          done
+          echo "MongoDB replica set is ready"
 
       - run: npm ci
 
-      # GitHub بيحط CI=true تلقائياً -> tests/helpers.js بيستخدم MongoDB بالذاكرة (مش Atlas)
       - run: npm test -- --forceExit

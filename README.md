@@ -167,7 +167,7 @@ npm test
 ```
 21 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine and cancellation rules.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
-on GitHub Actions they run on an in-memory MongoDB replica set, on every push.
+on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
 ## Deployment
 

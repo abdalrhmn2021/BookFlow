@@ -2,10 +2,10 @@
 // أدوات مشتركة لكل ملفات الاختبار
 // ============================================================
 // وين بتشتغل الاختبارات؟
-//   - على جهازك: على Atlas، بس بداتابيس منفصلة اسمها "bookflow_test".
+//   - على جهازك: على Atlas (MONGO_URI)، بس بداتابيس منفصلة اسمها "bookflow_test".
 //     داتا الموقع الحقيقية (داتابيس "test") ما بتنلمس أبداً.
-//     (MongoDB المؤقتة حجمها ~650MB على ويندوز - تنزيلها بطيء كثير)
-//   - على GitHub Actions (CI=true): MongoDB مؤقتة بالذاكرة (على لينكس صغيرة وسريعة).
+//   - على GitHub Actions: MONGO_URI_TEST بيأشّر على MongoDB بـ Docker (شوف server-tests.yml).
+//   - إذا ما في ولا رابط: MongoDB مؤقتة بالذاكرة (mongodb-memory-server) كخطة أخيرة.
 // - دوال بتجهّز بزنس + موظفين + خدمة + زبائن بسرعة، مباشرة بالموديلز
 //   (بدون ما نمر على /register، عشان rate limit ما يوقفنا).
 // ============================================================
@@ -29,20 +29,22 @@ const TEST_DB_NAME = "bookflow_test";
 let replSet;
 
 async function connect() {
-  if (process.env.CI) {
-    // GitHub Actions: MongoDB مؤقتة (replica set لأنه الحجز بيستخدم transactions)
+  const uri = process.env.MONGO_URI_TEST || process.env.MONGO_URI;
+
+  if (uri) {
+    // dbName بيجبرنا على داتابيس الاختبارات، مهما كان مكتوب بالرابط
+    if (uri.startsWith("mongodb+srv://")) {
+      // نفس حل db.js: بعض مزودي الإنترنت ما بيدعموا SRV lookup
+      require("dns").setServers(["8.8.8.8", "8.8.4.4"]);
+    }
+    await mongoose.connect(uri, { dbName: TEST_DB_NAME });
+  } else {
+    // ما في رابط -> MongoDB مؤقتة بالذاكرة (replica set لأنه الحجز بيستخدم transactions)
     const { MongoMemoryReplSet } = require("mongodb-memory-server");
     replSet = await MongoMemoryReplSet.create({
       replSet: { count: 1, storageEngine: "wiredTiger" },
     });
     await mongoose.connect(replSet.getUri(), { dbName: TEST_DB_NAME });
-  } else {
-    // جهازك: نفس الـ cluster على Atlas، بس dbName بيجبرنا على داتابيس الاختبارات
-    const uri = process.env.MONGO_URI_TEST || process.env.MONGO_URI;
-    if (!uri) throw new Error("Set MONGO_URI (or MONGO_URI_TEST) in server/.env to run the tests");
-    // نفس حل db.js: بعض مزودي الإنترنت ما بيدعموا SRV lookup
-    require("dns").setServers(["8.8.8.8", "8.8.4.4"]);
-    await mongoose.connect(uri, { dbName: TEST_DB_NAME });
   }
 
   // حماية إضافية: لو لأي سبب مش على داتابيس الاختبارات -> وقّف فوراً قبل ما نمسح شي
