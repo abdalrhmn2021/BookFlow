@@ -51,7 +51,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Node.js, Express 5, Mongoose 9 |
 | Database | MongoDB (replica set - required for transactions) |
-| Auth & security | JWT, bcrypt, express-rate-limit, CORS allow-list |
+| Auth & security | JWT in an httpOnly cookie, bcrypt, helmet, express-rate-limit, CORS allow-list |
 
 ## Architecture
 
@@ -175,7 +175,7 @@ on GitHub Actions they run on every push against a MongoDB replica set started i
 |---|---|---|
 | Database | MongoDB Atlas (free M0) | Network access: allow `0.0.0.0/0` |
 | Backend | Render (free) | Blueprint from `render.yaml` - set `MONGO_URI` and `CLIENT_URL` |
-| Frontend | Vercel | Root directory `client`, env `NEXT_PUBLIC_API_URL=https://<render-app>.onrender.com/api` |
+| Frontend | Vercel | Root directory `client`, env `API_URL=https://<render-app>.onrender.com` (no `/api`) - `next.config.ts` proxies `/api/*` there |
 
 > Render's free tier sleeps after 15 minutes of inactivity - the first request can take ~50 seconds.
 
@@ -198,7 +198,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 ## Known limitations & roadmap
 
 - [x] Automated tests (Jest + Supertest) and CI - 21 tests: concurrent double booking, tenant isolation, status transitions
-- [ ] JWT in an httpOnly cookie instead of `localStorage`
+- [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [ ] Email reminders 24h before an appointment (background job queue)
 - [ ] Per-staff working hours and "which staff can do which service"
 - [ ] Analytics on the dashboard (bookings, revenue, no-show rate)

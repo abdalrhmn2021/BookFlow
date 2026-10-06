@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -36,6 +37,8 @@ exports.register = async (req, res) => {
     });
 
     const token = generateToken(user);
+    // المتصفح: التوكن بـ httpOnly cookie. (و برجع كمان بالـ body لأدوات زي REST Client / Postman)
+    setAuthCookie(res, token);
 
     res.status(201).json({
       user: {
@@ -111,6 +114,8 @@ exports.login = async (req, res) => {
     // token payload stays generic (id + role only) - no tenantId baked in,
     // since a customer can belong to more than one tenant via CustomerTenant
     const token = generateToken(user);
+    // المتصفح: التوكن بـ httpOnly cookie. (و برجع كمان بالـ body لأدوات زي REST Client / Postman)
+    setAuthCookie(res, token);
 
     res.status(200).json({
       user: {
@@ -192,6 +197,9 @@ exports.registerBusiness = async (req, res) => {
       // if anything above throws -> the whole transaction is rolled back
     });
 
+    const token = generateToken(owner);
+    setAuthCookie(res, token);
+
     res.status(201).json({
       tenant: {
         id: tenant._id,
@@ -206,7 +214,7 @@ exports.registerBusiness = async (req, res) => {
         role: owner.role,
         tenantId: tenant._id,
       },
-      token: generateToken(owner),
+      token,
     });
   } finally {
     // errors (duplicate key, validation) go on to the global error handler
@@ -244,4 +252,12 @@ exports.getMe = async (req, res) => {
       business,
     },
   });
+};
+
+// @route  POST /api/auth/logout
+// @access Public
+// التوكن بكوكي httpOnly -> الواجهة ما بتقدر تمسحه بنفسها، فالسيرفر بيمسحه.
+exports.logout = (req, res) => {
+  clearAuthCookie(res);
+  res.status(200).json({ message: "Logged out" });
 };

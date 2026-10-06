@@ -1,16 +1,21 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { readAuthCookie } = require("../utils/authCookie");
 
 // Verifies the JWT and attaches the current user to req.user
 exports.protect = async (req, res, next) => {
   try {
+    // التوكن من مكانين:
+    //   1) الكوكي httpOnly - المتصفح (الواجهة) بيبعثها تلقائياً
+    //   2) Authorization: Bearer ... - لأدوات زي REST Client و Postman والاختبارات
     const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : readAuthCookie(req);
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({ message: "Not authorized, no token" });
     }
-
-    const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

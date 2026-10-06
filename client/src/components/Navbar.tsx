@@ -10,8 +10,8 @@ export default function Navbar() {
   const { t, lang, setLang } = useLanguage();
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push("/login");
   };
 

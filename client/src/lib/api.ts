@@ -1,22 +1,17 @@
 // ONE place that talks to the backend.
 // Every page calls api.get / api.post ... instead of writing fetch() by hand, so:
-//   - the base URL lives in one place (.env.local)
-//   - the token is attached automatically
+//   - all requests go to /api on OUR domain (next.config.ts forwards them to Express)
+//   - the login token travels in an httpOnly cookie - the browser sends it by itself
 //   - errors always have the same shape (ApiError)
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
-const TOKEN_KEY = "bookflow_token";
+// Same domain as the page -> next.config.ts rewrites /api/* to the Express server.
+const BASE_URL = "/api";
 
-// ---------- Token storage ----------
-// We keep the JWT in localStorage: simple, and survives a page refresh.
-// Trade-off: any JavaScript on the page can read it (XSS risk).
-// The safer option is an httpOnly cookie set by the backend - a later upgrade.
-// `typeof window` check: this code can also run on the server, where localStorage doesn't exist.
-export const tokenStorage = {
-  get: () => (typeof window === "undefined" ? null : localStorage.getItem(TOKEN_KEY)),
-  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
-};
+// ---------- Where is the token? ----------
+// NOT here. The backend puts the JWT in an httpOnly cookie on login:
+// JavaScript (ours, or an attacker's injected script - XSS) can never read it,
+// and the browser attaches it to every request to /api automatically.
+// (Before, it lived in localStorage, where any script on the page could steal it.)
 
 // ---------- Errors ----------
 // Our backend always answers errors as { message, errors? }.
@@ -34,16 +29,14 @@ export class ApiError extends Error {
 
 // ---------- The core request function ----------
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const token = tokenStorage.get();
-
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: {
         ...(body !== undefined && { "Content-Type": "application/json" }),
-        ...(token && { Authorization: `Bearer ${token}` }),
       },
+      credentials: "same-origin", // send our cookies (the token) - same domain only
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {

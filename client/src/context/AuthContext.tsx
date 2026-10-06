@@ -4,7 +4,7 @@
 // so the navbar, pages and guards all read the same user without passing props around.
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, ApiError, tokenStorage } from "@/lib/api";
+import { api } from "@/lib/api";
 import type { Role, User } from "@/lib/types";
 
 interface RegisterData {
@@ -25,11 +25,11 @@ interface RegisterBusinessData {
 
 interface AuthContextValue {
   user: User | null;
-  loading: boolean; // true while we check the saved token on first load
+  loading: boolean; // true while we ask the backend "is anyone logged in?" on first load
   login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
   registerBusiness: (data: RegisterBusinessData) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,21 +64,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user;
   }, []);
 
-  // On first load (or page refresh): if a token was saved, restore the session.
-  // Why not read localStorage directly in useState(...)? The first render happens
-  // on the SERVER too, where there is no localStorage -> server and browser HTML
-  // would differ (hydration error). So we start with loading=true and check here.
+  // On first load (or page refresh): restore the session.
+  // The token is in an httpOnly cookie that JavaScript can't see, so we can't
+  // check "is there a token?" ourselves - we just ask /auth/me.
+  // 401 = nobody logged in (or the token expired) -> stay logged out.
   useEffect(() => {
     const restoreSession = async () => {
-      if (!tokenStorage.get()) return; // never logged in on this browser
+      // One-time cleanup: tokens saved by the OLD version in localStorage aren't used anymore
+      localStorage.removeItem("bookflow_token");
       try {
         await loadMe();
-      } catch (err) {
-        // 401/403 = token expired or account disabled -> forget it.
-        // Anything else (e.g. server down) -> keep the token and try again next time.
-        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-          tokenStorage.clear();
-        }
+      } catch {
+        setUser(null);
       }
     };
     // setLoading runs AFTER the async work (in a callback), not directly in the effect body
@@ -86,28 +83,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadMe]);
 
   const login = async (email: string, password: string) => {
-    const { token } = await api.post<{ token: string }>("/auth/login", { email, password });
-    tokenStorage.set(token);
+    await api.post("/auth/login", { email, password }); // the backend sets the cookie
     return loadMe();
   };
 
   const register = async (data: RegisterData) => {
-    const { token } = await api.post<{ token: string }>("/auth/register", data);
-    tokenStorage.set(token);
+    await api.post("/auth/register", data);
     return loadMe();
   };
 
   // Creates the business AND its owner account in one request (a transaction on the backend)
   const registerBusiness = async (data: RegisterBusinessData) => {
-    const { token } = await api.post<{ token: string }>("/auth/register-business", data);
-    tokenStorage.set(token);
+    await api.post("/auth/register-business", data);
     return loadMe();
   };
 
-  const logout = () => {
-    // A JWT can't be "cancelled" on the server - we just throw away our copy
-    tokenStorage.clear();
-    setUser(null);
+  const logout = async () => {
+    // JavaScript can't delete an httpOnly cookie - the backend does it for us
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      setUser(null); // even if the request failed, show the user as logged out
+    }
   };
 
   return (
