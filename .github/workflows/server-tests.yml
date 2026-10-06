@@ -11,7 +11,14 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # نسخة ثابتة من أوبونتو: ubuntu-latest بيتغيّر مع الوقت،
+    # وMongoDB المؤقتة لازم يكون إلها نسخة جاهزة لنفس نظام التشغيل
+    runs-on: ubuntu-24.04
+    # حماية: لو علق أي شي، وقّف بعد 15 دقيقة بدل ما يضل شغال ساعات
+    timeout-minutes: 15
+    env:
+      # نسخة MongoDB معروفة إلها build جاهز لـ Ubuntu 24.04
+      MONGOMS_VERSION: "8.0.4"
     defaults:
       run:
         working-directory: server
@@ -34,4 +41,4 @@ jobs:
       - run: npm ci
 
       # GitHub بيحط CI=true تلقائياً -> tests/helpers.js بيستخدم MongoDB بالذاكرة (مش Atlas)
-      - run: npm test
+      - run: npm test -- --forceExit
