@@ -3,6 +3,7 @@ const Service = require("../models/Service");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { bookAppointment, httpError } = require("../services/booking.service");
 const {
   isValidDate,
   dayNameOf,
@@ -169,3 +170,93 @@ exports.getAvailability = async (req, res) => {
     slots,
   });
 };
+
+
+// ============================================================
+// GUEST BOOKING - book without creating an account
+// ============================================================
+// زبون الحلاق بدّه يحط اسمه ورقمه ويحجز بس - إجباره يعمل حساب بيخسّر حجوزات.
+// القواعد كلها نفس حجز الزبون المسجّل (bookAppointment)، الفرق بس بـ "مين حجز".
+
+// A guest can hold at most this many UPCOMING active bookings per business.
+// Stops one person (or a bot) from filling a whole day with fake bookings.
+const MAX_GUEST_UPCOMING = 3;
+
+// "٠٥٩٩ ١٢٣-٤٥٦" -> "0599123456"
+// - Arabic-Indic digits (٠-٩) and Persian digits (۰-۹) become 0-9: an Arabic keyboard types those
+// - spaces, dashes, dots and brackets are dropped
+// - a leading "00" becomes "+" (00970... and +970... are the same number)
+function normalizePhone(raw) {
+  if (typeof raw !== "string") return "";
+  let phone = raw
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[\s\-().]/g, "");
+  if (phone.startsWith("00")) phone = "+" + phone.slice(2);
+  return phone;
+}
+// optional "+", then 7 to 15 digits (15 = the international maximum, E.164)
+const PHONE_REGEX = /^\+?\d{7,15}$/;
+
+// @route  POST /api/public/businesses/:slug/appointments
+// @access Public (rate limited - see public.routes.js)
+// Body: { serviceId, staffId, date, time, notes?, name, phone }
+exports.createGuestAppointment = async (req, res) => {
+  const { serviceId, staffId, date, time, notes, name, phone } = req.body || {};
+
+  // 1) Who is booking? (typeof checks: never trust that the body sends strings)
+  const cleanName = typeof name === "string" ? name.trim() : "";
+  if (cleanName.length < 2) {
+    throw httpError(400, "Name must be at least 2 characters");
+  }
+  if (cleanName.length > 60) {
+    throw httpError(400, "Name is too long");
+  }
+  const cleanPhone = normalizePhone(phone);
+  if (!PHONE_REGEX.test(cleanPhone)) {
+    throw httpError(400, "Please provide a valid phone number");
+  }
+
+  // 2) Anti-spam: how many upcoming bookings does this phone already hold HERE?
+  //    (checked before booking, so a spammer never even reaches the lock)
+  const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true }).select("_id");
+  if (!tenant) throw httpError(404, "Business not found");
+
+  const upcoming = await Appointment.countDocuments({
+    tenantId: tenant._id,
+    "guest.phone": cleanPhone,
+    status: { $in: ACTIVE_STATUSES },
+    startTime: { $gte: new Date() },
+  });
+  if (upcoming >= MAX_GUEST_UPCOMING) {
+    throw httpError(429, "You already have too many upcoming bookings here");
+  }
+
+  // 3) Same booking core as logged-in customers (hours, past, double-booking lock...)
+  const { appointment, staff } = await bookAppointment({
+    slug: req.params.slug, // from the URL - the page the guest is on
+    serviceId,
+    staffId,
+    date,
+    time,
+    notes,
+    guest: { name: cleanName, phone: cleanPhone },
+  });
+
+  // 4) A public endpoint answers with the minimum (DTO) - no ids of other people
+  res.status(201).json({
+    appointment: {
+      id: appointment._id,
+      serviceName: appointment.serviceName,
+      staffName: staff.name,
+      price: appointment.price,
+      duration: appointment.duration,
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      status: appointment.status,
+    },
+  });
+};
+
+// exported for the tests
+exports.normalizePhone = normalizePhone;

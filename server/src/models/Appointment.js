@@ -7,7 +7,26 @@ const appointmentSchema = new mongoose.Schema(
   {
     // --- Who and where ---
     tenantId: { type: ObjectId, ref: "Tenant", required: true },
-    customerId: { type: ObjectId, ref: "User", required: true },
+    // Who booked: EITHER a logged-in customer (customerId) OR a guest without
+    // an account (guest). Never both, never neither - checked in pre("validate") below.
+    customerId: { type: ObjectId, ref: "User" },
+    guest: {
+      type: new mongoose.Schema(
+        {
+          name: {
+            type: String,
+            required: [true, "Name is required"],
+            trim: true,
+            minlength: [2, "Name must be at least 2 characters"],
+            maxlength: [60, "Name is too long"],
+          },
+          // stored normalized (digits only, optional leading +) - see public.controller
+          phone: { type: String, required: [true, "Phone number is required"], trim: true },
+        },
+        { _id: false },
+      ),
+      default: undefined, // no empty "guest: {}" on normal appointments
+    },
     staffId: { type: ObjectId, ref: "User", required: true },
     serviceId: { type: ObjectId, ref: "Service", required: true },
 
@@ -37,8 +56,13 @@ const appointmentSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// endTime must come after startTime
+// endTime must come after startTime + exactly one kind of booker
 appointmentSchema.pre("validate", function () {
+  const hasCustomer = Boolean(this.customerId);
+  const hasGuest = Boolean(this.guest);
+  if (hasCustomer === hasGuest) {
+    this.invalidate("customerId", "An appointment needs either a customer or a guest");
+  }
   if (this.startTime && this.endTime && this.endTime <= this.startTime) {
     this.invalidate("endTime", "endTime must be after startTime");
   }
@@ -50,6 +74,10 @@ appointmentSchema.index({ tenantId: 1, staffId: 1, startTime: 1 });
 appointmentSchema.index({ tenantId: 1, startTime: 1 });
 // Fast "my appointments" list for a customer
 appointmentSchema.index({ customerId: 1, startTime: -1 });
+// Anti-spam check for guests: "how many upcoming bookings does this phone have here?"
+appointmentSchema.index({ tenantId: 1, "guest.phone": 1, startTime: 1 },
+  { partialFilterExpression: { "guest.phone": { $exists: true } } }, // guests only - keeps it small
+);
 
 module.exports = mongoose.model("Appointment", appointmentSchema);
 module.exports.STATUSES = STATUSES;

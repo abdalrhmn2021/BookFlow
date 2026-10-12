@@ -12,6 +12,9 @@ import { addDays, formatLongDate, formatMomentIn, formatPrice, todayIn } from "@
 import { btnSecondary, errorBox } from "@/lib/ui";
 import type { AppointmentStatus, BusinessAppointment } from "@/lib/types";
 
+// A guest booking keeps its phone on the appointment itself; a customer's is on the account
+const phoneOf = (a: BusinessAppointment) => a.guest?.phone ?? a.customerId?.phone;
+
 // A mirror of the backend's ALLOWED_TRANSITIONS + time rules (appointment.controller).
 // It only decides which buttons to SHOW - the backend still checks every request.
 function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
@@ -166,7 +169,15 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold">{a.customerId?.name ?? s.noCustomer}</p>
+                          {/* Who booked: a guest (name + phone only) or a customer account */}
+                          <p className="flex items-center gap-2 font-semibold">
+                            {a.guest ? a.guest.name : (a.customerId?.name ?? s.noCustomer)}
+                            {a.guest && (
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                {s.guest}
+                              </span>
+                            )}
+                          </p>
                           <p className="text-sm text-gray-600">
                             {a.serviceName}
                             {/* The owner sees everyone's appointments -> show WHO does it */}
@@ -179,9 +190,9 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                             {" · "}
                             {formatPrice(a.price)}
                           </p>
-                          {a.customerId?.phone && (
-                            <a href={`tel:${a.customerId.phone}`} dir="ltr" className="text-sm text-indigo-600 hover:underline">
-                              📞 {a.customerId.phone}
+                          {phoneOf(a) && (
+                            <a href={`tel:${phoneOf(a)}`} dir="ltr" className="text-sm text-indigo-600 hover:underline">
+                              📞 {phoneOf(a)}
                             </a>
                           )}
                           {a.notes && <p className="mt-1 text-sm text-gray-500">📝 {a.notes}</p>}
