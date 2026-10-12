@@ -17,6 +17,16 @@ export const LANG_COOKIE = "bookflow_lang";
 
 export const isLang = (value: unknown): value is Lang => value === "ar" || value === "en";
 
+// What the WhatsApp reminder message is built from (see dashboard.schedule.reminderMessage)
+export interface ReminderParts {
+  name: string; //     customer / guest name
+  business: string;
+  day: string; //      "today" / "tomorrow" / "on Saturday, October 18"
+  time: string; //     "10:30"
+  service: string;
+  staff: string;
+}
+
 const en = {
   dir: "ltr" as "ltr" | "rtl",
   locale: "en-US", // for Intl date formatting
@@ -139,6 +149,17 @@ const en = {
       cancelQuestion: "Cancel this appointment?",
       yesCancel: "Yes, cancel",
       keep: "Keep it",
+      cancelReason: "Reason (the customer may see it)",
+      cancelReasonPlaceholder: "e.g. The barber is sick today",
+      remind: "WhatsApp reminder",
+      remindAgain: "Remind again",
+      reminded: (time: string) => `Reminded at ${time}`,
+      dayToday: "today",
+      dayTomorrow: "tomorrow",
+      dayOn: (date: string) => `on ${date}`,
+      reminderMessage: (p: ReminderParts) =>
+        `Hi ${p.name} 👋\nA reminder of your appointment at ${p.business} ${p.day} at ${p.time}` +
+        ` (${p.service} with ${p.staff}).\nTo cancel or change it, just reply to this message. See you soon!`,
     },
     services: {
       add: "+ Add service",
@@ -248,6 +269,8 @@ const en = {
     cancelling: "Cancelling...",
     keep: "Keep it",
     cancel: "Cancel appointment",
+    cancelReason: "Why are you cancelling?",
+    cancelReasonPlaceholder: "e.g. Something came up at work",
   },
 
   status: {
@@ -389,6 +412,17 @@ const ar: Dictionary = {
       cancelQuestion: "إلغاء هذا الموعد؟",
       yesCancel: "نعم، ألغِه",
       keep: "لا، أبقِه",
+      cancelReason: "السبب (قد يراه الزبون)",
+      cancelReasonPlaceholder: "مثلاً: الحلاق مريض اليوم",
+      remind: "تذكير واتساب",
+      remindAgain: "تذكير مرة أخرى",
+      reminded: (time) => `تم التذكير الساعة ${time}`,
+      dayToday: "اليوم",
+      dayTomorrow: "غداً",
+      dayOn: (date) => `يوم ${date}`,
+      reminderMessage: (p) =>
+        `مرحباً ${p.name} 👋\nنذكّرك بموعدك في ${p.business} ${p.day} الساعة ${p.time}` +
+        ` (${p.service} مع ${p.staff}).\nللإلغاء أو التعديل، ردّ على هذه الرسالة. بانتظارك!`,
     },
     services: {
       add: "+ إضافة خدمة",
@@ -497,6 +531,8 @@ const ar: Dictionary = {
     cancelling: "جاري الإلغاء...",
     keep: "لا، أبقِه",
     cancel: "إلغاء الموعد",
+    cancelReason: "لماذا تريد الإلغاء؟",
+    cancelReasonPlaceholder: "مثلاً: طرأ ظرف في العمل",
   },
 
   status: {
@@ -562,6 +598,10 @@ const ar: Dictionary = {
     "Can't cancel an appointment that is cancelled": "هذا الموعد ملغى بالفعل",
     "Can't cancel an appointment that is no-show": "لا يمكن إلغاء موعد لم يحضره الزبون",
     "This appointment was changed by someone else, please reload": "تم تعديل هذا الموعد من شخص آخر، حدّث الصفحة",
+    "Cancellation reason is required": "سبب الإلغاء مطلوب",
+    "Cancellation reason must be at least 10 characters long": "سبب الإلغاء يجب أن يكون 10 أحرف على الأقل",
+    "You can't cancel less than 2 hours before the appointment": "لا يمكن الإلغاء قبل أقل من ساعتين من الموعد",
+    "Only upcoming active appointments can be reminded": "يمكن التذكير بالمواعيد القادمة فقط",
     // business sign-up
     "businessName, slug, ownerName, email and password are required": "جميع الحقول مطلوبة ما عدا رقم الهاتف",
     "This business URL is already taken": "رابط صفحة الحجز هذا مستخدم بالفعل، اختر رابطاً آخر",

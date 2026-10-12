@@ -22,6 +22,9 @@ export default function MyAppointmentsPage() {
   );
 }
 
+// Same minimum as the backend (MIN_REASON_LENGTH in appointment.controller)
+const MIN_REASON_LENGTH = 10;
+
 // Same rule as the backend's cancelMyAppointment: active status + not started yet.
 // (The backend checks it again anyway - this only decides whether to SHOW the button.)
 function isUpcoming(a: MyAppointment): boolean {
@@ -40,6 +43,8 @@ function Content() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<{ id: string; err: unknown } | null>(null);
+  // The backend requires a reason (at least MIN_REASON_LENGTH characters) - so the business knows why
+  const [reason, setReason] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -60,7 +65,7 @@ function Content() {
     setCancelError(null);
     setCancellingId(id);
     try {
-      await api.patch(`/appointments/${id}/cancel`);
+      await api.patch(`/appointments/${id}/cancel`, { reason: reason.trim() });
       // Update ONLY the status in our list - no need to reload everything.
       // (The response's appointment is not populated, so we keep our own copy
       //  with the business/staff names and just change the status.)
@@ -69,6 +74,7 @@ function Content() {
         prev ? prev.map((a) => (a._id === id ? { ...a, status: "cancelled" } : a)) : prev
       );
       setConfirmingId(null);
+      setReason("");
     } catch (err) {
       // e.g. 409 "Can't cancel an appointment that is completed" (the business changed it meanwhile)
       setCancelError({ id, err });
@@ -131,28 +137,41 @@ function Content() {
                 {/* The cancel area - its own little state machine: button -> confirm -> cancelling */}
                 <div className="mt-4 border-t border-gray-100 pt-3">
                   {confirmingId === a._id ? (
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <span className="text-gray-600">{t.myAppointments.cancelQuestion}</span>
-                      <button
-                        onClick={() => handleCancel(a._id)}
-                        disabled={cancellingId === a._id}
-                        className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
-                      >
-                        {cancellingId === a._id ? t.myAppointments.cancelling : t.myAppointments.yesCancel}
-                      </button>
-                      <button
-                        onClick={() => setConfirmingId(null)}
-                        disabled={cancellingId === a._id}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        {t.myAppointments.keep}
-                      </button>
+                    <div className="space-y-2 text-sm">
+                      <p className="text-gray-600">{t.myAppointments.cancelQuestion}</p>
+                      <label className="block">
+                        <span className="text-xs font-medium text-gray-600">{t.myAppointments.cancelReason}</span>
+                        <input
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          maxLength={300}
+                          placeholder={t.myAppointments.cancelReasonPlaceholder}
+                          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                        />
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          onClick={() => handleCancel(a._id)}
+                          disabled={cancellingId === a._id || reason.trim().length < MIN_REASON_LENGTH}
+                          className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                        >
+                          {cancellingId === a._id ? t.myAppointments.cancelling : t.myAppointments.yesCancel}
+                        </button>
+                        <button
+                          onClick={() => setConfirmingId(null)}
+                          disabled={cancellingId === a._id}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          {t.myAppointments.keep}
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
                       onClick={() => {
                         setConfirmingId(a._id);
                         setCancelError(null);
+                        setReason("");
                       }}
                       className="text-sm font-medium text-red-600 hover:text-red-700"
                     >

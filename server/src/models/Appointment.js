@@ -44,6 +44,10 @@ const appointmentSchema = new mongoose.Schema(
     status: { type: String, enum: STATUSES, default: "pending" },
     notes: { type: String, trim: true, maxlength: [500, "Notes are too long"] },
 
+    // --- Reminder: when the business last sent the customer a reminder (WhatsApp) ---
+    // Lets the owner and staff see "already reminded" - from any device, by anyone on the team.
+    reminderSentAt: { type: Date },
+
     // --- Cancellation info: filled ONLY when the appointment is cancelled ---
     // Optional, no defaults: most appointments are never cancelled.
     // The controller fills these at the moment of cancelling.

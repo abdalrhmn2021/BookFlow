@@ -8,6 +8,7 @@ const {
   cancelMyAppointment,
   getBusinessAppointments,
   updateAppointmentStatus,
+  markReminded,
 } = require("../controllers/appointment.controller");
 
 
@@ -19,6 +20,7 @@ router.patch("/:id/cancel", protect, restrictTo("customer"), cancelMyAppointment
 // requireTenant: the user must belong to an ACTIVE business -> gives us req.tenantId
 router.get("/business", protect, requireTenant, restrictTo("owner", "staff"), getBusinessAppointments);
 router.patch("/:id/status", protect, requireTenant, restrictTo("owner", "staff"), updateAppointmentStatus);
+router.patch("/:id/reminded", protect, requireTenant, restrictTo("owner", "staff"), markReminded);
 
 
 module.exports = router;

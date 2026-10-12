@@ -252,6 +252,37 @@ exports.getBusinessAppointments = async (req, res) => {
   res.status(200).json({ date, count: appointments.length, appointments });
 };
 
+// @route  PATCH /api/appointments/:id/reminded
+// @access owner, staff
+// The dashboard opens WhatsApp with a ready reminder message, then calls this so the whole
+// team sees "reminded at 14:05". We don't send anything ourselves - the business does, from
+// its own WhatsApp - so this endpoint only RECORDS that it happened.
+exports.markReminded = async (req, res) => {
+  // ONE atomic step: find + check + write. The appointment must be
+  //   - in this business (and his own, if he's staff)  -> otherwise 404
+  //   - still active and still in the future           -> reminding about a cancelled
+  //     or finished appointment makes no sense
+  const updated = await Appointment.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      ...businessFilter(req.user, req.tenantId),
+      status: { $in: ACTIVE_STATUSES },
+      startTime: { $gt: new Date() },
+    },
+    { $set: { reminderSentAt: new Date() } },
+    { returnDocument: "after" },
+  );
+
+  if (!updated) {
+    // Why did it fail? Doesn't exist for this user -> 404. Exists but not remindable -> 409.
+    const exists = await Appointment.exists({ _id: req.params.id, ...businessFilter(req.user, req.tenantId) });
+    if (!exists) return res.status(404).json({ message: "Appointment not found" });
+    return res.status(409).json({ message: "Only upcoming active appointments can be reminded" });
+  }
+
+  res.status(200).json({ reminderSentAt: updated.reminderSentAt });
+};
+
 // @route  PATCH /api/appointments/:id/status
 // @access owner, staff
 // Body: { status: "confirmed" | "completed" | "no-show" | "cancelled" }
