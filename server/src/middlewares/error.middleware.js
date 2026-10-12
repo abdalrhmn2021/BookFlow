@@ -29,6 +29,13 @@ exports.errorHandler = (err, req, res, next) => {
     return res.status(409).json({ message: `${field} already exists` });
   }
 
+  // Expected errors we threw on purpose (httpError in booking.service: 400 / 404 / 409 / 429).
+  // They are the client's mistake, not our bug -> answer with the message, don't log them,
+  // otherwise the server logs fill up with "already booked" and real crashes get lost.
+  if (err.statusCode && err.statusCode < 500) {
+    return res.status(err.statusCode).json({ message: err.message });
+  }
+
   // Anything else is our bug: log it fully, tell the client nothing internal
   console.error("[error]", err);
   const status = err.statusCode || 500;

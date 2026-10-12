@@ -1,7 +1,8 @@
 "use client";
 
 // Public booking page: /book/<business-slug>
-// Anyone can open it - login is only needed at the very last step (confirm).
+// Anyone can open it AND book: a guest just types a name + phone at the last step.
+// A logged-in customer books with their account (and sees it in "My appointments").
 //
 // The flow is a chain:   service -> staff -> day -> free time -> confirm
 // Each step only appears after the one above it is chosen, and changing
@@ -22,7 +23,7 @@ import {
   formatPrice,
   todayIn,
 } from "@/lib/format";
-import type { Availability, PublicBusinessPage } from "@/lib/types";
+import type { Availability, GuestBookingResult, PublicBusinessPage } from "@/lib/types";
 
 const DAYS_AHEAD = 14; // customers can book up to 2 weeks ahead
 
@@ -37,6 +38,31 @@ interface Draft {
   time: string | null;
 }
 const draftKey = (slug: string) => `bookflow_draft_${slug}`;
+
+// ---------- Guest details: remembered for next time ----------
+// A guest who books once shouldn't type their name + phone again next week.
+// localStorage = stays in this browser only (never sent to the server by itself).
+const GUEST_KEY = "bookflow_guest";
+interface GuestDetails {
+  name: string;
+  phone: string;
+}
+function readGuest(): GuestDetails {
+  try {
+    const saved = JSON.parse(localStorage.getItem(GUEST_KEY) ?? "null");
+    if (typeof saved?.name === "string" && typeof saved?.phone === "string") return saved;
+  } catch {
+    // storage blocked or broken JSON -> empty form
+  }
+  return { name: "", phone: "" };
+}
+function saveGuest(details: GuestDetails) {
+  try {
+    localStorage.setItem(GUEST_KEY, JSON.stringify(details));
+  } catch {
+    // storage blocked - they'll just type it again next time
+  }
+}
 
 function readDraft(slug: string, data: PublicBusinessPage): Draft | null {
   try {
@@ -76,6 +102,10 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   const [date, setDate] = useState<string | null>(null);
   const [pickedTime, setPickedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  // Guest form (only used when nobody is logged in). Lazy init = read storage once, on the first render.
+  const [guest, setGuest] = useState<GuestDetails>(() =>
+    typeof window === "undefined" ? { name: "", phone: "" } : readGuest()
+  );
 
   // ---------- 3) Free times ----------
   // Bumping this number forces the slots to reload (used after a 409 "already taken").
@@ -89,9 +119,13 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   // ---------- 4) Booking ----------
   const [submitting, setSubmitting] = useState(false);
   const [bookError, setBookError] = useState("");
-  const [booked, setBooked] = useState<{ serviceName: string; staffName: string; date: string; time: string } | null>(
-    null
-  );
+  const [booked, setBooked] = useState<{
+    serviceName: string;
+    staffName: string;
+    date: string;
+    time: string;
+    guestPhone?: string; // set only for guest bookings
+  } | null>(null);
 
   useEffect(() => {
     // `ignore` protects us if the slug changes (or the page closes) before the answer arrives:
@@ -170,20 +204,26 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
     if (!page || !serviceId || !staffId || !date || !time) return;
     setBookError("");
     setSubmitting(true);
+    const body = { serviceId, staffId, date, time, notes: notes.trim() || undefined };
     try {
-      await api.post("/appointments", {
-        slug: page.business.slug,
-        serviceId,
-        staffId,
-        date,
-        time,
-        notes: notes.trim() || undefined,
-      });
+      if (user) {
+        // Logged-in customer -> booked on their account
+        await api.post("/appointments", { ...body, slug: page.business.slug });
+      } else {
+        // Guest -> public endpoint with name + phone (the server cleans and checks them)
+        const details = { name: guest.name.trim(), phone: guest.phone.trim() };
+        await api.post<GuestBookingResult>(`/public/businesses/${encodeURIComponent(page.business.slug)}/appointments`, {
+          ...body,
+          ...details,
+        });
+        saveGuest(details);
+      }
       setBooked({
         serviceName: page.services.find((s) => s.id === serviceId)?.name ?? "",
         staffName: page.staff.find((s) => s.id === staffId)?.name ?? "",
         date,
         time,
+        guestPhone: user ? undefined : guest.phone.trim(),
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -240,13 +280,21 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           {t.book.bookedAt(formatLongDate(booked.date, t.locale), booked.time)}
         </p>
         <p className="mt-3 text-sm text-gray-500">{t.book.willConfirm(business.name)}</p>
+        {booked.guestPhone && (
+          <p className="mt-1 text-sm text-gray-500">
+            {t.book.guestBooked(booked.guestPhone)}
+          </p>
+        )}
         <div className="mt-8 flex justify-center gap-3">
-          <Link
-            href="/my-appointments"
-            className="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-          >
-            {t.book.myAppointments}
-          </Link>
+          {/* "My appointments" only exists for accounts - a guest has nothing to log in to */}
+          {!booked.guestPhone && (
+            <Link
+              href="/my-appointments"
+              className="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+            >
+              {t.book.myAppointments}
+            </Link>
+          )}
           <button onClick={bookAnother} className="rounded-md border border-gray-300 px-4 py-2 font-medium hover:bg-gray-50">
             {t.book.bookAnother}
           </button>
@@ -393,34 +441,57 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
               <dd className="font-medium">{formatPrice(service.price)}</dd>
             </dl>
 
-            {authLoading ? null : !user ? (
-              // Guest: save the choices, go log in, come back here (?next=...)
-              <div className="mt-5 border-t border-gray-100 pt-5">
-                <p className="text-sm text-gray-600">{t.book.loginToConfirm}</p>
-                <div className="mt-3 flex gap-3">
-                  <Link
-                    href={`/login?next=${encodeURIComponent(nextUrl)}`}
-                    onClick={saveDraft}
-                    className="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-                  >
-                    {t.book.loginToBook}
-                  </Link>
-                  <Link
-                    href={`/register?next=${encodeURIComponent(nextUrl)}`}
-                    onClick={saveDraft}
-                    className="rounded-md border border-gray-300 px-4 py-2 font-medium hover:bg-gray-50"
-                  >
-                    {t.book.signup}
-                  </Link>
-                </div>
-              </div>
-            ) : user.role !== "customer" ? (
+            {authLoading ? null : user && user.role !== "customer" ? (
               // The backend would answer 403 anyway (restrictTo("customer")) - we just explain it nicely
               <p className="mt-5 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 {t.book.businessAccount(t.roles[user.role])}
               </p>
             ) : (
-              <div className="mt-5 border-t border-gray-100 pt-5">
+              <form
+                className="mt-5 space-y-4 border-t border-gray-100 pt-5"
+                onSubmit={(e) => {
+                  e.preventDefault(); // stay on the page - we send the request ourselves
+                  handleBook();
+                }}
+              >
+                {!user && (
+                  // Guest: name + phone instead of an account
+                  <fieldset className="space-y-3">
+                    <legend className="text-sm font-semibold">{t.book.guestTitle}</legend>
+                    <p className="text-xs text-gray-500">{t.book.guestHint}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="text-sm font-medium">{t.book.guestName}</span>
+                        <input
+                          required
+                          minLength={2}
+                          maxLength={60}
+                          autoComplete="name"
+                          value={guest.name}
+                          onChange={(e) => setGuest({ ...guest, name: e.target.value })}
+                          placeholder={t.book.guestNamePlaceholder}
+                          className={inputClass}
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-medium">{t.book.guestPhone}</span>
+                        <input
+                          required
+                          type="tel"
+                          dir="ltr"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          maxLength={25}
+                          value={guest.phone}
+                          onChange={(e) => setGuest({ ...guest, phone: e.target.value })}
+                          placeholder="059 123 4567"
+                          className={inputClass}
+                        />
+                      </label>
+                    </div>
+                  </fieldset>
+                )}
+
                 <label className="block">
                   <span className="text-sm font-medium">
                     {t.book.notes} <span className="text-gray-400">{t.common.optional}</span>
@@ -431,18 +502,41 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                     maxLength={500}
                     rows={2}
                     placeholder={t.book.notesPlaceholder}
-                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className={inputClass}
                   />
                 </label>
-                {bookError && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
+
+                {bookError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
                 <button
-                  onClick={handleBook}
+                  type="submit"
                   disabled={submitting}
-                  className="mt-4 w-full rounded-md bg-indigo-600 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  className="w-full rounded-md bg-indigo-600 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
                 >
                   {submitting ? t.book.booking : t.book.bookFor(formatPrice(service.price))}
                 </button>
-              </div>
+
+                {!user && (
+                  // Accounts are still there for people who want "My appointments"
+                  <p className="text-center text-sm text-gray-500">
+                    {t.book.haveAccount}{" "}
+                    <Link
+                      href={`/login?next=${encodeURIComponent(nextUrl)}`}
+                      onClick={saveDraft}
+                      className="font-medium text-indigo-600 hover:underline"
+                    >
+                      {t.book.loginToBook}
+                    </Link>
+                    {" · "}
+                    <Link
+                      href={`/register?next=${encodeURIComponent(nextUrl)}`}
+                      onClick={saveDraft}
+                      className="font-medium text-indigo-600 hover:underline"
+                    >
+                      {t.book.signup}
+                    </Link>
+                  </p>
+                )}
+              </form>
             )}
           </div>
         </Step>
@@ -452,6 +546,9 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 }
 
 // ---------- Small building blocks used only on this page ----------
+
+const inputClass =
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (

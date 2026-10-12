@@ -30,3 +30,13 @@ exports.publicLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Too many requests, please slow down" },
 });
+
+// Guest bookings create real appointments with no login behind them -
+// 10 per hour per IP is plenty for a family booking together, and useless for a bot.
+exports.guestBookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many bookings from this device, please try again later" },
+});

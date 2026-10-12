@@ -89,6 +89,20 @@ export interface MyAppointment {
   notes?: string;
 }
 
+// What POST /api/public/businesses/:slug/appointments returns (guest booking)
+export interface GuestBookingResult {
+  appointment: {
+    id: string;
+    serviceName: string;
+    staffName: string;
+    price: number;
+    duration: number;
+    startTime: string;
+    endTime: string;
+    status: AppointmentStatus;
+  };
+}
+
 // What GET /api/public/businesses returns (one item)
 export interface BusinessListItem {
   name: string;
@@ -129,7 +143,12 @@ export interface StaffMember {
 // GET /api/appointments/business
 export interface BusinessAppointment {
   _id: string;
-  customerId: { _id: string; name: string; phone?: string; email: string } | null; // null if the account was deleted
+  // A booking comes from EITHER a customer account OR a guest (no account):
+  //   customer -> customerId is filled, guest is missing
+  //   guest    -> customerId is missing/null, guest is filled
+  //   customerId is also null if the customer's account was deleted
+  customerId?: { _id: string; name: string; phone?: string; email: string } | null;
+  guest?: { name: string; phone: string };
   staffId: { _id: string; name: string };
   serviceName: string;
   price: number;

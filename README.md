@@ -29,6 +29,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 
 **Customers**
 - Browse businesses and book in 5 steps: service → staff → day → free time → confirm
+- **Book as a guest** - just a name and a phone number, no account needed (phone normalized, Arabic digits accepted, max 3 upcoming bookings per phone per business, own rate limit)
 - Only real free slots are offered (working hours, existing bookings, past times all excluded)
 - Choices survive the login redirect - pick first, log in after
 - "My appointments": upcoming & past, cancel with confirmation

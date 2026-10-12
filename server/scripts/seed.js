@@ -125,7 +125,10 @@ async function seed() {
 
       appointments.push({
         tenantId: tenant._id,
-        customerId: customers[customerI]._id,
+        // One booking a day is from a guest (no account) - so the demo dashboard shows both kinds
+        ...(i === 3
+          ? { guest: { name: "Khaled Mansour", phone: "0599000111" } }
+          : { customerId: customers[customerI]._id }),
         staffId: staff[staffI]._id,
         serviceId: service._id,
         serviceName: service.name,
