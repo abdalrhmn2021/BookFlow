@@ -5,6 +5,17 @@ const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 
+// ============================================================
+// حماية من NoSQL injection
+// ============================================================
+// express.json() بيقبل أي JSON، فالإيميل ممكن يوصل ككائن بدل نص:
+//   { "email": { "$gt": "" } }
+// ولو حطيناه بـ findOne({ email }) كما هو، MongoDB بيفهمه operator
+// ("أي إيميل أكبر من نص فاضي") وبيرجع أول مستخدم بالداتابيس.
+// الحل: كل حقل بيدخل باستعلام لازم يكون نص حقيقي ومش فاضي.
+// كائن = "الحقل مش موجود" -> 400، قبل ما نلمس الداتابيس.
+const isText = (value) => typeof value === "string" && value.length > 0;
+
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
@@ -17,7 +28,7 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
-    if (!name || !email || !password) {
+    if (!isText(name) || !isText(email) || !isText(password)) {
       return res
         .status(400)
         .json({ message: "name, email and password are required" });
@@ -74,7 +85,8 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    // isText وليس !email: الكائن { "$gt": "" } قيمته truthy فبيعدّي من !email
+    if (!isText(email) || !isText(password)) {
       return res
         .status(400)
         .json({ message: "email and password are required" });
@@ -145,7 +157,7 @@ exports.login = async (req, res) => {
 exports.registerBusiness = async (req, res) => {
   const { businessName, slug, ownerName, email, password, phone } = req.body;
 
-  if (!businessName || !slug || !ownerName || !email || !password) {
+  if (![businessName, slug, ownerName, email, password].every(isText)) {
     return res.status(400).json({
       message: "businessName, slug, ownerName, email and password are required",
     });

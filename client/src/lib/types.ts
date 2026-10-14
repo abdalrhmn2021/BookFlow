@@ -157,4 +157,5 @@ export interface BusinessAppointment {
   endTime: string;
   status: AppointmentStatus;
   notes?: string;
+  reminderSentAt?: string; // ISO date - set when someone on the team sent a WhatsApp reminder
 }
