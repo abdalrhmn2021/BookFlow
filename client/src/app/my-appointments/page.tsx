@@ -86,7 +86,7 @@ function Content() {
   if (loadError) {
     return (
       <Shell>
-        <p className="mt-8 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{tError(loadError)}</p>
+        <p className="mt-8 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{tError(loadError)}</p>
       </Shell>
     );
   }
@@ -94,7 +94,7 @@ function Content() {
   if (!appointments) {
     return (
       <Shell>
-        <p className="mt-8 text-gray-500">{t.myAppointments.loading}</p>
+        <p className="mt-8 text-slate-500">{t.myAppointments.loading}</p>
       </Shell>
     );
   }
@@ -105,12 +105,12 @@ function Content() {
   if (appointments.length === 0) {
     return (
       <Shell>
-        <div className="mt-8 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+        <div className="mt-8 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
           <p className="font-medium">{t.myAppointments.emptyTitle}</p>
-          <p className="mt-1 text-sm text-gray-500">{t.myAppointments.emptyText}</p>
+          <p className="mt-1 text-sm text-slate-500">{t.myAppointments.emptyText}</p>
           <Link
             href="/businesses"
-            className="mt-5 inline-block rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+            className="mt-5 inline-block rounded-lg bg-coral-500 px-4 py-2 font-semibold text-ink-950 hover:bg-coral-400"
           >
             {t.myAppointments.browse}
           </Link>
@@ -124,9 +124,9 @@ function Content() {
       <section className="mt-8">
         <h2 className="text-lg font-semibold">{t.myAppointments.upcoming(upcoming.length)}</h2>
         {upcoming.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-500">
+          <p className="mt-3 text-sm text-slate-500">
             {t.myAppointments.nothingUpcoming}{" "}
-            <Link href="/businesses" className="font-medium text-indigo-600 hover:underline">
+            <Link href="/businesses" className="font-medium text-coral-700 hover:underline">
               {t.myAppointments.bookSomething}
             </Link>
           </p>
@@ -135,32 +135,32 @@ function Content() {
             {upcoming.map((a) => (
               <AppointmentCard key={a._id} a={a}>
                 {/* The cancel area - its own little state machine: button -> confirm -> cancelling */}
-                <div className="mt-4 border-t border-gray-100 pt-3">
+                <div className="mt-4 border-t border-slate-100 pt-3">
                   {confirmingId === a._id ? (
                     <div className="space-y-2 text-sm">
-                      <p className="text-gray-600">{t.myAppointments.cancelQuestion}</p>
+                      <p className="text-slate-600">{t.myAppointments.cancelQuestion}</p>
                       <label className="block">
-                        <span className="text-xs font-medium text-gray-600">{t.myAppointments.cancelReason}</span>
+                        <span className="text-xs font-medium text-slate-600">{t.myAppointments.cancelReason}</span>
                         <input
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
                           maxLength={300}
                           placeholder={t.myAppointments.cancelReasonPlaceholder}
-                          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
                         />
                       </label>
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           onClick={() => handleCancel(a._id)}
                           disabled={cancellingId === a._id || reason.trim().length < MIN_REASON_LENGTH}
-                          className="rounded-md bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                          className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
                         >
                           {cancellingId === a._id ? t.myAppointments.cancelling : t.myAppointments.yesCancel}
                         </button>
                         <button
                           onClick={() => setConfirmingId(null)}
                           disabled={cancellingId === a._id}
-                          className="text-gray-600 hover:text-gray-900"
+                          className="text-slate-600 hover:text-slate-900"
                         >
                           {t.myAppointments.keep}
                         </button>
@@ -179,7 +179,7 @@ function Content() {
                     </button>
                   )}
                   {cancelError?.id === a._id && (
-                    <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                       {tError(cancelError.err)}
                     </p>
                   )}
@@ -192,7 +192,7 @@ function Content() {
 
       {past.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-semibold text-gray-500">{t.myAppointments.past(past.length)}</h2>
+          <h2 className="text-lg font-semibold text-slate-500">{t.myAppointments.past(past.length)}</h2>
           <ul className="mt-3 space-y-3 opacity-80">
             {past.map((a) => (
               <AppointmentCard key={a._id} a={a} />
@@ -214,9 +214,9 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t.myAppointments.title}</h1>
-          <p className="mt-1 text-gray-500">{t.myAppointments.hi(user?.name ?? "")}</p>
+          <p className="mt-1 text-slate-500">{t.myAppointments.hi(user?.name ?? "")}</p>
         </div>
-        <Link href="/businesses" className="text-sm font-medium text-indigo-600 hover:underline">
+        <Link href="/businesses" className="text-sm font-medium text-coral-700 hover:underline">
           {t.myAppointments.newBooking}
         </Link>
       </div>
@@ -230,26 +230,26 @@ function AppointmentCard({ a, children }: { a: MyAppointment; children?: React.R
   // Show the time in the BUSINESS's timezone - that's where the customer has to show up
   const { date, time } = formatMomentIn(a.startTime, a.tenantId.timezone, t.locale);
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-4">
+    <li className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-semibold">{a.serviceName}</p>
-          <p className="mt-0.5 text-sm text-gray-600">
+          <p className="mt-0.5 text-sm text-slate-600">
             {t.myAppointments.with} {a.staffId.name} {t.myAppointments.at}{" "}
-            <Link href={`/book/${a.tenantId.slug}`} className="font-medium text-indigo-600 hover:underline">
+            <Link href={`/book/${a.tenantId.slug}`} className="font-medium text-coral-700 hover:underline">
               {a.tenantId.name}
             </Link>
           </p>
         </div>
         <StatusBadge status={a.status} />
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-700">
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700">
         <span>📅 {date}</span>
         <span>🕒 {time}</span>
         <span>⏱ {formatDuration(a.duration, t.duration)}</span>
         <span>💰 {formatPrice(a.price)}</span>
       </div>
-      {a.notes && <p className="mt-2 text-sm text-gray-500">📝 {a.notes}</p>}
+      {a.notes && <p className="mt-2 text-sm text-slate-500">📝 {a.notes}</p>}
       {children}
     </li>
   );

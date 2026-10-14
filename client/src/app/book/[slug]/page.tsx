@@ -253,10 +253,10 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
         <h1 className="text-2xl font-bold">
           {pageError.status === 404 ? t.book.notFoundTitle : t.book.loadErrorTitle}
         </h1>
-        <p className="mt-2 text-gray-500">
+        <p className="mt-2 text-slate-500">
           {pageError.status === 404 ? t.book.notFoundText : tError(pageError.err)}
         </p>
-        <Link href="/" className="mt-6 inline-block font-medium text-indigo-600 hover:underline">
+        <Link href="/" className="mt-6 inline-block font-medium text-coral-700 hover:underline">
           {t.common.backHome}
         </Link>
       </div>
@@ -274,14 +274,14 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           ✓
         </div>
         <h1 className="mt-4 text-2xl font-bold">{t.book.bookedTitle}</h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-slate-600">
           <b>{booked.serviceName}</b> {t.book.bookedWith} <b>{booked.staffName}</b>
           <br />
           {t.book.bookedAt(formatLongDate(booked.date, t.locale), booked.time)}
         </p>
-        <p className="mt-3 text-sm text-gray-500">{t.book.willConfirm(business.name)}</p>
+        <p className="mt-3 text-sm text-slate-500">{t.book.willConfirm(business.name)}</p>
         {booked.guestPhone && (
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-slate-500">
             {t.book.guestBooked(booked.guestPhone)}
           </p>
         )}
@@ -290,12 +290,12 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           {!booked.guestPhone && (
             <Link
               href="/my-appointments"
-              className="rounded-md bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+              className="rounded-lg bg-coral-500 px-4 py-2 font-semibold text-ink-950 hover:bg-coral-400"
             >
               {t.book.myAppointments}
             </Link>
           )}
-          <button onClick={bookAnother} className="rounded-md border border-gray-300 px-4 py-2 font-medium hover:bg-gray-50">
+          <button onClick={bookAnother} className="rounded-lg border border-slate-300 px-4 py-2 font-medium hover:bg-slate-50">
             {t.book.bookAnother}
           </button>
         </div>
@@ -316,7 +316,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-3xl font-bold">{business.name}</h1>
-      <p className="mt-1 text-gray-500">{t.book.subtitle}</p>
+      <p className="mt-1 text-slate-500">{t.book.subtitle}</p>
 
       {/* ---- 1. Service ---- */}
       <Step n={1} title={t.book.step1}>
@@ -330,16 +330,16 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                 onClick={() => choose(setServiceId, s.id)}
                 className={`rounded-lg border p-4 text-start transition ${
                   s.id === serviceId
-                    ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100"
-                    : "border-gray-200 bg-white hover:border-indigo-300"
+                    ? "border-coral-500 bg-coral-50 ring-2 ring-coral-100"
+                    : "border-slate-200 bg-white hover:border-coral-300"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-medium">{s.name}</span>
-                  <span className="font-semibold text-indigo-600">{formatPrice(s.price)}</span>
+                  <span className="font-semibold text-ink-900">{formatPrice(s.price)}</span>
                 </div>
-                {s.description && <p className="mt-1 text-sm text-gray-500">{s.description}</p>}
-                <p className="mt-2 text-xs text-gray-400">{formatDuration(s.duration, t.duration)}</p>
+                {s.description && <p className="mt-1 text-sm text-slate-500">{s.description}</p>}
+                <p className="mt-2 text-xs text-slate-400">{formatDuration(s.duration, t.duration)}</p>
               </button>
             ))}
           </div>
@@ -377,10 +377,10 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   onClick={() => choose(setDate, d)}
                   className={`flex w-16 shrink-0 flex-col items-center rounded-lg border py-2 text-sm transition ${
                     d === date
-                      ? "border-indigo-600 bg-indigo-600 text-white"
+                      ? "border-coral-500 bg-coral-500 font-semibold text-ink-950"
                       : open
-                        ? "border-gray-200 bg-white hover:border-indigo-300"
-                        : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+                        ? "border-slate-200 bg-white hover:border-coral-300"
+                        : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
                   }`}
                 >
                   <span className="text-xs">{d === today ? t.book.today : weekday}</span>
@@ -397,9 +397,9 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
       {service && member && date && (
         <Step n={4} title={t.book.step4(formatLongDate(date, t.locale))}>
           {slotsLoading ? (
-            <p className="text-sm text-gray-500">{t.book.loadingSlots}</p>
+            <p className="text-sm text-slate-500">{t.book.loadingSlots}</p>
           ) : slotsNow?.error ? (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{tError(slotsNow.error)}</p>
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{tError(slotsNow.error)}</p>
           ) : slots.length === 0 ? (
             <Empty>
               {slotsNow?.data?.isOpen === false
@@ -417,7 +417,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           )}
           {/* bookError also shows here, because after a 409 the time is gone and step 5 disappears */}
           {bookError && !time && (
-            <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{bookError}</p>
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{bookError}</p>
           )}
         </Step>
       )}
@@ -425,30 +425,30 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
       {/* ---- 5. Confirm ---- */}
       {service && member && date && time && (
         <Step n={5} title={t.book.step5}>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-5">
             <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-gray-500">{t.book.service}</dt>
+              <dt className="text-slate-500">{t.book.service}</dt>
               <dd className="font-medium">{service.name}</dd>
-              <dt className="text-gray-500">{t.book.with}</dt>
+              <dt className="text-slate-500">{t.book.with}</dt>
               <dd className="font-medium">{member.name}</dd>
-              <dt className="text-gray-500">{t.book.when}</dt>
+              <dt className="text-slate-500">{t.book.when}</dt>
               <dd className="font-medium">
                 {formatLongDate(date, t.locale)}, {time}
               </dd>
-              <dt className="text-gray-500">{t.book.duration}</dt>
+              <dt className="text-slate-500">{t.book.duration}</dt>
               <dd className="font-medium">{formatDuration(service.duration, t.duration)}</dd>
-              <dt className="text-gray-500">{t.book.price}</dt>
+              <dt className="text-slate-500">{t.book.price}</dt>
               <dd className="font-medium">{formatPrice(service.price)}</dd>
             </dl>
 
             {authLoading ? null : user && user.role !== "customer" ? (
               // The backend would answer 403 anyway (restrictTo("customer")) - we just explain it nicely
-              <p className="mt-5 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <p className="mt-5 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 {t.book.businessAccount(t.roles[user.role])}
               </p>
             ) : (
               <form
-                className="mt-5 space-y-4 border-t border-gray-100 pt-5"
+                className="mt-5 space-y-4 border-t border-slate-100 pt-5"
                 onSubmit={(e) => {
                   e.preventDefault(); // stay on the page - we send the request ourselves
                   handleBook();
@@ -458,7 +458,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   // Guest: name + phone instead of an account
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-semibold">{t.book.guestTitle}</legend>
-                    <p className="text-xs text-gray-500">{t.book.guestHint}</p>
+                    <p className="text-xs text-slate-500">{t.book.guestHint}</p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block">
                         <span className="text-sm font-medium">{t.book.guestName}</span>
@@ -494,7 +494,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 
                 <label className="block">
                   <span className="text-sm font-medium">
-                    {t.book.notes} <span className="text-gray-400">{t.common.optional}</span>
+                    {t.book.notes} <span className="text-slate-400">{t.common.optional}</span>
                   </span>
                   <textarea
                     value={notes}
@@ -506,23 +506,23 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   />
                 </label>
 
-                {bookError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
+                {bookError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-md bg-indigo-600 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  className="w-full rounded-lg bg-coral-500 py-2.5 font-semibold text-ink-950 hover:bg-coral-400 disabled:opacity-60"
                 >
                   {submitting ? t.book.booking : t.book.bookFor(formatPrice(service.price))}
                 </button>
 
                 {!user && (
                   // Accounts are still there for people who want "My appointments"
-                  <p className="text-center text-sm text-gray-500">
+                  <p className="text-center text-sm text-slate-500">
                     {t.book.haveAccount}{" "}
                     <Link
                       href={`/login?next=${encodeURIComponent(nextUrl)}`}
                       onClick={saveDraft}
-                      className="font-medium text-indigo-600 hover:underline"
+                      className="font-medium text-coral-700 hover:underline"
                     >
                       {t.book.loginToBook}
                     </Link>
@@ -530,7 +530,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                     <Link
                       href={`/register?next=${encodeURIComponent(nextUrl)}`}
                       onClick={saveDraft}
-                      className="font-medium text-indigo-600 hover:underline"
+                      className="font-medium text-coral-700 hover:underline"
                     >
                       {t.book.signup}
                     </Link>
@@ -548,13 +548,13 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 // ---------- Small building blocks used only on this page ----------
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-coral-500 focus:ring-4 focus:ring-coral-100";
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
     <section className="mt-10">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-sm text-white">{n}</span>
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-coral-500 text-sm font-semibold text-ink-950">{n}</span>
         {title}
       </h2>
       <div className="mt-4">{children}</div>
@@ -566,8 +566,8 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
   return (
     <button
       onClick={onClick}
-      className={`rounded-md border px-4 py-2 text-sm font-medium transition ${
-        selected ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 bg-white hover:border-indigo-300"
+      className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+        selected ? "border-coral-500 bg-coral-500 font-semibold text-ink-950" : "border-slate-200 bg-white hover:border-coral-300"
       }`}
     >
       {children}
@@ -576,5 +576,5 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-md bg-gray-50 px-4 py-3 text-sm text-gray-500">{children}</p>;
+  return <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">{children}</p>;
 }

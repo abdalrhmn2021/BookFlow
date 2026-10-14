@@ -1,31 +1,21 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Geist, Geist_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { Readex_Pro } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { DEFAULT_LANG, dictionaries, isLang, LANG_COOKIE } from "@/i18n/dictionaries";
 import Navbar from "@/components/Navbar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const plexArabic = IBM_Plex_Sans_Arabic({
-  variable: "--font-arabic",
-  subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
+// One variable font for both languages (see globals.css)
+const readex = Readex_Pro({
+  variable: "--font-readex",
+  subsets: ["arabic", "latin"],
 });
 
 export const metadata: Metadata = {
   title: "BookFlow",
-  description: "Online booking for salons, clinics, gyms and more",
+  description: "صفحة حجز أونلاين للصالونات والعيادات والنوادي - Online booking for salons, clinics and gyms",
 };
 
 // The layout itself stays a SERVER component.
@@ -43,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang={lang}
       dir={dictionaries[lang].dir}
-      className={`${geistSans.variable} ${geistMono.variable} ${plexArabic.variable} h-full antialiased`}
+      className={`${readex.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
         <LanguageProvider initialLang={lang}>

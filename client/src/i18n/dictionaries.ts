@@ -65,6 +65,19 @@ const en = {
       "Salons, clinics, gyms and training centers get their own booking page. Customers pick a service, a staff member and a free time - no double bookings, ever.",
     book: "Book an appointment",
     createAccount: "Create an account",
+    mock: {
+      business: "Jasmine Salon",
+      service: "Haircut",
+      duration: "30 min",
+      staff: ["Sara", "Ahmad", "Lina"],
+      pickTime: "Pick a time",
+      cta: (time: string) => `Book ${time}`,
+    },
+    features: [
+      { title: "Your own booking page", text: "Share one link. Customers pick the service, the person and a free time on their own." },
+      { title: "No double bookings", text: "Two people can't take the same slot, even if they press Book at the same second." },
+      { title: "Reminders on WhatsApp", text: "Send a ready-made reminder in one tap, so fewer people forget to come." },
+    ],
   },
 
   login: {
@@ -126,10 +139,26 @@ const en = {
     copy: "Copy link",
     copied: "Copied ✓",
     tabs: {
+      overview: "Overview",
       schedule: "Schedule",
       services: "Services",
       staff: "Staff",
       hours: "Working hours",
+    },
+    overview: {
+      appointments: "Today's appointments",
+      pending: "Waiting to confirm",
+      revenue: "Expected income",
+      next: "Next up",
+      noNext: "Nothing left today",
+      closed: "Closed on this day",
+      board: "Day board",
+      noStaff: "Add staff to see their day here.",
+      emptyDay: "No appointments on this day yet.",
+      manage: "Manage appointments",
+      bookingPage: "Booking page",
+      logout: "Log out",
+      staffView: "Your day",
     },
     schedule: {
       prevDay: "Previous day",
@@ -328,6 +357,19 @@ const ar: Dictionary = {
       "الصالونات والعيادات والنوادي الرياضية ومراكز التدريب تحصل على صفحة حجز خاصة بها. يختار الزبون الخدمة والموظف والوقت المتاح - وبدون أي حجز مزدوج.",
     book: "احجز موعداً",
     createAccount: "أنشئ حساباً",
+    mock: {
+      business: "صالون الياسمين",
+      service: "قص شعر",
+      duration: "30 دقيقة",
+      staff: ["سارة", "أحمد", "لينا"],
+      pickTime: "اختر الوقت",
+      cta: (time) => `احجز الساعة ${time}`,
+    },
+    features: [
+      { title: "صفحة حجز خاصة بعملك", text: "رابط واحد تشاركه مع زبائنك، فيختارون الخدمة والموظف والوقت المتاح بأنفسهم." },
+      { title: "لا حجز مزدوج أبداً", text: "لا يمكن لشخصين حجز الموعد نفسه، حتى لو ضغطا «احجز» في اللحظة ذاتها." },
+      { title: "تذكير عبر واتساب", text: "أرسل تذكيراً جاهزاً بضغطة واحدة، فيقلّ عدد من ينسون مواعيدهم." },
+    ],
   },
 
   login: {
@@ -389,10 +431,26 @@ const ar: Dictionary = {
     copy: "نسخ الرابط",
     copied: "تم النسخ ✓",
     tabs: {
+      overview: "نظرة عامة",
       schedule: "المواعيد",
       services: "الخدمات",
       staff: "الموظفون",
       hours: "ساعات العمل",
+    },
+    overview: {
+      appointments: "مواعيد اليوم",
+      pending: "بانتظار التأكيد",
+      revenue: "الدخل المتوقع",
+      next: "الموعد التالي",
+      noNext: "لا مواعيد متبقية",
+      closed: "العمل مغلق في هذا اليوم",
+      board: "جدول اليوم",
+      noStaff: "أضف موظفين ليظهر يومهم هنا.",
+      emptyDay: "لا توجد مواعيد في هذا اليوم بعد.",
+      manage: "إدارة المواعيد",
+      bookingPage: "صفحة الحجز",
+      logout: "تسجيل الخروج",
+      staffView: "جدولك",
     },
     schedule: {
       prevDay: "اليوم السابق",

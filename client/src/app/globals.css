@@ -1,13 +1,49 @@
 @import "tailwindcss";
 
+/* ============================================================
+   BookFlow theme: navy (ink) + coral
+   - ink   = the brand. Sidebar, primary buttons, headings.
+   - coral = the accent. Used sparingly: the main call to action,
+             the active menu marker, the "now" line on the day board.
+   Tailwind turns every --color-* here into classes: bg-ink-900, text-coral-700 ...
+   ============================================================ */
+@theme {
+  --color-ink-50: #eef1f8;
+  --color-ink-100: #dce2f0;
+  --color-ink-200: #b9c4e0;
+  --color-ink-300: #8e9dc8;
+  --color-ink-400: #6175ae;
+  --color-ink-500: #3e5293;
+  --color-ink-600: #2a3d7a;
+  --color-ink-700: #1f3066;
+  --color-ink-800: #1a285b;
+  --color-ink-900: #172554;
+  --color-ink-950: #0e1736;
+
+  --color-coral-50: #fff2ef;
+  --color-coral-100: #ffe1da;
+  --color-coral-200: #ffc2b6;
+  --color-coral-300: #ff9c8b;
+  --color-coral-400: #ff8470;
+  --color-coral-500: #ff6b57;
+  --color-coral-600: #e4513d;
+  --color-coral-700: #b93a28; /* coral TEXT on white - 5:1 contrast */
+
+  --color-paper: #f7f8fb;
+}
+
 @theme inline {
-  /* Geist has no Arabic letters -> the browser falls back to IBM Plex Sans Arabic
-     for those characters only. One font stack works for both languages. */
-  --font-sans: var(--font-geist-sans), var(--font-arabic), sans-serif;
-  --font-mono: var(--font-geist-mono);
+  /* Readex Pro: one family drawn for Arabic AND Latin together,
+     so switching language doesn't change the look of the page. */
+  --font-sans: var(--font-readex), "Segoe UI", Tahoma, sans-serif;
 }
 
 body {
-  background: #f9fafb; /* gray-50 */
-  color: #111827; /* gray-900 */
+  background: var(--color-paper);
+  color: #0f172a; /* slate-900 */
+}
+
+/* Times and prices line up in columns */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }

@@ -35,13 +35,14 @@ function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
 
 const FILTERS: (AppointmentStatus | "all")[] = ["all", "pending", "confirmed", "completed", "cancelled", "no-show"];
 
-export default function ScheduleTab({ timezone }: { timezone: string }) {
+export default function ScheduleTab({ timezone, initialDate }: { timezone: string; initialDate?: string }) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
   const s = t.dashboard.schedule;
 
   // "Today" in the BUSINESS's timezone (lazy initializer: calculated once, on the first render)
-  const [date, setDate] = useState(() => todayIn(timezone));
+  // initialDate: the overview opens the schedule on the day it was showing
+  const [date, setDate] = useState(() => initialDate ?? todayIn(timezone));
   const [filter, setFilter] = useState<AppointmentStatus | "all">("all");
   const [reloadTick, setReloadTick] = useState(0);
 
@@ -135,8 +136,8 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
   // Label + color of each action button
   const actionButton: Record<AppointmentStatus, { label: string; className: string }> = {
     confirmed: { label: s.confirm, className: "bg-green-600 text-white hover:bg-green-700" },
-    completed: { label: s.complete, className: "bg-indigo-600 text-white hover:bg-indigo-700" },
-    "no-show": { label: s.noShow, className: "border border-gray-300 bg-white hover:bg-gray-50" },
+    completed: { label: s.complete, className: "bg-ink-900 text-white hover:bg-ink-950" },
+    "no-show": { label: s.noShow, className: "border border-slate-300 bg-white hover:bg-slate-50" },
     cancelled: { label: s.cancel, className: "border border-red-200 bg-white text-red-600 hover:bg-red-50" },
     pending: { label: "", className: "" }, // never a target
   };
@@ -153,7 +154,7 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
           type="date"
           value={date}
           onChange={(e) => e.target.value && setDate(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         />
         <button onClick={() => setDate(addDays(date, 1))} className={btnSecondary} title={s.nextDay}>
           <span className="inline-block rtl:rotate-180">›</span>
@@ -166,7 +167,7 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
       </div>
       <h2 className="mt-4 text-lg font-semibold">
         {formatLongDate(date, t.locale)}
-        {date === today && <span className="ms-2 text-sm font-normal text-indigo-600">({s.today})</span>}
+        {date === today && <span className="ms-2 text-sm font-normal text-ink-900">({s.today})</span>}
       </h2>
 
       {/* ---- Status filter ---- */}
@@ -176,7 +177,7 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
             key={f}
             onClick={() => setFilter(f)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              filter === f ? "bg-indigo-600 text-white" : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
+              filter === f ? "bg-ink-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
             }`}
           >
             {f === "all" ? s.all : t.status[f]}
@@ -187,16 +188,16 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
       {/* ---- The list ---- */}
       <div className="mt-5">
         {!current ? (
-          <p className="text-sm text-gray-500">{s.loading}</p>
+          <p className="text-sm text-slate-500">{s.loading}</p>
         ) : current.error ? (
           <p className={errorBox}>{tError(current.error)}</p>
         ) : list.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
+          <p className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
             {s.empty}
           </p>
         ) : (
           <>
-            <p className="mb-3 text-sm text-gray-500">{s.count(list.length)}</p>
+            <p className="mb-3 text-sm text-slate-500">{s.count(list.length)}</p>
             <ul className="space-y-3">
               {list.map((a) => {
                 const start = formatMomentIn(a.startTime, timezone, t.locale).time;
@@ -204,11 +205,11 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                 const actions = nextStatuses(a);
                 const busy = busyId === a._id;
                 return (
-                  <li key={a._id} className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
+                  <li key={a._id} className="flex gap-4 rounded-lg border border-slate-200 bg-white p-4">
                     {/* Time column */}
                     <div dir="ltr" className="w-16 shrink-0 text-center">
                       <p className="font-semibold">{start}</p>
-                      <p className="text-xs text-gray-400">{end}</p>
+                      <p className="text-xs text-slate-400">{end}</p>
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -218,12 +219,12 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                           <p className="flex items-center gap-2 font-semibold">
                             {a.guest ? a.guest.name : (a.customerId?.name ?? s.noCustomer)}
                             {a.guest && (
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {s.guest}
                               </span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             {a.serviceName}
                             {/* The owner sees everyone's appointments -> show WHO does it */}
                             {user?.role === "owner" && (
@@ -236,11 +237,11 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                             {formatPrice(a.price)}
                           </p>
                           {phoneOf(a) && (
-                            <a href={`tel:${phoneOf(a)}`} dir="ltr" className="text-sm text-indigo-600 hover:underline">
+                            <a href={`tel:${phoneOf(a)}`} dir="ltr" className="text-sm text-ink-900 hover:underline">
                               📞 {phoneOf(a)}
                             </a>
                           )}
-                          {a.notes && <p className="mt-1 text-sm text-gray-500">📝 {a.notes}</p>}
+                          {a.notes && <p className="mt-1 text-sm text-slate-500">📝 {a.notes}</p>}
                         </div>
                         <StatusBadge status={a.status} />
                       </div>
@@ -250,26 +251,26 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                           {confirmCancelId === a._id ? (
                             // Cancelling is the only "dangerous" action -> ask first
                             <div className="w-full space-y-2">
-                              <p className="text-sm text-gray-600">{s.cancelQuestion}</p>
+                              <p className="text-sm text-slate-600">{s.cancelQuestion}</p>
                               <label className="block">
-                                <span className="text-xs font-medium text-gray-600">{s.cancelReason}</span>
+                                <span className="text-xs font-medium text-slate-600">{s.cancelReason}</span>
                                 <input
                                   value={cancelReason}
                                   onChange={(e) => setCancelReason(e.target.value)}
                                   maxLength={300}
                                   placeholder={s.cancelReasonPlaceholder}
-                                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
                                 />
                               </label>
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   onClick={() => changeStatus(a._id, "cancelled")}
                                   disabled={busy || cancelReason.trim().length < MIN_REASON_LENGTH}
-                                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                                  className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
                                 >
                                   {s.yesCancel}
                                 </button>
-                                <button onClick={() => setConfirmCancelId(null)} disabled={busy} className="text-sm text-gray-600">
+                                <button onClick={() => setConfirmCancelId(null)} disabled={busy} className="text-sm text-slate-600">
                                   {s.keep}
                                 </button>
                               </div>
@@ -284,7 +285,7 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                                   setConfirmCancelId(a._id); // ask first + start with an empty reason
                                   setCancelReason("");
                                 }}
-                                className={`rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-60 ${actionButton[status].className}`}
+                                className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-60 ${actionButton[status].className}`}
                               >
                                 {actionButton[status].label}
                               </button>
@@ -300,7 +301,7 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => markReminded(a._id)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-green-600 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-green-600 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50"
                           >
                             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
                               <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.6-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3 1 2.5c.1.2 1.6 2.5 4 3.5 1.5.6 2 .7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.4-.3Z" />

@@ -48,12 +48,12 @@ function RegisterForm() {
   };
 
   const inputClass =
-    "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-coral-500 focus:ring-4 focus:ring-coral-100";
 
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold">{t.register.title}</h1>
-      <p className="mt-1 text-sm text-gray-500">{t.register.subtitle}</p>
+      <p className="mt-1 text-sm text-slate-500">{t.register.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
@@ -66,7 +66,7 @@ function RegisterForm() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">
-            {t.register.phone} <span className="text-gray-400">{t.common.optional}</span>
+            {t.register.phone} <span className="text-slate-400">{t.common.optional}</span>
           </span>
           <input name="phone" type="tel" dir="ltr" autoComplete="tel" value={form.phone} onChange={handleChange} className={inputClass} />
         </label>
@@ -76,28 +76,28 @@ function RegisterForm() {
           <input name="password" type="password" required dir="ltr" minLength={8} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
         </label>
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-indigo-600 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-coral-500 py-2.5 font-semibold text-ink-950 hover:bg-coral-400 disabled:opacity-60"
         >
           {submitting ? t.register.submitting : t.register.submit}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-slate-600">
         {t.register.haveAccount}{" "}
         <Link
           href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
-          className="font-medium text-indigo-600 hover:underline"
+          className="font-medium text-coral-700 hover:underline"
         >
           {t.register.login}
         </Link>
       </p>
       <p className="mt-2 text-center text-sm">
-        <Link href="/register-business" className="text-gray-500 hover:text-indigo-600">
+        <Link href="/register-business" className="text-slate-500 hover:text-coral-700">
           {t.registerBusiness.cta}
         </Link>
       </p>

@@ -9,9 +9,9 @@ import type { AppointmentStatus } from "@/lib/types";
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
   pending: "bg-amber-50 text-amber-700",
   confirmed: "bg-green-50 text-green-700",
-  completed: "bg-gray-100 text-gray-600",
+  completed: "bg-slate-100 text-slate-600",
   cancelled: "bg-red-50 text-red-600",
-  "no-show": "bg-gray-100 text-gray-500",
+  "no-show": "bg-slate-100 text-slate-500",
 };
 
 export default function StatusBadge({ status }: { status: AppointmentStatus }) {

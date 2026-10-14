@@ -50,12 +50,12 @@ function LoginForm() {
   };
 
   const inputClass =
-    "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-coral-500 focus:ring-4 focus:ring-coral-100";
 
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold">{t.login.title}</h1>
-      <p className="mt-1 text-sm text-gray-500">{t.login.subtitle}</p>
+      <p className="mt-1 text-sm text-slate-500">{t.login.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
@@ -85,12 +85,12 @@ function LoginForm() {
           />
         </label>
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-indigo-600 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+          className="w-full rounded-lg bg-coral-500 py-2.5 font-semibold text-ink-950 hover:bg-coral-400 disabled:opacity-60"
         >
           {submitting ? t.login.submitting : t.login.submit}
         </button>
@@ -98,8 +98,8 @@ function LoginForm() {
 
       {/* One-click demo: recruiters won't create an account just to look around */}
       {DEMO_ENABLED && (
-        <div className="mt-6 rounded-lg bg-indigo-50 p-4">
-          <p className="text-center text-sm font-medium text-indigo-900">{t.login.demoTitle}</p>
+        <div className="mt-6 rounded-lg border border-coral-100 bg-coral-50 p-4">
+          <p className="text-center text-sm font-medium text-ink-950">{t.login.demoTitle}</p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             {(Object.keys(DEMO_ACCOUNTS) as (keyof typeof DEMO_ACCOUNTS)[]).map((role) => (
               <button
@@ -107,7 +107,7 @@ function LoginForm() {
                 type="button"
                 disabled={submitting}
                 onClick={() => doLogin(DEMO_ACCOUNTS[role], DEMO_PASSWORD)}
-                className="rounded-md border border-indigo-200 bg-white px-2 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
+                className="rounded-lg border border-coral-200 bg-white px-2 py-2 text-xs font-medium text-ink-950 hover:bg-coral-100 disabled:opacity-60"
               >
                 {t.login.demoAs[role]}
               </button>
@@ -116,11 +116,11 @@ function LoginForm() {
         </div>
       )}
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-slate-600">
         {t.login.noAccount}{" "}
         <Link
           href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
-          className="font-medium text-indigo-600 hover:underline"
+          className="font-medium text-coral-700 hover:underline"
         >
           {t.login.signup}
         </Link>
