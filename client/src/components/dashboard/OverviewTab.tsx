@@ -15,7 +15,7 @@ import { btnSecondary, errorBox } from "@/lib/ui";
 import type { AppointmentStatus, BusinessAppointment, StaffMember, TenantInfo } from "@/lib/types";
 import { IconChevronEnd, IconChevronStart } from "./icons";
 
-const PX_PER_MIN = 1.1; // 66px per hour
+const PX_PER_MIN = 1.4; // 84px per hour - a 30-minute booking is tall enough for time + name
 
 // "10:30" <-> 630 (minutes since midnight)
 const toMin = (hhmm: string) => {
@@ -235,12 +235,12 @@ export default function OverviewTab({ tenant, isOwner, onOpenSchedule }: Props) 
         ) : (
           <>
             <div className="overflow-x-auto">
-              <div className="min-w-max">
+              <div className="min-w-full w-max">
                 {/* Staff names */}
                 <div className="flex border-b border-slate-100 bg-slate-50/60">
                   <div className="w-14 shrink-0" />
                   {columns.map((c) => (
-                    <div key={c.id} className="w-48 shrink-0 border-s border-slate-100 px-3 py-3 sm:w-56">
+                    <div key={c.id} className="min-w-44 flex-1 border-s border-slate-100 px-3 py-3 sm:min-w-52">
                       <p className="truncate text-sm font-semibold text-slate-800">{c.name}</p>
                       <p className="text-xs text-slate-500">
                         {s.count(list.filter((a) => a.staffId._id === c.id && a.status !== "cancelled").length)}
@@ -265,7 +265,7 @@ export default function OverviewTab({ tenant, isOwner, onOpenSchedule }: Props) 
                   </div>
 
                   {columns.map((c) => (
-                    <div key={c.id} className="relative w-48 shrink-0 border-s border-slate-100 sm:w-56">
+                    <div key={c.id} className="relative min-w-44 flex-1 border-s border-slate-100 sm:min-w-52">
                       {hours.map((m) => (
                         <div key={m} className="absolute inset-x-0 border-t border-slate-100" style={{ top: y(m) + 8 }} />
                       ))}
@@ -278,14 +278,17 @@ export default function OverviewTab({ tenant, isOwner, onOpenSchedule }: Props) 
                             key={a._id}
                             onClick={() => onOpenSchedule(date)}
                             title={`${time} ${nameOf(a) ?? ""} - ${a.serviceName} (${t.status[a.status]})`}
-                            className={`absolute inset-x-1.5 overflow-hidden rounded-lg px-2.5 py-1 text-start text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink-900 ${BLOCK_STYLE[a.status]}`}
+                            className={`absolute inset-x-1.5 overflow-hidden rounded-lg px-2.5 py-1.5 text-start text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink-900 ${BLOCK_STYLE[a.status]}`}
                             style={{ top: y(start) + 10, height }}
                           >
-                            <span dir="ltr" className="tabular block font-semibold">
-                              {time}
+                            {/* time + name on one line, so even a short booking shows both */}
+                            <span className="flex items-baseline gap-2">
+                              <span dir="ltr" className="tabular shrink-0 font-semibold">
+                                {time}
+                              </span>
+                              <span className="truncate font-medium">{nameOf(a) ?? s.noCustomer}</span>
                             </span>
-                            <span className="block truncate font-medium">{nameOf(a) ?? s.noCustomer}</span>
-                            {height > 52 && <span className="block truncate opacity-75">{a.serviceName}</span>}
+                            {height > 44 && <span className="mt-0.5 block truncate opacity-75">{a.serviceName}</span>}
                           </button>
                         );
                       })}
