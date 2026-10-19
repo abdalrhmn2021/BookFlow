@@ -107,3 +107,32 @@ describe("Customer cancellation", () => {
     expect(fresh.cancellation.reason).toBe("The barber is sick today");
   });
 });
+
+// ============================================================
+// reason لازم يكون نص - أي نوع ثاني (object, رقم, array) لازم يرجع 400 مش 500
+// (قبل الإصلاح: reason?.trim() على object كان بيضرب TypeError -> 500)
+// ============================================================
+describe("Cancellation reason must be a string", () => {
+  let biz, customer;
+  beforeEach(async () => {
+    biz = await h.makeBusiness("type-salon");
+    customer = await h.makeCustomer("ahmad");
+  });
+
+  test.each([
+    ["an object", { $ne: "" }],
+    ["a number", 1234567890123],
+    ["an array", ["I have an exam that day"]],
+  ])("customer cancel with %s as the reason -> 400", async (_label, badReason) => {
+    const appt = await makeAppointment(biz, customer, { startsInMinutes: ONE_DAY });
+    await cancelAsCustomer(customer, appt, badReason).expect(400);
+    // and the appointment is untouched
+    expect((await Appointment.findById(appt._id)).status).toBe("pending");
+  });
+
+  test("owner cancel with an object as the reason -> 400", async () => {
+    const appt = await makeAppointment(biz, customer, { startsInMinutes: ONE_DAY });
+    await setStatus(biz.owner, appt, { status: "cancelled", reason: { text: "The barber is sick" } }).expect(400);
+    expect((await Appointment.findById(appt._id)).status).toBe("pending");
+  });
+});

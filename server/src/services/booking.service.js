@@ -80,7 +80,7 @@ async function bookAppointment({ slug, serviceId, staffId, date, time, notes, cu
   //
   // Without this, two customers booking at the same moment can BOTH pass the check
   // before either one is saved -> double booking (a "race condition").
-  // Proven by: node practice/test-race.js
+  // Proven by the test "10 customers book the SAME slot..." in tests/booking.test.js
   //
   // Make sure this staff member's lock document exists (outside the transaction).
   await StaffLock.updateOne(

@@ -1,4 +1,5 @@
-// Delete the leftovers of practice/test-booking.js and practice/test-race.js
+// Delete leftover test data (businesses like "salon-<timestamp>" / "race-<timestamp>",
+// users with @test.com emails) created by old manual experiments
 //   node scripts/cleanup-test-data.js           -> DRY RUN (only shows)
 //   node scripts/cleanup-test-data.js --delete  -> really deletes
 

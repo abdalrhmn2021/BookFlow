@@ -3,7 +3,7 @@ const Service = require("../models/Service");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
-const { bookAppointment, httpError } = require("../services/booking.service");
+const { bookAppointment, httpError, ACTIVE_STATUSES } = require("../services/booking.service");
 const {
   isValidDate,
   dayNameOf,
@@ -12,9 +12,6 @@ const {
   toHHMM,
   isOverlapping,
 } = require("../utils/time");
-
-// Only these statuses block the staff member's time (same list as appointment.controller)
-const ACTIVE_STATUSES = ["pending", "confirmed"];
 
 // Slots are offered every 15 minutes: 09:00, 09:15, 09:30 ...
 const SLOT_STEP = 15;

@@ -1,5 +1,7 @@
 # BookFlow
 
+[![Server tests](https://github.com/abdalrhmn2021/BookFlow/actions/workflows/server-tests.yml/badge.svg)](https://github.com/abdalrhmn2021/BookFlow/actions/workflows/server-tests.yml)
+
 **Multi-tenant appointment booking platform** for salons, clinics, gyms and training centers.
 Every business gets its own booking page; customers pick a service, a staff member and a free time slot - and **double bookings are impossible, even under concurrent requests**.
 
@@ -91,7 +93,7 @@ sequenceDiagram
   API-->>B: 409 Already booked
 ```
 
-Proven by [`server/practice/test-race.js`](server/practice/test-race.js): it fires **10 bookings for the same slot at once** - exactly 1 succeeds, the other 9 get 409.
+Proven by an automated test ([`server/tests/booking.test.js`](server/tests/booking.test.js)): it fires **10 bookings for the same slot at once** - exactly 1 succeeds, the other 9 get 409.
 On the frontend, a 409 reloads the free slots so the taken time disappears.
 
 ### 2. Multi-tenancy & data isolation
@@ -133,7 +135,7 @@ BookFlow/
 │   │   ├── routes/
 │   │   └── utils/time.js    time-zone & overlap helpers
 │   ├── scripts/seed.js      demo data
-│   ├── practice/            race-condition & overlap experiments
+│   ├── tests/               Jest + Supertest API tests (in-memory MongoDB replica set)
 │   └── api-tests.http       every endpoint, runnable in VS Code REST Client
 └── render.yaml              backend deploy blueprint
 ```

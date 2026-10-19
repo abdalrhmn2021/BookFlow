@@ -26,18 +26,10 @@ const fitsInWorkingHours = (workingHours, dayName, startHHMM, durationMin) => {
   return start >= toMinutes(day.open) && end <= toMinutes(day.close);
 };
 
-// ============================================================
-// ✍️  YOUR TASK: write this function
-// ------------------------------------------------------------
-// Two appointments, each has a start and an end (in minutes since midnight).
-// Return true if they overlap (share any time), otherwise false.
-//
-// Example:  A = 600-660 (10:00-11:00), B = 630-690 (10:30-11:30)  -> true
-//           A = 600-660 (10:00-11:00), B = 660-720 (11:00-12:00)  -> false
-//           (one ends exactly when the other starts = NO overlap)
-//
-// Check your answer with:   node practice/check-overlap.js
-// ============================================================
+// Do two time ranges (minutes since midnight) share any time?
+//   600-660 (10:00-11:00) vs 630-690 (10:30-11:30) -> true
+//   600-660 (10:00-11:00) vs 660-720 (11:00-12:00) -> false
+//   (one ends exactly when the other starts = back-to-back, NOT an overlap)
 const isOverlapping = (aStart, aEnd, bStart, bEnd) => {
   // Free if B starts after A ends, or B ends before A starts
   if (bStart >= aEnd || bEnd <= aStart) {
