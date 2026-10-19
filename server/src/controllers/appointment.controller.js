@@ -2,11 +2,8 @@ const Appointment = require("../models/Appointment");
 const Tenant = require("../models/Tenant");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
-const { bookAppointment } = require("../services/booking.service");
-
-// Only these statuses block the staff member's time.
-// A cancelled / no-show appointment frees the slot again.
-const ACTIVE_STATUSES = ["pending", "confirmed"];
+// ACTIVE_STATUSES: الحالات اللي بتحجز وقت الموظف - معرّفة بمكان واحد بس (booking.service)
+const { bookAppointment, ACTIVE_STATUSES } = require("../services/booking.service");
 
 // A customer can't cancel less than 2 hours before the appointment.
 // (owner/staff have no time limit - they may need to cancel at the last minute)
@@ -98,7 +95,9 @@ exports.getMyAppointments = async (req, res) => {
 exports.cancelMyAppointment = async (req, res) => {
   // 0) A reason is required (trim first, so "   " counts as empty)
   const { reason } = req.body || {};
-  const cleanReason = reason?.trim();
+  // typeof: لو انبعت reason كـ object أو رقم، reason.trim() كان بيضرب 500.
+  // نفس فكرة فحص الـ login: ما منثق إنه الـ body بيبعث نص.
+  const cleanReason = typeof reason === "string" ? reason.trim() : "";
 
   if (!cleanReason) {
     return res.status(400).json({ message: "Cancellation reason is required" });
@@ -296,7 +295,7 @@ exports.updateAppointmentStatus = async (req, res) => {
   }
 
   // A reason is required only when cancelling (same rule as the customer side)
-  const cleanReason = reason?.trim();
+  const cleanReason = typeof reason === "string" ? reason.trim() : "";
   if (status === "cancelled") {
     if (!cleanReason) {
       return res

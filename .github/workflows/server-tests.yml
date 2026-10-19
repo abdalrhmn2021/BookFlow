@@ -1,25 +1,25 @@
 # ============================================================
 # CI: مع كل push على main (وكل pull request) GitHub بيشغّل اختبارات السيرفر
 # على سيرفر لينكس نظيف. إذا فشل أي اختبار بتطلع ❌ حمرا جنب الـ commit.
+#
+# الداتابيس: ما في Docker ولا Atlas. الاختبارات (tests/helpers.js) لما ما تلاقي
+# MONGO_URI ولا MONGO_URI_TEST بتشغّل MongoDB مؤقتة بالذاكرة كـ replica set
+# (mongodb-memory-server) - نفس اللي بيصير على جهازك لو ما حطيت رابط.
+# أبسط وأثبت من تشغيل Docker وانتظار الـ replica set يجهز.
 # ============================================================
 name: Server tests
 
-# ⏸️ متوقف مؤقتاً: ما بيشتغل تلقائياً مع كل push لحد ما نصلّح الاتصال بـ MongoDB على GitHub.
-# بتقدر تشغّله يدوياً من تبويب Actions -> Server tests -> Run workflow.
-# لما يزبط: رجّع push و pull_request هون.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # تشغيل يدوي من تبويب Actions
 
 jobs:
   test:
     runs-on: ubuntu-24.04
     # حماية: لو علق أي شي، وقّف بعد 15 دقيقة بدل ما يضل شغال ساعات
     timeout-minutes: 15
-    env:
-      # الاختبارات بتتصل بـ MongoDB اللي بنشغّلها تحت بـ Docker.
-      # 127.0.0.1 مش localhost: Node الجديد بيترجم localhost لـ IPv6 (::1)
-      # و Docker فاتح البورت على IPv4 -> الاتصال كان بينرفض.
-      MONGO_URI_TEST: mongodb://127.0.0.1:27017/?replicaSet=rs0
 
     defaults:
       run:
@@ -34,26 +34,12 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # MongoDB حقيقية بـ Docker كـ replica set (الحجز بيستخدم transactions، وهي بدها replica set)
-      - name: Start MongoDB (single-node replica set)
-        run: |
-          docker run -d --name mongo -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
-          for i in $(seq 1 30); do
-            docker exec mongo mongosh --quiet --eval "db.runCommand({ ping: 1 }).ok" && break
-            sleep 2
-          done
-          docker exec mongo mongosh --quiet --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })"
-          for i in $(seq 1 30); do
-            if docker exec mongo mongosh --quiet --eval "db.hello().isWritablePrimary" | grep -q true; then
-              echo "MongoDB replica set is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          # ما جهزت -> وقّف هون برسالة واضحة بدل ما الاختبارات تستنى وتفشل بعد 6 دقايق
-          echo "MongoDB did not become ready"
-          docker logs mongo
-          exit 1
+      # ملف MongoDB اللي بتنزّله mongodb-memory-server (~100MB) - نخزّنه
+      # عشان كل تشغيل بعد الأول ما ينزّله من جديد
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
 
       - run: npm ci
 
