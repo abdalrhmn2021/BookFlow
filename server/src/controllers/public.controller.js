@@ -3,7 +3,14 @@ const Service = require("../models/Service");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
-const { bookAppointment, httpError, ACTIVE_STATUSES } = require("../services/booking.service");
+const {
+  bookAppointment,
+  httpError,
+  ACTIVE_STATUSES,
+  CUSTOMER_CANCEL_LIMIT_MS,
+  MIN_REASON_LENGTH,
+} = require("../services/booking.service");
+const { TOKEN_REGEX, hashToken, createManageToken, maskPhone } = require("../utils/manageToken");
 const {
   isValidDate,
   dayNameOf,
@@ -229,7 +236,11 @@ exports.createGuestAppointment = async (req, res) => {
     throw httpError(429, "You already have too many upcoming bookings here");
   }
 
-  // 3) Same booking core as logged-in customers (hours, past, double-booking lock...)
+  // 3) The secret "manage my booking" link. Only its HASH is saved with the booking;
+  //    the token itself goes back to the guest in this answer - and nowhere else.
+  const { token: manageToken, hash: manageTokenHash } = createManageToken();
+
+  // 4) Same booking core as logged-in customers (hours, past, double-booking lock...)
   const { appointment, staff } = await bookAppointment({
     slug: req.params.slug, // from the URL - the page the guest is on
     serviceId,
@@ -238,10 +249,13 @@ exports.createGuestAppointment = async (req, res) => {
     time,
     notes,
     guest: { name: cleanName, phone: cleanPhone },
+    manageTokenHash,
   });
 
-  // 4) A public endpoint answers with the minimum (DTO) - no ids of other people
+  // 5) A public endpoint answers with the minimum (DTO) - no ids of other people.
+  //    manageToken: shown to the guest ONCE (we can't show it again - we only kept the hash).
   res.status(201).json({
+    manageToken,
     appointment: {
       id: appointment._id,
       serviceName: appointment.serviceName,
@@ -253,6 +267,101 @@ exports.createGuestAppointment = async (req, res) => {
       status: appointment.status,
     },
   });
+};
+
+// ============================================================
+// GUEST "MANAGE MY BOOKING" - view / cancel with the secret link
+// ============================================================
+// اللي معه الرابط /booking/<token> = صاحب الحجز. ما في login.
+// Any wrong, broken or old token -> the same 404, so a guesser learns nothing.
+
+// Find the booking that belongs to this link (or throw 404)
+async function findByToken(token) {
+  if (!TOKEN_REGEX.test(token)) throw httpError(404, "Booking not found"); // don't even hit the DB
+  const appointment = await Appointment.findOne({ manageTokenHash: hashToken(token) })
+    .populate("tenantId", "name slug timezone")
+    .populate("staffId", "name");
+  if (!appointment) throw httpError(404, "Booking not found");
+  return appointment;
+}
+
+// The page shows this - built by hand (DTO): no ids, no hash, phone masked
+function toGuestBookingDTO(a) {
+  const cancelDeadline = new Date(a.startTime.getTime() - CUSTOMER_CANCEL_LIMIT_MS);
+  return {
+    business: a.tenantId ? { name: a.tenantId.name, slug: a.tenantId.slug, timezone: a.tenantId.timezone } : null,
+    serviceName: a.serviceName,
+    staffName: a.staffId?.name ?? null,
+    price: a.price,
+    duration: a.duration,
+    startTime: a.startTime,
+    endTime: a.endTime,
+    status: a.status,
+    notes: a.notes,
+    guestName: a.guest?.name,
+    guestPhone: maskPhone(a.guest?.phone),
+    // The page asks the server "can I cancel?" instead of re-calculating the rules itself
+    canCancel: ACTIVE_STATUSES.includes(a.status) && cancelDeadline > new Date(),
+    cancelDeadline,
+    cancellation:
+      a.status === "cancelled" && a.cancellation
+        ? { reason: a.cancellation.reason, cancelledAt: a.cancellation.cancelledAt, byGuest: Boolean(a.cancellation.byGuest) }
+        : null,
+  };
+}
+
+// @route  GET /api/public/bookings/:token
+// @access Public - whoever has the link (rate limited)
+exports.getGuestBooking = async (req, res) => {
+  const appointment = await findByToken(req.params.token);
+  res.status(200).json({ booking: toGuestBookingDTO(appointment) });
+};
+
+// @route  PATCH /api/public/bookings/:token/cancel
+// @access Public - whoever has the link (rate limited)
+// Body: { reason }  - exactly the same rules as a logged-in customer
+exports.cancelGuestBooking = async (req, res) => {
+  // 0) A real reason, as a string (an object/array/number must be a 400, not a 500)
+  const { reason } = req.body || {};
+  const cleanReason = typeof reason === "string" ? reason.trim() : "";
+  if (!cleanReason) throw httpError(400, "Cancellation reason is required");
+  if (cleanReason.length < MIN_REASON_LENGTH) {
+    throw httpError(400, `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`);
+  }
+
+  // 1) Which booking? (404 for anything wrong)
+  const appointment = await findByToken(req.params.token);
+
+  // 2) Still active?
+  if (!ACTIVE_STATUSES.includes(appointment.status)) {
+    throw httpError(409, `Can't cancel an appointment that is ${appointment.status}`);
+  }
+
+  // 3) Not less than 2 hours before (also covers started / past appointments)
+  if (appointment.startTime - Date.now() < CUSTOMER_CANCEL_LIMIT_MS) {
+    throw httpError(400, "You can't cancel less than 2 hours before the appointment");
+  }
+
+  // 4) Atomic "check + write": cancel ONLY if it is still active right now.
+  //    The owner may have confirmed or cancelled it between step 1 and here.
+  const updated = await Appointment.findOneAndUpdate(
+    { _id: appointment._id, status: { $in: ACTIVE_STATUSES } },
+    {
+      $set: {
+        status: "cancelled",
+        cancellation: { reason: cleanReason, cancelledAt: new Date(), byGuest: true },
+      },
+    },
+    { returnDocument: "after", runValidators: true },
+  )
+    .populate("tenantId", "name slug timezone")
+    .populate("staffId", "name");
+
+  if (!updated) {
+    throw httpError(409, "This appointment was changed by someone else, please reload");
+  }
+
+  res.status(200).json({ message: "Appointment cancelled", booking: toGuestBookingDTO(updated) });
 };
 
 // exported for the tests

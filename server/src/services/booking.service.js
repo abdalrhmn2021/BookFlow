@@ -25,6 +25,13 @@ const {
 // A cancelled / no-show appointment frees the slot again.
 const ACTIVE_STATUSES = ["pending", "confirmed"];
 
+// ---------- Cancellation rules (customer AND guest - same rules for both) ----------
+// Can't cancel less than 2 hours before the appointment.
+// (owner/staff have no time limit - they may need to cancel at the last minute)
+const CUSTOMER_CANCEL_LIMIT_MS = 2 * 60 * 60 * 1000; // hours * min * sec * ms
+// A cancellation reason must be meaningful, not just "ok"
+const MIN_REASON_LENGTH = 10;
+
 // خطأ "متوقع" برقم حالة HTTP. الـ errorHandler بيرجّع رسالته للعميل كما هي
 // (لأنه statusCode مش 500)، فالكنترولر ما بيحتاج try/catch.
 function httpError(statusCode, message) {
@@ -37,8 +44,9 @@ function httpError(statusCode, message) {
 //   slug, serviceId, staffId, date "YYYY-MM-DD", time "HH:mm", notes?
 //   customerId -> للزبون المسجّل      (واحد منهم بس، مش الاثنين)
 //   guest      -> { name, phone } للضيف
+//   manageTokenHash? -> للضيف بس: hash رابط "إدارة حجزي" (utils/manageToken.js)
 // @returns {{ appointment, tenant, service, staff }}
-async function bookAppointment({ slug, serviceId, staffId, date, time, notes, customerId, guest }) {
+async function bookAppointment({ slug, serviceId, staffId, date, time, notes, customerId, guest, manageTokenHash }) {
   // 0) Basic input checks
   if (!slug || !serviceId || !staffId || !date || !time) {
     throw httpError(400, "slug, serviceId, staffId, date and time are required");
@@ -127,7 +135,7 @@ async function bookAppointment({ slug, serviceId, staffId, date, time, notes, cu
         [
           {
             tenantId: tenant._id,
-            ...(customerId ? { customerId } : { guest }),
+            ...(customerId ? { customerId } : { guest, manageTokenHash }),
             staffId: staff._id,
             serviceId: service._id,
             serviceName: service.name,
@@ -152,4 +160,10 @@ async function bookAppointment({ slug, serviceId, staffId, date, time, notes, cu
   return { appointment, tenant, service, staff };
 }
 
-module.exports = { bookAppointment, httpError, ACTIVE_STATUSES };
+module.exports = {
+  bookAppointment,
+  httpError,
+  ACTIVE_STATUSES,
+  CUSTOMER_CANCEL_LIMIT_MS,
+  MIN_REASON_LENGTH,
+};

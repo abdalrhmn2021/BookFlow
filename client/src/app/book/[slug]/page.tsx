@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
+import ManageLinkBox from "@/components/ManageLinkBox";
 import {
   addDays,
   dayNameOf,
@@ -125,6 +126,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
     date: string;
     time: string;
     guestPhone?: string; // set only for guest bookings
+    manageToken?: string; // guest only: their private "manage my booking" link
   } | null>(null);
 
   useEffect(() => {
@@ -205,6 +207,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
     setBookError("");
     setSubmitting(true);
     const body = { serviceId, staffId, date, time, notes: notes.trim() || undefined };
+    let manageToken: string | undefined;
     try {
       if (user) {
         // Logged-in customer -> booked on their account
@@ -212,10 +215,11 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
       } else {
         // Guest -> public endpoint with name + phone (the server cleans and checks them)
         const details = { name: guest.name.trim(), phone: guest.phone.trim() };
-        await api.post<GuestBookingResult>(`/public/businesses/${encodeURIComponent(page.business.slug)}/appointments`, {
-          ...body,
-          ...details,
-        });
+        const result = await api.post<GuestBookingResult>(
+          `/public/businesses/${encodeURIComponent(page.business.slug)}/appointments`,
+          { ...body, ...details }
+        );
+        manageToken = result.manageToken;
         saveGuest(details);
       }
       setBooked({
@@ -224,6 +228,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
         date,
         time,
         guestPhone: user ? undefined : guest.phone.trim(),
+        manageToken,
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -285,6 +290,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
             {t.book.guestBooked(booked.guestPhone)}
           </p>
         )}
+        {booked.manageToken && <ManageLinkBox token={booked.manageToken} businessName={business.name} />}
         <div className="mt-8 flex justify-center gap-3">
           {/* "My appointments" only exists for accounts - a guest has nothing to log in to */}
           {!booked.guestPhone && (

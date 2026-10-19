@@ -22,7 +22,7 @@ export default function MyAppointmentsPage() {
   );
 }
 
-// Same minimum as the backend (MIN_REASON_LENGTH in appointment.controller)
+// Same minimum as the backend (MIN_REASON_LENGTH in services/booking.service.js)
 const MIN_REASON_LENGTH = 10;
 
 // Same rule as the backend's cancelMyAppointment: active status + not started yet.

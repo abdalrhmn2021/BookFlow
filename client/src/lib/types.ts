@@ -91,6 +91,9 @@ export interface MyAppointment {
 
 // What POST /api/public/businesses/:slug/appointments returns (guest booking)
 export interface GuestBookingResult {
+  // The secret "manage my booking" token -> link /booking/<token>.
+  // Sent ONCE: the server keeps only its hash, it can never show it again.
+  manageToken: string;
   appointment: {
     id: string;
     serviceName: string;
@@ -101,6 +104,24 @@ export interface GuestBookingResult {
     endTime: string;
     status: AppointmentStatus;
   };
+}
+
+// What GET /api/public/bookings/:token returns (the guest's "manage my booking" page)
+export interface GuestBooking {
+  business: { name: string; slug: string; timezone: string } | null;
+  serviceName: string;
+  staffName: string | null;
+  price: number;
+  duration: number;
+  startTime: string;
+  endTime: string;
+  status: AppointmentStatus;
+  notes?: string;
+  guestName?: string;
+  guestPhone: string; // masked by the server: "*******456"
+  canCancel: boolean; // the server decides (status + the 2-hour rule) - the page just listens
+  cancelDeadline: string; // ISO: last moment the guest may cancel online
+  cancellation: { reason?: string; cancelledAt?: string; byGuest: boolean } | null;
 }
 
 // What GET /api/public/businesses returns (one item)

@@ -3,14 +3,13 @@ const Tenant = require("../models/Tenant");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
 // ACTIVE_STATUSES: الحالات اللي بتحجز وقت الموظف - معرّفة بمكان واحد بس (booking.service)
-const { bookAppointment, ACTIVE_STATUSES } = require("../services/booking.service");
-
-// A customer can't cancel less than 2 hours before the appointment.
-// (owner/staff have no time limit - they may need to cancel at the last minute)
-const CUSTOMER_CANCEL_LIMIT_MS = 2 * 60 * 60 * 1000; // hours * min * sec * ms
-
-// A cancellation reason must be meaningful, not just "ok"
-const MIN_REASON_LENGTH = 10;
+// قواعد الإلغاء (ساعتين + طول السبب) كمان هناك، لأنه الضيف بيلغي بنفس القواعد
+const {
+  bookAppointment,
+  ACTIVE_STATUSES,
+  CUSTOMER_CANCEL_LIMIT_MS,
+  MIN_REASON_LENGTH,
+} = require("../services/booking.service");
 
 // Allowed values for ?when= in "my appointments"
 const WHEN_VALUES = ["upcoming", "past"];

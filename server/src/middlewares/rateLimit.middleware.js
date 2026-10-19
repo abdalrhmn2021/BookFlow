@@ -40,3 +40,13 @@ exports.guestBookingLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Too many bookings from this device, please try again later" },
 });
+
+// Guest "manage my booking" link (view + cancel). Guessing a 192-bit token is already
+// impossible, but a tight limit is cheap and stops a script from even trying.
+exports.manageBookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many requests, please slow down" },
+});

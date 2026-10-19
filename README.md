@@ -32,6 +32,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 **Customers**
 - Browse businesses and book in 5 steps: service → staff → day → free time → confirm
 - **Book as a guest** - just a name and a phone number, no account needed (phone normalized, Arabic digits accepted, max 3 upcoming bookings per phone per business, own rate limit)
+- **Private "manage my booking" link for guests** - a random 192-bit token in the URL (`/booking/<token>`); only its SHA-256 hash is stored. The guest can copy it or send it to themselves on WhatsApp, then see or cancel the booking (same 2-hour + reason rules as customers). Phone shown masked, page is `noindex`, link endpoints are rate limited
 - Only real free slots are offered (working hours, existing bookings, past times all excluded)
 - Choices survive the login redirect - pick first, log in after
 - "My appointments": upcoming & past, cancel with confirmation
