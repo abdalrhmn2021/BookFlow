@@ -137,7 +137,18 @@ jobs:
               echo "::error title=$f::TIMED OUT after ${secs}s. Last output:%0A${last}"
               status=1
             elif [ $code -ne 0 ]; then
-              echo "::warning title=$f::failed in ${secs}s"
+              # first error of this file (from Jest's JSON, or the raw log) -> on the PR
+              first=$(node -e '
+                try {
+                  const r = require("./jest-out/" + process.argv[1] + ".json");
+                  const file = r.testResults[0] || {};
+                  const t = (file.assertionResults || []).find((a) => a.status === "failed");
+                  const msg = file.testExecError?.message || (t && t.failureMessages[0]) || file.message || "";
+                  console.log(msg.replace(/\u001b\[[0-9;]*m/g, "").split("\n").filter(Boolean).slice(0, 8).join("%0A"));
+                } catch { }
+              ' "$name")
+              [ -n "$first" ] || first=$(grep -v '^\s*$' "jest-out/$name.log" | head -12 | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=$f::failed in ${secs}s%0A${first}"
               status=1
             else
               echo "::notice title=$f::passed in ${secs}s"
