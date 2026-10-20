@@ -184,7 +184,7 @@ CI checks formatting on every push and pull request.
 | Part | Host | Settings |
 |---|---|---|
 | Database | MongoDB Atlas (free M0) | Network access: allow `0.0.0.0/0` |
-| Backend | Render (free) | Blueprint from `render.yaml` - set `MONGO_URI` and `CLIENT_URL` |
+| Backend | Render (free) | Blueprint from `render.yaml` - set `MONGO_URI` |
 | Frontend | Vercel | Root directory `client`, env `API_URL=https://<render-app>.onrender.com` (no `/api`) - `next.config.ts` proxies `/api/*` there |
 
 > Render's free tier sleeps after 15 minutes of inactivity - the first request can take ~50 seconds.

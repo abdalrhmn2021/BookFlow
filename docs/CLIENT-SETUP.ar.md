@@ -50,7 +50,6 @@
    | `JWT_SECRET` | اضغط **Generate** |
    | `JWT_EXPIRES_IN` | `7d` |
    | `SINGLE_BUSINESS_SLUG` | `al-ward` |
-   | `CLIENT_URL` | رابط Vercel (بتحطه بعد الخطوة 5) |
 
 4. انسخ رابط السيرفر، مثلًا `https://al-ward-api.onrender.com`.
 
@@ -87,7 +86,7 @@ npm run create-business -- --name "صالون الورد" --slug al-ward --owner
    | `NEXT_PUBLIC_DEMO_MODE` | `false` |
    | `NEXT_PUBLIC_CURRENCY` | `₪` (أو `$`، `JD`...) |
 
-4. **Deploy**. انسخ الرابط وارجع حطه بـ `CLIENT_URL` على Render.
+4. **Deploy**.
 
 النتيجة: الصفحة الرئيسية بتفتح على صفحة حجز المحل مباشرة، وما في قائمة محلات ولا تسجيل محلات جديدة.
 
@@ -116,7 +115,6 @@ npm run create-business -- --name "صالون الورد" --slug al-ward --owner
 ## 8. دومين خاص (اختياري)
 
 Vercel ← المشروع ← **Settings** ← **Domains** ← أضف الدومين واتبع تعليمات الـ DNS.
-بعدها حدّث `CLIENT_URL` على Render ليصير الدومين الجديد.
 
 ## 9. ألوان خاصة بالزبون (اختياري)
 

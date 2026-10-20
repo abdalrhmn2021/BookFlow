@@ -19,5 +19,3 @@ services:
         generateValue: true # Render creates a long random secret for you
       - key: JWT_EXPIRES_IN
         value: 7d
-      - key: CLIENT_URL
-        sync: false # your Vercel URL, e.g. https://bookflow.vercel.app
