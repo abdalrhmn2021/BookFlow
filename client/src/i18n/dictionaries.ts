@@ -80,7 +80,7 @@ const en = {
 
   register: {
     title: "Create an account",
-    subtitle: "Book appointments at any business on BookFlow.",
+    subtitle: (brand: string) => `Book your appointments online with ${brand}.`,
     name: "Name",
     email: "Email",
     phone: "Phone",
@@ -388,7 +388,7 @@ const ar: Dictionary = {
 
   register: {
     title: "إنشاء حساب",
-    subtitle: "احجز مواعيدك في أي مكان على BookFlow.",
+    subtitle: (brand) => `احجز مواعيدك أونلاين مع ${brand}.`,
     name: "الاسم",
     email: "البريد الإلكتروني",
     phone: "رقم الهاتف",

@@ -1,3 +1,4 @@
+import { CURRENCY } from "./edition";
 import type { DayName } from "./types";
 
 const DAYS: DayName[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -40,7 +41,6 @@ export function formatDuration(minutes: number, words: (h: number, m: number) =>
   return words(Math.floor(minutes / 60), minutes % 60);
 }
 
-const CURRENCY = "₪";
 export function formatPrice(price: number): string {
   return `${price} ${CURRENCY}`;
 }

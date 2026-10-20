@@ -189,6 +189,13 @@ CI checks formatting on every push and pull request.
 
 > Render's free tier sleeps after 15 minutes of inactivity - the first request can take ~50 seconds.
 
+### Client edition (one install per business)
+
+The same code can run as a branded site for a single business: set `SINGLE_BUSINESS_SLUG` on the server and
+`NEXT_PUBLIC_BUSINESS_SLUG` / `NEXT_PUBLIC_BRAND_NAME` / `NEXT_PUBLIC_CURRENCY` on the client. `/` then opens that
+business's booking page, and the directory and business sign-up are hidden. Create the business and its owner with
+`npm run create-business` (in `server/`). Step-by-step guide (Arabic): [docs/CLIENT-SETUP.ar.md](docs/CLIENT-SETUP.ar.md).
+
 ## API overview
 
 | Method | Endpoint | Access |

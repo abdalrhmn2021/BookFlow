@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { DEFAULT_LANG, dictionaries, isLang, LANG_COOKIE } from "@/i18n/dictionaries";
 import Navbar from "@/components/Navbar";
+import { BRAND_NAME } from "@/lib/edition";
 import "./globals.css";
 
 const heading = Alexandria({
@@ -20,8 +21,8 @@ const body = IBM_Plex_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "BookFlow",
-  description: "Online booking for salons, clinics, gyms and more",
+  title: BRAND_NAME,
+  description: `${BRAND_NAME} - online booking`,
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

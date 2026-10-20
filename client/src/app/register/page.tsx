@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import { BRAND_NAME, BUSINESS_SLUG } from "@/lib/edition";
 import { useRouter, useSearchParams } from "next/navigation";
 import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -49,7 +50,7 @@ function RegisterForm() {
   return (
     <div className="mx-auto mt-16 max-w-sm rounded-xl border border-navy-100 bg-white p-8 shadow-sm">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t.register.title}</h1>
-      <p className="mt-1 text-sm text-navy-500">{t.register.subtitle}</p>
+      <p className="mt-1 text-sm text-navy-500">{t.register.subtitle(BRAND_NAME)}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
@@ -118,11 +119,13 @@ function RegisterForm() {
           {t.register.login}
         </Link>
       </p>
-      <p className="mt-2 text-center text-sm">
-        <Link href="/register-business" className="text-navy-500 hover:text-coral-700">
-          {t.registerBusiness.cta}
-        </Link>
-      </p>
+      {!BUSINESS_SLUG && (
+        <p className="mt-2 text-center text-sm">
+          <Link href="/register-business" className="text-navy-500 hover:text-coral-700">
+            {t.registerBusiness.cta}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

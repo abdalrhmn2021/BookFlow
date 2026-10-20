@@ -8,6 +8,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
 import { formatDuration, formatMomentIn, formatPrice } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
+import { BOOK_HREF } from "@/lib/edition";
 import { IconCalendar, IconClock, IconNote } from "@/components/icons";
 import type { MyAppointment } from "@/lib/types";
 
@@ -92,7 +93,7 @@ function Content() {
           <p className="font-medium">{t.myAppointments.emptyTitle}</p>
           <p className="mt-1 text-sm text-navy-500">{t.myAppointments.emptyText}</p>
           <Link
-            href="/businesses"
+            href={BOOK_HREF}
             className="mt-5 inline-block rounded-lg bg-coral-500 px-4 py-2.5 font-semibold text-navy-950 transition hover:bg-coral-400"
           >
             {t.myAppointments.browse}
@@ -109,7 +110,7 @@ function Content() {
         {upcoming.length === 0 ? (
           <p className="mt-3 text-sm text-navy-500">
             {t.myAppointments.nothingUpcoming}{" "}
-            <Link href="/businesses" className="font-medium text-coral-700 hover:underline">
+            <Link href={BOOK_HREF} className="font-medium text-coral-700 hover:underline">
               {t.myAppointments.bookSomething}
             </Link>
           </p>
@@ -196,7 +197,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t.myAppointments.title}</h1>
           <p className="mt-1 text-navy-500">{t.myAppointments.hi(user?.name ?? "")}</p>
         </div>
-        <Link href="/businesses" className="text-sm font-medium text-coral-700 hover:underline">
+        <Link href={BOOK_HREF} className="text-sm font-medium text-coral-700 hover:underline">
           {t.myAppointments.newBooking}
         </Link>
       </div>

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { homeFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Logo from "@/components/Logo";
+import { BRAND_NAME, BUSINESS_SLUG } from "@/lib/edition";
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
@@ -24,14 +25,14 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-20 border-b border-navy-100 bg-white/90 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
-        <Link href="/" aria-label="BookFlow" className="shrink-0">
+        <Link href="/" aria-label={BRAND_NAME} className="shrink-0">
           <Logo compact />
         </Link>
 
         <div className="flex items-center gap-1 text-sm sm:gap-3">
           {!loading && (
             <>
-              {user?.role !== "owner" && user?.role !== "staff" && (
+              {!BUSINESS_SLUG && user?.role !== "owner" && user?.role !== "staff" && (
                 <Link href="/businesses" className={`hidden sm:inline ${navLink}`}>
                   {t.nav.businesses}
                 </Link>

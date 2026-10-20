@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { BRAND_NAME } from "@/lib/edition";
 
 export const metadata: Metadata = {
-  title: "Your booking - BookFlow",
+  title: `Your booking - ${BRAND_NAME}`,
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
