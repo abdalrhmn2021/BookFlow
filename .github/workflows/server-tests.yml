@@ -45,8 +45,9 @@ jobs:
       - name: Start MongoDB 8.2 (single-node replica set)
         timeout-minutes: 4
         working-directory: .
-        shell: bash # no "-e": we handle every error ourselves and report it
+        shell: bash
         run: |
+          set +e # GitHub runs bash with -e; we check every result ourselves and report it
           # Any problem -> an ::error annotation with the details (visible on the PR without logs).
           # %0A = a new line inside an annotation.
           fail() {
@@ -121,6 +122,7 @@ jobs:
           MONGO_URI_TEST: mongodb://127.0.0.1:27017/?directConnection=true
         shell: bash
         run: |
+          set +e # a failing file must not stop the loop
           mkdir -p jest-out
           status=0
           for f in tests/*.test.js; do
