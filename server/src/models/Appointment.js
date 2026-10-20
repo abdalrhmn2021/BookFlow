@@ -27,6 +27,10 @@ const appointmentSchema = new mongoose.Schema(
       ),
       default: undefined, // no empty "guest: {}" on normal appointments
     },
+    // Guest bookings only: SHA-256 of the secret "manage my booking" link (utils/manageToken.js).
+    // select: false -> never returned by a normal query (the dashboard, my-appointments...).
+    // The raw token is NEVER stored - only the guest has it.
+    manageTokenHash: { type: String, select: false },
     staffId: { type: ObjectId, ref: "User", required: true },
     serviceId: { type: ObjectId, ref: "Service", required: true },
 
@@ -53,7 +57,8 @@ const appointmentSchema = new mongoose.Schema(
     // The controller fills these at the moment of cancelling.
     cancellation: {
       reason: { type: String, trim: true, maxlength: [300, "Reason is too long"] },
-      cancelledBy: { type: ObjectId, ref: "User" },
+      cancelledBy: { type: ObjectId, ref: "User" }, // empty when a guest cancelled (no account)
+      byGuest: { type: Boolean }, // true = the guest cancelled from their manage-booking link
       cancelledAt: { type: Date },
     },
   },
@@ -81,6 +86,13 @@ appointmentSchema.index({ customerId: 1, startTime: -1 });
 // Anti-spam check for guests: "how many upcoming bookings does this phone have here?"
 appointmentSchema.index({ tenantId: 1, "guest.phone": 1, startTime: 1 },
   { partialFilterExpression: { "guest.phone": { $exists: true } } }, // guests only - keeps it small
+);
+
+// Find a guest booking by its link. unique: two bookings can never share a link.
+// partial: customer bookings have no token, so they don't take space in this index.
+appointmentSchema.index(
+  { manageTokenHash: 1 },
+  { unique: true, partialFilterExpression: { manageTokenHash: { $exists: true } } },
 );
 
 module.exports = mongoose.model("Appointment", appointmentSchema);

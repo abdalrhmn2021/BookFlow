@@ -1,13 +1,63 @@
 @import "tailwindcss";
 
-@theme inline {
-  /* Geist has no Arabic letters -> the browser falls back to IBM Plex Sans Arabic
-     for those characters only. One font stack works for both languages. */
-  --font-sans: var(--font-geist-sans), var(--font-arabic), sans-serif;
-  --font-mono: var(--font-geist-mono);
+/* ============================================================
+   هوية BookFlow: كحلي + مرجاني
+   ------------------------------------------------------------
+   كل لون معرّف هون مرة وحدة. Tailwind v4 بيحوّل كل --color-xxx-500
+   لكلاسات جاهزة: bg-navy-900, text-coral-700, border-navy-200 ...
+   بدك تغيّر الهوية لزبون (صالون بلون ثاني)؟ بتغيّر هالأرقام بس.
+   ============================================================ */
+@theme {
+  /* الكحلي: الحبر (النصوص) والخلفيات الغامقة */
+  --color-navy-50: #f3f5fa; /* خلفية الصفحة */
+  --color-navy-100: #e6ebf4;
+  --color-navy-200: #cdd5e5; /* الحدود */
+  --color-navy-300: #a9b5cd;
+  --color-navy-400: #7d8cab;
+  --color-navy-500: #56678c; /* نص ثانوي */
+  --color-navy-600: #3d4f78;
+  --color-navy-700: #2b3d63;
+  --color-navy-800: #1d2d4f;
+  --color-navy-900: #16244a; /* العناوين والنص الأساسي */
+  --color-navy-950: #0e1a33; /* القائمة الجانبية */
+
+  /* المرجاني: لون الفعل - الأزرار الأساسية والاختيار الحالي */
+  --color-coral-50: #fff4f2;
+  --color-coral-100: #ffe4e0;
+  --color-coral-200: #ffc9c1;
+  --color-coral-300: #ffa699;
+  --color-coral-400: #ff8a7d;
+  --color-coral-500: #ff6b5b; /* الزر الأساسي (نصه كحلي غامق مش أبيض: أوضح للقراءة) */
+  --color-coral-600: #ec5242;
+  --color-coral-700: #c8402f; /* نص/روابط مرجانية على خلفية فاتحة */
+
+  /* الخطوط: Alexandria للعناوين، IBM Plex Sans Arabic للنص.
+     الاثنين فيهم حروف عربية ولاتينية -> نفس الشكل بالعربي والإنجليزي */
+  --font-sans: var(--font-body), sans-serif;
+  --font-display: var(--font-heading), var(--font-body), sans-serif;
 }
 
 body {
-  background: #f9fafb; /* gray-50 */
-  color: #111827; /* gray-900 */
+  background: var(--color-navy-50);
+  color: var(--color-navy-900);
+}
+
+/* الأرقام بنفس العرض -> الأوقات والأسعار بتصطف تحت بعض */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* إطار التركيز (Tab من الكيبورد) واضح على كل شي قابل للضغط */
+:focus-visible {
+  outline: 2px solid var(--color-coral-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

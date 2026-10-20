@@ -59,12 +59,22 @@ const en = {
   } satisfies Record<Role, string>,
 
   home: {
-    titleStart: "Bookings for your business, ",
-    titleHighlight: "without the phone calls",
+    title: "Let your customers book themselves",
     subtitle:
       "Salons, clinics, gyms and training centers get their own booking page. Customers pick a service, a staff member and a free time - no double bookings, ever.",
     book: "Book an appointment",
     createAccount: "Create an account",
+    forBusinessTitle: "Own a salon, clinic or gym?",
+    forBusinessText: "Get a booking page, a daily schedule and WhatsApp reminders in minutes.",
+    // The sample booking card next to the headline (demo data, not real)
+    sample: {
+      business: "Demo Salon",
+      service: "Haircut",
+      duration: "30 min",
+      staff: "with Sara",
+      day: "Tomorrow",
+      cta: "Book for 50 ₪",
+    },
   },
 
   login: {
@@ -125,7 +135,9 @@ const en = {
     publicPage: "Public booking page:",
     copy: "Copy link",
     copied: "Copied ✓",
+    bookingPage: "Your booking page",
     tabs: {
+      overview: "Overview",
       schedule: "Schedule",
       services: "Services",
       staff: "Staff",
@@ -160,6 +172,18 @@ const en = {
       reminderMessage: (p: ReminderParts) =>
         `Hi ${p.name} 👋\nA reminder of your appointment at ${p.business} ${p.day} at ${p.time}` +
         ` (${p.service} with ${p.staff}).\nTo cancel or change it, just reply to this message. See you soon!`,
+    },
+    overview: {
+      next: "Next appointment",
+      noNext: "No upcoming appointments. Share your booking page to get some.",
+      todayCount: "Appointments today",
+      toConfirm: "Waiting for confirmation",
+      toConfirmNone: "Nothing to confirm",
+      revenue: "Expected income today",
+      revenueHint: "Cancelled and no-shows not counted",
+      week: "Next 7 days",
+      openDay: "Open schedule",
+      loading: "Loading overview...",
     },
     services: {
       add: "+ Add service",
@@ -248,6 +272,31 @@ const en = {
     willConfirm: (business: string) => `${business} will confirm your appointment.`,
     myAppointments: "My appointments",
     bookAnother: "Book another",
+    // guest "manage my booking" link (shown once, right after booking)
+    manageTitle: "Save your booking link 🔗",
+    manageText: "Use this private link to see or cancel your booking. Anyone who has it can manage the booking, so keep it to yourself.",
+    copyLink: "Copy link",
+    copied: "Copied ✓",
+    sendToMe: "Send it to me on WhatsApp",
+    openLink: "Open",
+    manageWhatsApp: (business: string, link: string) => `My booking at ${business} - see or cancel it here:\n${link}`,
+  },
+
+  manage: {
+    loading: "Loading your booking...",
+    notFoundTitle: "Booking not found",
+    notFoundText: "This link is wrong or doesn't work anymore. Make sure you copied all of it.",
+    title: "Your booking",
+    hi: (name: string) => `Hi ${name} 👋`,
+    at: "at",
+    phone: "Phone",
+    cancelledByYou: "You cancelled this booking.",
+    cancelledByBusiness: (business: string) => `${business} cancelled this booking.`,
+    reason: "Reason:",
+    cancelUntil: (date: string, time: string) => `You can cancel online until ${date}, ${time}.`,
+    tooLate: "It's less than 2 hours before your appointment, so it can't be cancelled online anymore. Please contact the business directly.",
+    cancelledNow: "Your booking was cancelled. The time is free for someone else now.",
+    bookAgain: "Book again",
   },
 
   myAppointments: {
@@ -322,12 +371,21 @@ const ar: Dictionary = {
   },
 
   home: {
-    titleStart: "حجوزات لعملك، ",
-    titleHighlight: "بدون مكالمات هاتفية",
+    title: "دع زبائنك يحجزون بأنفسهم",
     subtitle:
       "الصالونات والعيادات والنوادي الرياضية ومراكز التدريب تحصل على صفحة حجز خاصة بها. يختار الزبون الخدمة والموظف والوقت المتاح - وبدون أي حجز مزدوج.",
     book: "احجز موعداً",
     createAccount: "أنشئ حساباً",
+    forBusinessTitle: "عندك صالون أو عيادة أو نادٍ؟",
+    forBusinessText: "صفحة حجز وجدول يومي وتذكير واتساب، جاهزة خلال دقائق.",
+    sample: {
+      business: "صالون تجريبي",
+      service: "قص شعر",
+      duration: "30 دقيقة",
+      staff: "مع سارة",
+      day: "غداً",
+      cta: "احجز بـ 50 ₪",
+    },
   },
 
   login: {
@@ -388,7 +446,9 @@ const ar: Dictionary = {
     publicPage: "صفحة الحجز العامة:",
     copy: "نسخ الرابط",
     copied: "تم النسخ ✓",
+    bookingPage: "صفحة الحجز الخاصة بك",
     tabs: {
+      overview: "نظرة عامة",
       schedule: "المواعيد",
       services: "الخدمات",
       staff: "الموظفون",
@@ -423,6 +483,18 @@ const ar: Dictionary = {
       reminderMessage: (p) =>
         `مرحباً ${p.name} 👋\nنذكّرك بموعدك في ${p.business} ${p.day} الساعة ${p.time}` +
         ` (${p.service} مع ${p.staff}).\nللإلغاء أو التعديل، ردّ على هذه الرسالة. بانتظارك!`,
+    },
+    overview: {
+      next: "الموعد القادم",
+      noNext: "لا توجد مواعيد قادمة. شارك صفحة الحجز حتى تصلك حجوزات.",
+      todayCount: "مواعيد اليوم",
+      toConfirm: "بانتظار التأكيد",
+      toConfirmNone: "لا شيء بانتظار التأكيد",
+      revenue: "الدخل المتوقع اليوم",
+      revenueHint: "بدون الملغاة والغياب",
+      week: "الأيام السبعة القادمة",
+      openDay: "افتح الجدول",
+      loading: "جارٍ تحميل النظرة العامة...",
     },
     services: {
       add: "+ إضافة خدمة",
@@ -510,6 +582,30 @@ const ar: Dictionary = {
     willConfirm: (business) => `سيقوم ${business} بتأكيد موعدك.`,
     myAppointments: "مواعيدي",
     bookAnother: "حجز موعد آخر",
+    manageTitle: "احفظ رابط حجزك 🔗",
+    manageText: "من خلال هذا الرابط الخاص تقدر تشوف حجزك أو تلغيه. أي شخص معه الرابط يقدر يدير الحجز، فاحتفظ فيه لنفسك.",
+    copyLink: "نسخ الرابط",
+    copied: "تم النسخ ✓",
+    sendToMe: "ابعته لنفسي على واتساب",
+    openLink: "فتح",
+    manageWhatsApp: (business, link) => `حجزي عند ${business} - لمشاهدته أو إلغائه:\n${link}`,
+  },
+
+  manage: {
+    loading: "جاري تحميل حجزك...",
+    notFoundTitle: "الحجز غير موجود",
+    notFoundText: "الرابط غير صحيح أو لم يعد يعمل. تأكد أنك نسخته كاملاً.",
+    title: "حجزك",
+    hi: (name) => `أهلاً ${name} 👋`,
+    at: "في",
+    phone: "الجوال",
+    cancelledByYou: "لقد ألغيت هذا الحجز.",
+    cancelledByBusiness: (business) => `قام ${business} بإلغاء هذا الحجز.`,
+    reason: "السبب:",
+    cancelUntil: (date, time) => `تقدر تلغي أونلاين حتى ${date}، الساعة ${time}.`,
+    tooLate: "باقي أقل من ساعتين على موعدك، لذلك لا يمكن إلغاؤه أونلاين. تواصل مع المكان مباشرة.",
+    cancelledNow: "تم إلغاء حجزك، وصار الوقت متاحاً لغيرك.",
+    bookAgain: "احجز من جديد",
   },
 
   myAppointments: {
@@ -593,6 +689,7 @@ const ar: Dictionary = {
     "Too many bookings from this device, please try again later": "حجوزات كثيرة من هذا الجهاز، حاول لاحقاً",
     // my appointments
     "Appointment not found": "الموعد غير موجود",
+    "Booking not found": "الحجز غير موجود أو الرابط غير صحيح",
     "You can't cancel an appointment that has already started": "لا يمكن إلغاء موعد بدأ بالفعل",
     "Can't cancel an appointment that is completed": "لا يمكن إلغاء موعد مكتمل",
     "Can't cancel an appointment that is cancelled": "هذا الموعد ملغى بالفعل",

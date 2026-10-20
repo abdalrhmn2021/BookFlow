@@ -1,12 +1,19 @@
 "use client";
 
 // The business dashboard.
-//   owner -> Schedule + Services + Staff + Working hours
-//   staff -> Schedule only (and the backend only returns HIS appointments)
+//   owner -> Overview + Schedule + Services + Staff + Working hours
+//   staff -> Overview + Schedule (and the backend only returns HIS appointments)
+//
+// The open tab lives in the URL: /dashboard?tab=schedule&date=2026-10-21
+//   - refresh -> you stay on the same tab
+//   - you can share / bookmark a tab
+//   - the browser's Back button goes to the previous tab
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
+import DashboardShell, { type Tab } from "@/components/dashboard/DashboardShell";
+import OverviewTab from "@/components/dashboard/OverviewTab";
 import ScheduleTab from "@/components/dashboard/ScheduleTab";
 import ServicesTab from "@/components/dashboard/ServicesTab";
 import StaffTab from "@/components/dashboard/StaffTab";
@@ -18,12 +25,17 @@ import { api } from "@/lib/api";
 import { errorBox } from "@/lib/ui";
 import type { TenantInfo } from "@/lib/types";
 
-type Tab = "schedule" | "services" | "staff" | "hours";
+const OWNER_TABS: Tab[] = ["overview", "schedule", "services", "staff", "hours"];
+const STAFF_TABS: Tab[] = ["overview", "schedule"];
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function DashboardPage() {
   return (
     <RequireAuth roles={["owner", "staff"]}>
-      <Dashboard />
+      {/* useSearchParams() needs a <Suspense> boundary (same as the login page) */}
+      <Suspense fallback={<Loading />}>
+        <Dashboard />
+      </Suspense>
     </RequireAuth>
   );
 }
@@ -31,12 +43,13 @@ export default function DashboardPage() {
 function Dashboard() {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
 
   // The business itself: name, slug, timezone, working hours (every tab needs some of it)
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [tab, setTab] = useState<Tab>("schedule");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -62,70 +75,34 @@ function Dashboard() {
   }
   if (!tenant || !user) return <Loading />;
 
-  const isOwner = user.role === "owner";
-  const tabs: Tab[] = isOwner ? ["schedule", "services", "staff", "hours"] : ["schedule"];
-  const bookingPath = `/book/${tenant.slug}`;
+  const tabs = user.role === "owner" ? OWNER_TABS : STAFF_TABS;
+  // Never trust the URL: an unknown tab (or ?tab=staff for a staff member) -> the first tab
+  const requested = params.get("tab") as Tab | null;
+  const tab: Tab = requested && tabs.includes(requested) ? requested : tabs[0];
+  const dateParam = params.get("date");
+  const date = dateParam && DATE_REGEX.test(dateParam) ? dateParam : undefined;
 
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}${bookingPath}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard blocked (e.g. not https) - the link is visible anyway
-    }
+  // Change the URL -> useSearchParams changes -> this component re-renders with the new tab.
+  // push (not replace): every tab is a step in the history, so Back returns to the previous tab.
+  const go = (next: Tab, nextDate?: string) => {
+    const query = new URLSearchParams({ tab: next });
+    if (nextDate) query.set("date", nextDate);
+    router.push(`${pathname}?${query}`, { scroll: false });
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
-      {/* ---- Header ---- */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{tenant.name}</h1>
-          <p className="mt-1 text-gray-500">{t.dashboard.welcome(user.name, t.roles[user.role])}</p>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-500">{t.dashboard.publicPage}</span>
-          <Link href={bookingPath} dir="ltr" className="font-medium text-indigo-600 hover:underline">
-            {bookingPath}
-          </Link>
-          <button
-            onClick={copyLink}
-            className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-gray-50"
-          >
-            {copied ? t.dashboard.copied : t.dashboard.copy}
-          </button>
-        </div>
-      </div>
-
-      {/* ---- Tabs (only when there is more than one) ---- */}
-      {tabs.length > 1 && (
-        <div className="mt-8 flex gap-1 overflow-x-auto border-b border-gray-200">
-          {tabs.map((name) => (
-            <button
-              key={name}
-              onClick={() => setTab(name)}
-              className={`-mb-px shrink-0 border-b-2 px-4 py-2 text-sm font-medium ${
-                tab === name
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              {t.dashboard.tabs[name]}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ---- Content ----
-          Only the active tab is rendered: switching tabs unmounts the old one, so each
-          tab loads fresh data when opened (e.g. a service added -> visible in the schedule) */}
+    <DashboardShell tenant={tenant} tabs={tabs} active={tab} onSelect={(next) => go(next)}>
+      <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{t.dashboard.tabs[tab]}</h1>
       <div className="mt-6">
-        {tab === "schedule" && <ScheduleTab timezone={tenant.timezone} />}
-        {tab === "services" && isOwner && <ServicesTab />}
-        {tab === "staff" && isOwner && <StaffTab />}
-        {tab === "hours" && isOwner && <HoursTab tenant={tenant} onSaved={setTenant} />}
+        {/* Only the active tab is rendered: switching tabs unmounts the old one, so each
+            tab loads fresh data when opened (e.g. a service added -> visible in the schedule) */}
+        {tab === "overview" && <OverviewTab timezone={tenant.timezone} onOpenDay={(d) => go("schedule", d)} />}
+        {/* key={date}: a new date from the URL (e.g. clicked in Overview) = a fresh schedule */}
+        {tab === "schedule" && <ScheduleTab key={date} timezone={tenant.timezone} initialDate={date} />}
+        {tab === "services" && <ServicesTab />}
+        {tab === "staff" && <StaffTab />}
+        {tab === "hours" && <HoursTab tenant={tenant} onSaved={setTenant} />}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

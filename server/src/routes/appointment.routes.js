@@ -7,6 +7,7 @@ const {
   getMyAppointments,
   cancelMyAppointment,
   getBusinessAppointments,
+  getBusinessStats,
   updateAppointmentStatus,
   markReminded,
 } = require("../controllers/appointment.controller");
@@ -19,6 +20,7 @@ router.patch("/:id/cancel", protect, restrictTo("customer"), cancelMyAppointment
 // ---- Business side (owner + staff) ----
 // requireTenant: the user must belong to an ACTIVE business -> gives us req.tenantId
 router.get("/business", protect, requireTenant, restrictTo("owner", "staff"), getBusinessAppointments);
+router.get("/business/stats", protect, requireTenant, restrictTo("owner", "staff"), getBusinessStats);
 router.patch("/:id/status", protect, requireTenant, restrictTo("owner", "staff"), updateAppointmentStatus);
 router.patch("/:id/reminded", protect, requireTenant, restrictTo("owner", "staff"), markReminded);
 

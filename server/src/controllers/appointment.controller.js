@@ -3,14 +3,13 @@ const Tenant = require("../models/Tenant");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
 // ACTIVE_STATUSES: الحالات اللي بتحجز وقت الموظف - معرّفة بمكان واحد بس (booking.service)
-const { bookAppointment, ACTIVE_STATUSES } = require("../services/booking.service");
-
-// A customer can't cancel less than 2 hours before the appointment.
-// (owner/staff have no time limit - they may need to cancel at the last minute)
-const CUSTOMER_CANCEL_LIMIT_MS = 2 * 60 * 60 * 1000; // hours * min * sec * ms
-
-// A cancellation reason must be meaningful, not just "ok"
-const MIN_REASON_LENGTH = 10;
+// قواعد الإلغاء (ساعتين + طول السبب) كمان هناك، لأنه الضيف بيلغي بنفس القواعد
+const {
+  bookAppointment,
+  ACTIVE_STATUSES,
+  CUSTOMER_CANCEL_LIMIT_MS,
+  MIN_REASON_LENGTH,
+} = require("../services/booking.service");
 
 // Allowed values for ?when= in "my appointments"
 const WHEN_VALUES = ["upcoming", "past"];
@@ -249,6 +248,75 @@ exports.getBusinessAppointments = async (req, res) => {
     .sort({ startTime: 1 });
 
   res.status(200).json({ date, count: appointments.length, appointments });
+};
+
+// كم يوم لقدّام بتعرض "نظرة عامة" (اليوم + 6 أيام)
+const OVERVIEW_DAYS = 7;
+
+// @route  GET /api/appointments/business/stats
+// @access owner, staff
+// أرقام صفحة "نظرة عامة" بلوحة التحكم، بطلب واحد بدل 7 طلبات من الواجهة:
+//   today       -> مواعيد اليوم: العدد حسب الحالة + الدخل المتوقع
+//   week        -> عدد المواعيد الفعّالة بكل يوم من الأيام السبعة الجاية
+//   toConfirm   -> كم موعد "بانتظار التأكيد" لسا بالمستقبل (شغل لازم ينعمل)
+//   next        -> أقرب موعد فعّال جاي (لبطاقة "الموعد الجاي")
+// الموظف بيشوف أرقام مواعيده هو بس (businessFilter) - نفس قاعدة جدول المواعيد.
+exports.getBusinessStats = async (req, res) => {
+  const tenant = await Tenant.findById(req.tenantId).select("timezone");
+  const tz = tenant.timezone;
+  const now = new Date();
+  const base = businessFilter(req.user, req.tenantId);
+
+  // "اليوم" حسب توقيت البزنس، مش السيرفر
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now);
+  const days = [today];
+  while (days.length < OVERVIEW_DAYS) days.push(nextDate(days[days.length - 1]));
+
+  const rangeStart = localToDate(today, "00:00", tz);
+  const rangeEnd = localToDate(nextDate(days[days.length - 1]), "00:00", tz);
+
+  // 3 طلبات مستقلة -> Promise.all بيبعتهم مع بعض بدل ما نستنى واحد ورا الثاني
+  const [inRange, toConfirm, next] = await Promise.all([
+    // كل مواعيد الأسبوع، بس الحقول اللي بنحسب منها. lean() = كائنات JS عادية (أخف وأسرع)
+    Appointment.find({ ...base, startTime: { $gte: rangeStart, $lt: rangeEnd } })
+      .select("startTime status price")
+      .lean(),
+    Appointment.countDocuments({ ...base, status: "pending", startTime: { $gt: now } }),
+    Appointment.findOne({ ...base, status: { $in: ACTIVE_STATUSES }, startTime: { $gt: now } })
+      .sort({ startTime: 1 })
+      .populate("customerId", "name phone")
+      .populate("staffId", "name"),
+  ]);
+
+  // كل موعد -> تاريخه المحلي ("YYYY-MM-DD") عشان نعرف بأي يوم ينحسب
+  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
+  const week = days.map((date) => ({ date, count: 0 }));
+  const byStatus = Object.fromEntries(Appointment.STATUSES.map((s) => [s, 0]));
+  let revenue = 0;
+
+  for (const a of inRange) {
+    const date = localDay.format(a.startTime);
+    const active = a.status !== "cancelled" && a.status !== "no-show";
+    if (active) {
+      const day = week.find((d) => d.date === date);
+      if (day) day.count += 1;
+    }
+    if (date === today) {
+      byStatus[a.status] += 1;
+      // الدخل المتوقع = كل شي ما انلغى وما غاب صاحبه
+      if (active) revenue += a.price;
+    }
+  }
+
+  const total = Object.values(byStatus).reduce((sum, n) => sum + n, 0);
+
+  res.status(200).json({
+    date: today,
+    today: { total, byStatus, revenue },
+    week,
+    toConfirm,
+    next,
+  });
 };
 
 // @route  PATCH /api/appointments/:id/reminded

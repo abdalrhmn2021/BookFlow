@@ -362,3 +362,19 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "status": "done" }
+
+### ============================================================
+### Guest "manage my booking" link (no login)
+### 1) Book as a guest: POST /public/businesses/<slug>/appointments  -> copy "manageToken" from the answer
+### 2) Paste it below
+### ============================================================
+@manageToken = PUT_MANAGE_TOKEN_HERE
+
+### See the booking (phone is masked, canCancel decided by the server)
+GET {{baseUrl}}/public/bookings/{{manageToken}}
+
+### Cancel it (same rules as a customer: reason >= 10 chars, >= 2 hours before)
+PATCH {{baseUrl}}/public/bookings/{{manageToken}}/cancel
+Content-Type: application/json
+
+{ "reason": "I have an exam that day" }

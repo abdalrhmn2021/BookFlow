@@ -2,10 +2,18 @@
 # CI: مع كل push على main (وكل pull request) GitHub بيشغّل اختبارات السيرفر
 # على سيرفر لينكس نظيف. إذا فشل أي اختبار بتطلع ❌ حمرا جنب الـ commit.
 #
-# الداتابيس: ما في Docker ولا Atlas. الاختبارات (tests/helpers.js) لما ما تلاقي
-# MONGO_URI ولا MONGO_URI_TEST بتشغّل MongoDB مؤقتة بالذاكرة كـ replica set
-# (mongodb-memory-server) - نفس اللي بيصير على جهازك لو ما حطيت رابط.
-# أبسط وأثبت من تشغيل Docker وانتظار الـ replica set يجهز.
+# الداتابيس: MongoDB 8.2 حقيقية بـ Docker، كـ replica set من عضو واحد
+# (الحجز بيستخدم transactions، وهاي بتشتغل بس على replica set).
+#   - host العضو = 127.0.0.1 و directConnection=true بالرابط:
+#     هيك الـ driver ما بيحاول يدوّر على اسم الـ container (هاد كان سبب
+#     فشل محاولات Docker القديمة).
+#   - 8.2 مش 8.0: سيرفرات GitHub صارت على Linux kernel 6.19+، و MongoDB 8.0
+#     بترفض تشتغل عليه (SERVER-121912). 8.2 بتشتغل عادي.
+#   - mongodb-memory-server (التنزيل التلقائي) كان يعلق على GitHub
+#     ويخلي الـ job يستنى لحد ما ينلغى - ضل للتشغيل المحلي بس.
+#
+# الأخطاء: بتنكتب كـ annotations (::error) - بتطلع بصفحة الـ PR مباشرة
+# بدون ما تفتح اللوغ.
 # ============================================================
 name: Server tests
 
@@ -18,8 +26,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    # حماية: لو علق أي شي، وقّف بعد 15 دقيقة بدل ما يضل شغال ساعات
-    timeout-minutes: 15
+    # حماية: لو علق أي شي، وقّف بعد 12 دقيقة بدل ما يضل شغال
+    timeout-minutes: 20
 
     defaults:
       run:
@@ -34,13 +42,156 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # ملف MongoDB اللي بتنزّله mongodb-memory-server (~100MB) - نخزّنه
-      # عشان كل تشغيل بعد الأول ما ينزّله من جديد
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/mongodb-binaries
-          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+      - name: Start MongoDB 8.2 (single-node replica set)
+        timeout-minutes: 4
+        working-directory: .
+        shell: bash
+        run: |
+          set +e # GitHub runs bash with -e; we check every result ourselves and report it
+          # Any problem -> an ::error annotation with the details (visible on the PR without logs).
+          # %0A = a new line inside an annotation.
+          fail() {
+            local details
+            details=$( { echo "$1"; echo "--- docker ps -a ---"; docker ps -a; echo "--- docker logs (tail) ---"; docker logs mongo 2>&1 | tail -25; } | sed ':a;N;$!ba;s/\n/%0A/g' )
+            echo "::error title=MongoDB::${details}"
+            exit 1
+          }
+          mongo() { docker exec mongo mongosh --quiet --eval "$1" 2>&1; }
+
+          docker run -d --name mongo -p 27017:27017 mongo:8.2 --replSet rs0 --bind_ip_all \
+            || fail "docker run failed"
+
+          # 1) wait until the server answers
+          ready=""
+          for i in $(seq 1 60); do
+            [ "$(mongo 'db.adminCommand({ping:1}).ok')" = "1" ] && ready=1 && break
+            sleep 2
+          done
+          [ -n "$ready" ] || fail "mongod did not answer ping"
+
+          # 2) create the replica set (one member = 127.0.0.1, the same address the tests use).
+          #    Retried: right after start-up the server can still refuse it.
+          for i in $(seq 1 10); do
+            out=$(mongo "try { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok } catch (e) { e.codeName === 'AlreadyInitialized' ? 1 : e.message }")
+            [ "$out" = "1" ] && break
+            sleep 2
+          done
+          [ "$out" = "1" ] || fail "rs.initiate failed: $out"
+
+          # 3) wait until it is primary (accepts writes + transactions)
+          for i in $(seq 1 60); do
+            if [ "$(mongo 'db.hello().isWritablePrimary')" = "true" ]; then
+              echo "MongoDB replica set is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          fail "replica set did not become primary: $(mongo 'JSON.stringify(rs.status().members.map(m => m.stateStr))')"
 
       - run: npm ci
 
-      - run: npm test -- --forceExit
+      # Quick check (20 s max) that the tests can really connect AND run a transaction.
+      # If not -> a clear annotation, instead of every test timing out one by one.
+      - name: Check database connection
+        timeout-minutes: 2
+        env:
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/?directConnection=true
+        run: |
+          node -e '
+            const mongoose = require("mongoose");
+            const fail = (e) => { console.log(`::error title=Database check::${String(e && e.stack || e).split("\n").slice(0, 4).join(" | ")}`); process.exit(1); };
+            setTimeout(() => fail("timed out after 20 s"), 20000).unref();
+            (async () => {
+              await mongoose.connect(process.env.MONGO_URI_TEST, { dbName: "ci_check", serverSelectionTimeoutMS: 10000 });
+              const C = mongoose.connection.collection("ping");
+              const session = await mongoose.startSession();
+              await session.withTransaction(() => C.insertOne({ at: new Date() }, { session }));
+              await session.endSession();
+              console.log("connected + transaction OK");
+              await mongoose.disconnect();
+              process.exit(0);
+            })().catch(fail);
+          '
+
+      # One test FILE at a time, each with its own 2-minute limit:
+      # a file that hangs can't freeze the whole run, and each file's result
+      # (time + passed/failed) shows up as a note on the PR.
+      - name: Run tests
+        timeout-minutes: 14
+        env:
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/?directConnection=true
+        shell: bash
+        run: |
+          set +e # a failing file must not stop the loop
+          mkdir -p jest-out
+          status=0
+          for f in tests/*.test.js; do
+            name=$(basename "$f" .test.js)
+            start=$(date +%s)
+            timeout 120 npx jest --runInBand --ci --forceExit "$f" \
+              --json --outputFile="jest-out/$name.json" > "jest-out/$name.log" 2>&1
+            code=$?
+            secs=$(( $(date +%s) - start ))
+            if [ $code -eq 124 ]; then
+              last=$(grep -v '^\s*$' "jest-out/$name.log" | tail -8 | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=$f::TIMED OUT after ${secs}s. Last output:%0A${last}"
+              status=1
+            elif [ $code -ne 0 ]; then
+              # first error of this file (from Jest's JSON, or the raw log) -> on the PR
+              first=$(node -e '
+                try {
+                  const r = require("./jest-out/" + process.argv[1] + ".json");
+                  const file = r.testResults[0] || {};
+                  const t = (file.assertionResults || []).find((a) => a.status === "failed");
+                  const msg = file.testExecError?.message || (t && t.failureMessages[0]) || file.message || "";
+                  console.log(msg.replace(/\u001b\[[0-9;]*m/g, "").split("\n").filter(Boolean).slice(0, 8).join("%0A"));
+                } catch { }
+              ' "$name")
+              [ -n "$first" ] || first=$(grep -v '^\s*$' "jest-out/$name.log" | head -12 | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=$f::failed in ${secs}s%0A${first}"
+              status=1
+            else
+              echo "::notice title=$f::passed in ${secs}s"
+            fi
+          done
+          # merge every file's results into one jest-results.json for the report step
+          node -e '
+            const fs = require("fs");
+            const all = { numFailedTests: 0, numTotalTests: 0, testResults: [] };
+            for (const f of fs.readdirSync("jest-out").filter((x) => x.endsWith(".json"))) {
+              const r = JSON.parse(fs.readFileSync("jest-out/" + f, "utf8"));
+              all.numFailedTests += r.numFailedTests; all.numTotalTests += r.numTotalTests;
+              all.testResults.push(...r.testResults);
+            }
+            fs.writeFileSync("jest-results.json", JSON.stringify(all));
+            console.log(`${all.numTotalTests - all.numFailedTests}/${all.numTotalTests} tests passed`);
+          '
+          exit $status
+
+      # كل اختبار فاشل -> annotation واضحة بصفحة الـ PR + جدول بالـ summary
+      - name: Report failed tests
+        if: failure()
+        run: |
+          [ -f jest-results.json ] || { echo "::error title=Jest::No results file (tests crashed before finishing)"; exit 0; }
+          node -e '
+            const r = require("./jest-results.json");
+            const lines = [];
+            for (const file of r.testResults) {
+              const rel = file.name.slice(file.name.indexOf("tests/"));
+              if (file.status === "failed" && file.assertionResults.length === 0) {
+                const msg = (file.message || "suite failed").replace(/\u001b\[[0-9;]*m/g, "").split("\n").slice(0, 6).join(" | ");
+                console.log(`::error title=${rel}::${msg.slice(0, 900)}`);
+                lines.push(`| ${rel} | (whole file) | ${msg.slice(0, 200)} |`);
+              }
+              for (const t of file.assertionResults.filter((a) => a.status === "failed")) {
+                const msg = (t.failureMessages[0] || "").replace(/\u001b\[[0-9;]*m/g, "").split("\n").slice(0, 4).join(" | ");
+                console.log(`::error title=${rel} - ${t.title}::${msg.slice(0, 900)}`);
+                lines.push(`| ${rel} | ${t.title} | ${msg.slice(0, 200)} |`);
+              }
+            }
+            const summary = [
+              `### ${r.numFailedTests} failed / ${r.numTotalTests} tests`,
+              "| File | Test | Error |", "|---|---|---|", ...lines,
+            ].join("\n");
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + "\n");
+          '

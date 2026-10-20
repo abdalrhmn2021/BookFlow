@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { Geist, Geist_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { Alexandria, IBM_Plex_Sans_Arabic } from "next/font/google";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { DEFAULT_LANG, dictionaries, isLang, LANG_COOKIE } from "@/i18n/dictionaries";
 import Navbar from "@/components/Navbar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Two families, both with Arabic AND Latin letters -> the page looks the same in both languages.
+//   Alexandria  -> headings (font-display)
+//   Plex Arabic -> everything else (font-sans)
+const heading = Alexandria({
+  variable: "--font-heading",
+  subsets: ["arabic", "latin"],
+  weight: ["500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const plexArabic = IBM_Plex_Sans_Arabic({
-  variable: "--font-arabic",
-  subsets: ["arabic"],
+const body = IBM_Plex_Sans_Arabic({
+  variable: "--font-body",
+  subsets: ["arabic", "latin"],
   weight: ["400", "500", "600", "700"],
 });
 
@@ -43,7 +42,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang={lang}
       dir={dictionaries[lang].dir}
-      className={`${geistSans.variable} ${geistMono.variable} ${plexArabic.variable} h-full antialiased`}
+      className={`${heading.variable} ${body.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">
         <LanguageProvider initialLang={lang}>

@@ -53,9 +53,9 @@ export default function HoursTab({ tenant, onSaved }: { tenant: TenantInfo; onSa
 
   return (
     <div>
-      <p className="text-sm text-gray-500">{h.subtitle}</p>
+      <p className="text-sm text-navy-500">{h.subtitle}</p>
 
-      <ul className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+      <ul className="mt-4 divide-y divide-navy-100 rounded-xl border border-navy-100 bg-white">
         {days.map((d) => (
           <li key={d.day} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
             <label className="flex w-36 items-center gap-2">
@@ -66,34 +66,34 @@ export default function HoursTab({ tenant, onSaved }: { tenant: TenantInfo; onSa
                 onChange={(e) =>
                   update(d.day, { isOpen: e.target.checked, open: d.open ?? "09:00", close: d.close ?? "17:00" })
                 }
-                className="h-4 w-4 accent-indigo-600"
+                className="h-4 w-4 accent-coral-600"
               />
               <span className="font-medium">{t.days[d.day]}</span>
             </label>
 
             {d.isOpen ? (
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">{h.from}</span>
+                <span className="text-navy-500">{h.from}</span>
                 <input
                   type="time"
                   step={900} // 15-minute steps, like the booking slots
                   dir="ltr"
                   value={d.open ?? ""}
                   onChange={(e) => update(d.day, { open: e.target.value })}
-                  className="rounded-md border border-gray-300 px-2 py-1"
+                  className="rounded-lg border border-navy-200 px-2 py-1"
                 />
-                <span className="text-gray-500">{h.to}</span>
+                <span className="text-navy-500">{h.to}</span>
                 <input
                   type="time"
                   step={900}
                   dir="ltr"
                   value={d.close ?? ""}
                   onChange={(e) => update(d.day, { close: e.target.value })}
-                  className="rounded-md border border-gray-300 px-2 py-1"
+                  className="rounded-lg border border-navy-200 px-2 py-1"
                 />
               </div>
             ) : (
-              <span className="text-sm text-gray-400">{h.closed}</span>
+              <span className="text-sm text-navy-400">{h.closed}</span>
             )}
 
             {!isValidDay(d) && <span className="w-full text-sm text-red-600">{h.invalid}</span>}
@@ -106,7 +106,7 @@ export default function HoursTab({ tenant, onSaved }: { tenant: TenantInfo; onSa
         <button onClick={handleSave} disabled={saving || !allValid} className={btnPrimary}>
           {saving ? t.common.saving : h.save}
         </button>
-        {saved && <span className="text-sm text-green-600">{h.saved}</span>}
+        {saved && <span className="text-sm text-emerald-700">{h.saved}</span>}
       </div>
     </div>
   );
