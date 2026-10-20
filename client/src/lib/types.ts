@@ -1,6 +1,3 @@
-// Shapes of the data the backend sends us.
-// If the backend response changes, TypeScript points at every place that breaks.
-
 export type Role = "superadmin" | "owner" | "staff" | "customer";
 
 export interface Business {
@@ -9,33 +6,22 @@ export interface Business {
   slug: string;
 }
 
-// What GET /api/auth/me returns
 export interface User {
   id: string;
   name: string;
   email: string;
   phone?: string;
   role: Role;
-  business: Business | null; // owner/staff only
+  business: Business | null;
 }
 
-// ---------- Public booking page ----------
+export type DayName = "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";
 
-export type DayName =
-  | "sunday"
-  | "monday"
-  | "tuesday"
-  | "wednesday"
-  | "thursday"
-  | "friday"
-  | "saturday";
-
-// One row of the weekly schedule. open/close only exist on open days.
 export interface WorkingDay {
   day: DayName;
   isOpen: boolean;
-  open?: string; //  "09:00"
-  close?: string; // "17:00"
+  open?: string;
+  close?: string;
 }
 
 export interface PublicService {
@@ -43,7 +29,7 @@ export interface PublicService {
   name: string;
   description?: string;
   price: number;
-  duration: number; // minutes
+  duration: number;
 }
 
 export interface PublicStaff {
@@ -51,48 +37,39 @@ export interface PublicStaff {
   name: string;
 }
 
-// What GET /api/public/businesses/:slug returns
 export interface PublicBusinessPage {
   business: {
     name: string;
     slug: string;
-    timezone: string; // e.g. "Asia/Hebron" - every date/time on the page is in THIS zone
+    timezone: string;
     workingHours: WorkingDay[];
   };
   services: PublicService[];
   staff: PublicStaff[];
 }
 
-// What GET /api/public/businesses/:slug/availability returns
 export interface Availability {
-  date: string; //   "2026-10-03"
-  isOpen: boolean; // false -> the business is closed that day (slots is empty)
-  slots: string[]; // free start times: ["09:00", "09:15", ...]
+  date: string;
+  isOpen: boolean;
+  slots: string[];
 }
-
-// ---------- Customer: my appointments ----------
 
 export type AppointmentStatus = "pending" | "confirmed" | "completed" | "cancelled" | "no-show";
 
-// What GET /api/appointments/me returns (one item).
-// tenantId / staffId are "populated" by the backend: the id is replaced by a small object.
 export interface MyAppointment {
   _id: string;
   tenantId: { _id: string; name: string; slug: string; timezone: string };
   staffId: { _id: string; name: string };
-  serviceName: string; // snapshot at booking time - stays the same even if the service changes
+  serviceName: string;
   price: number;
   duration: number;
-  startTime: string; // ISO date from JSON, e.g. "2026-10-03T07:30:00.000Z" (UTC)
+  startTime: string;
   endTime: string;
   status: AppointmentStatus;
   notes?: string;
 }
 
-// What POST /api/public/businesses/:slug/appointments returns (guest booking)
 export interface GuestBookingResult {
-  // The secret "manage my booking" token -> link /booking/<token>.
-  // Sent ONCE: the server keeps only its hash, it can never show it again.
   manageToken: string;
   appointment: {
     id: string;
@@ -106,7 +83,6 @@ export interface GuestBookingResult {
   };
 }
 
-// What GET /api/public/bookings/:token returns (the guest's "manage my booking" page)
 export interface GuestBooking {
   business: { name: string; slug: string; timezone: string } | null;
   serviceName: string;
@@ -118,21 +94,17 @@ export interface GuestBooking {
   status: AppointmentStatus;
   notes?: string;
   guestName?: string;
-  guestPhone: string; // masked by the server: "*******456"
-  canCancel: boolean; // the server decides (status + the 2-hour rule) - the page just listens
-  cancelDeadline: string; // ISO: last moment the guest may cancel online
+  guestPhone: string;
+  canCancel: boolean;
+  cancelDeadline: string;
   cancellation: { reason?: string; cancelledAt?: string; byGuest: boolean } | null;
 }
 
-// What GET /api/public/businesses returns (one item)
 export interface BusinessListItem {
   name: string;
   slug: string;
 }
 
-// ---------- Business dashboard ----------
-
-// GET /api/tenants/me
 export interface TenantInfo {
   id: string;
   name: string;
@@ -142,17 +114,15 @@ export interface TenantInfo {
   workingHours: WorkingDay[];
 }
 
-// GET /api/services (full documents, including hidden ones)
 export interface Service {
   _id: string;
   name: string;
   description?: string;
   price: number;
   duration: number;
-  isActive: boolean; // false = hidden from the booking page ("soft delete")
+  isActive: boolean;
 }
 
-// GET /api/staff (the backend's toStaffDTO - note: `id`, not `_id`)
 export interface StaffMember {
   id: string;
   name: string;
@@ -161,13 +131,8 @@ export interface StaffMember {
   isActive: boolean;
 }
 
-// GET /api/appointments/business
 export interface BusinessAppointment {
   _id: string;
-  // A booking comes from EITHER a customer account OR a guest (no account):
-  //   customer -> customerId is filled, guest is missing
-  //   guest    -> customerId is missing/null, guest is filled
-  //   customerId is also null if the customer's account was deleted
   customerId?: { _id: string; name: string; phone?: string; email: string } | null;
   guest?: { name: string; phone: string };
   staffId: { _id: string; name: string };
@@ -178,14 +143,13 @@ export interface BusinessAppointment {
   endTime: string;
   status: AppointmentStatus;
   notes?: string;
-  reminderSentAt?: string; // ISO date - set when someone on the team sent a WhatsApp reminder
+  reminderSentAt?: string;
 }
 
-// GET /api/appointments/business/stats - the dashboard's "Overview" page
 export interface BusinessStats {
-  date: string; // today, "YYYY-MM-DD", in the business's timezone
+  date: string;
   today: { total: number; byStatus: Record<AppointmentStatus, number>; revenue: number };
-  week: { date: string; count: number }[]; // today + the next 6 days (active appointments only)
-  toConfirm: number; // pending AND still in the future
-  next: BusinessAppointment | null; // the soonest active appointment, or null
+  week: { date: string; count: number }[];
+  toConfirm: number;
+  next: BusinessAppointment | null;
 }

@@ -1,6 +1,3 @@
-// ============================================================
-// نظرة عامة بلوحة التحكم: GET /api/appointments/business/stats
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 const Appointment = require("../src/models/Appointment");
@@ -14,7 +11,6 @@ const stats = (user) => request(h.app).get("/api/appointments/business/stats").s
 
 const HOUR = 60 * 60000;
 
-// موعد مباشرة بالداتابيس، بعد عدد ساعات من هلأ (سالب = بالماضي)
 function makeAppointment(biz, { staffIndex = 0, inHours = 1, status = "pending", price = 20 } = {}) {
   const startTime = new Date(Date.now() + inHours * HOUR);
   return Appointment.create({
@@ -36,15 +32,14 @@ describe("Business overview stats", () => {
     const biz = await h.makeBusiness("stats-salon");
     await makeAppointment(biz, { inHours: 2 * 24, status: "pending" });
     const soonest = await makeAppointment(biz, { inHours: 1, status: "confirmed" });
-    await makeAppointment(biz, { inHours: 3 * 24, status: "cancelled" }); // ما بينحسب
-    await makeAppointment(biz, { inHours: 30 * 24, status: "pending" }); // بعيد، بس لسا بدو تأكيد
+    await makeAppointment(biz, { inHours: 3 * 24, status: "cancelled" });
+    await makeAppointment(biz, { inHours: 30 * 24, status: "pending" });
 
     const res = await stats(biz.owner);
     expect(res.status).toBe(200);
     expect(res.body.week).toHaveLength(7);
     expect(res.body.week[0].date).toBe(res.body.date);
 
-    // الملغي ما بينعد بالأسبوع: 2 فعّالين بس جوا السبع أيام
     const weekTotal = res.body.week.reduce((sum, d) => sum + d.count, 0);
     expect(weekTotal).toBe(2);
 
@@ -55,10 +50,11 @@ describe("Business overview stats", () => {
 
   test("today's revenue skips cancelled and no-show", async () => {
     const biz = await h.makeBusiness("revenue-salon");
-    // كلهم "اليوم" حسب توقيت البزنس: نختار ساعة ما بتعدّي نص الليل
     const tz = biz.tenant.timezone;
-    const localHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
-    const safe = localHour < 23 ? 0.25 : -0.5; // بعد ربع ساعة، أو قبل نص ساعة لو الساعة 23
+    const localHour = Number(
+      new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date()),
+    );
+    const safe = localHour < 23 ? 0.25 : -0.5;
 
     await makeAppointment(biz, { inHours: safe, status: "confirmed", price: 50 });
     await makeAppointment(biz, { inHours: safe, status: "pending", price: 25 });

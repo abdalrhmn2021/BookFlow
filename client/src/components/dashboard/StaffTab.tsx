@@ -1,9 +1,5 @@
 "use client";
 
-// Owner manages staff accounts. The server decides role="staff" and the tenantId -
-// the owner only sends name/email/password/phone.
-// "Deactivate" is a soft delete: the account can't log in anymore, old appointments stay.
-
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
@@ -13,8 +9,8 @@ import type { StaffMember } from "@/lib/types";
 interface StaffInput {
   name: string;
   phone?: string;
-  email?: string; //    create only - the backend doesn't allow changing it
-  password?: string; // create only
+  email?: string;
+  password?: string;
 }
 
 export default function StaffTab() {
@@ -23,7 +19,7 @@ export default function StaffTab() {
 
   const [staff, setStaff] = useState<StaffMember[] | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
-  const [editing, setEditing] = useState<string | null>(null); // "new" | staff id | null
+  const [editing, setEditing] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{ id: string; err: unknown } | null>(null);
 
@@ -103,7 +99,10 @@ export default function StaffTab() {
                 <StaffForm initial={s} onSave={(data) => save(data, s.id)} onCancel={() => setEditing(null)} />
               </li>
             ) : (
-              <li key={s.id} className={`rounded-xl border border-navy-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}>
+              <li
+                key={s.id}
+                className={`rounded-xl border border-navy-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-coral-100 font-bold text-coral-700">
@@ -135,7 +134,7 @@ export default function StaffTab() {
                 </div>
                 {rowError?.id === s.id && <p className={`mt-2 ${errorBox}`}>{tError(rowError.err)}</p>}
               </li>
-            )
+            ),
           )}
         </ul>
       )}
@@ -143,7 +142,6 @@ export default function StaffTab() {
   );
 }
 
-// Create: name, email, password, phone.  Edit: name and phone only (what the backend allows).
 function StaffForm({
   initial,
   onSave,
@@ -173,10 +171,15 @@ function StaffForm({
       await onSave(
         isEdit
           ? { name: form.name.trim(), phone: form.phone.trim() }
-          : { name: form.name.trim(), phone: form.phone.trim() || undefined, email: form.email, password: form.password }
+          : {
+              name: form.name.trim(),
+              phone: form.phone.trim() || undefined,
+              email: form.email,
+              password: form.password,
+            },
       );
     } catch (err) {
-      setError(tError(err)); // e.g. "email already exists"
+      setError(tError(err));
       setSaving(false);
     }
   };
@@ -198,12 +201,30 @@ function StaffForm({
           <>
             <label className="block">
               <span className="text-sm font-medium">{st.email}</span>
-              <input name="email" type="email" required dir="ltr" autoComplete="off" value={form.email} onChange={handleChange} className={inputClass} />
+              <input
+                name="email"
+                type="email"
+                required
+                dir="ltr"
+                autoComplete="off"
+                value={form.email}
+                onChange={handleChange}
+                className={inputClass}
+              />
             </label>
             <label className="block">
               <span className="text-sm font-medium">{st.password}</span>
-              {/* autoComplete="new-password": stop the browser from filling in the OWNER's saved password */}
-              <input name="password" type="password" required minLength={8} dir="ltr" autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
+              <input
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                dir="ltr"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={handleChange}
+                className={inputClass}
+              />
             </label>
           </>
         )}

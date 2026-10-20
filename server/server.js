@@ -1,7 +1,5 @@
 require("dotenv").config();
 
-// Fail fast: refuse to boot with missing/unsafe config instead of crashing
-// later on the first login request.
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "JWT_EXPIRES_IN"];
 const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
 if (missing.length) {
@@ -11,7 +9,7 @@ if (missing.length) {
 if (process.env.JWT_SECRET === "your_jwt_secret_here" || process.env.JWT_SECRET.length < 32) {
   console.error(
     "JWT_SECRET is too weak (placeholder or < 32 chars). Generate one with:\n" +
-      "  node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+      "  node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
   );
   process.exit(1);
 }

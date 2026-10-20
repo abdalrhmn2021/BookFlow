@@ -2,16 +2,10 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { readAuthCookie } = require("../utils/authCookie");
 
-// Verifies the JWT and attaches the current user to req.user
 exports.protect = async (req, res, next) => {
   try {
-    // التوكن من مكانين:
-    //   1) الكوكي httpOnly - المتصفح (الواجهة) بيبعثها تلقائياً
-    //   2) Authorization: Bearer ... - لأدوات زي REST Client و Postman والاختبارات
     const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : readAuthCookie(req);
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : readAuthCookie(req);
 
     if (!token) {
       return res.status(401).json({ message: "Not authorized, no token" });
@@ -41,7 +35,6 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// Restricts a route to specific roles, e.g. restrictTo("owner", "staff")
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {

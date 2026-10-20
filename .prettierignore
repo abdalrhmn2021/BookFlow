@@ -1,0 +1,8 @@
+node_modules
+.next
+coverage
+package-lock.json
+*.md
+docs
+client/public
+client/next-env.d.ts

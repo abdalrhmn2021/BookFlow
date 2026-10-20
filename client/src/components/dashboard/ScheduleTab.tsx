@@ -1,8 +1,5 @@
 "use client";
 
-// The daily schedule: every appointment of ONE day + buttons to move it through its statuses.
-// Owner sees all staff; a staff member only gets his own (the backend filters it - not us).
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -14,24 +11,20 @@ import { btnSecondary, emptyBox, errorBox } from "@/lib/ui";
 import { toWhatsAppNumber, whatsAppLink } from "@/lib/whatsapp";
 import type { AppointmentStatus, BusinessAppointment } from "@/lib/types";
 
-// A guest booking keeps its phone on the appointment itself; a customer's is on the account
 const phoneOf = (a: BusinessAppointment) => a.guest?.phone ?? a.customerId?.phone;
 const nameOf = (a: BusinessAppointment) => a.guest?.name ?? a.customerId?.name;
 
-// Same rule as the backend's markReminded: still active AND still in the future
 const canRemind = (a: BusinessAppointment) =>
   (a.status === "pending" || a.status === "confirmed") && new Date(a.startTime) > new Date();
 
-// Same minimum as the backend (MIN_REASON_LENGTH in appointment.controller)
 const MIN_REASON_LENGTH = 10;
 
-// A mirror of the backend's ALLOWED_TRANSITIONS + time rules (appointment.controller).
-// It only decides which buttons to SHOW - the backend still checks every request.
+// Mirrors the API's allowed transitions; only decides which buttons to show.
 function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
   const started = new Date(a.startTime) <= new Date();
   if (a.status === "pending") return started ? [] : ["confirmed", "cancelled"];
   if (a.status === "confirmed") return started ? ["completed", "no-show"] : ["cancelled"];
-  return []; // completed / cancelled / no-show are final
+  return [];
 }
 
 const FILTERS: (AppointmentStatus | "all")[] = ["all", "pending", "confirmed", "completed", "cancelled", "no-show"];
@@ -41,13 +34,10 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
   const { t, tError } = useLanguage();
   const s = t.dashboard.schedule;
 
-  // "Today" in the BUSINESS's timezone (lazy initializer: calculated once, on the first render)
-  // (or the day that was clicked in "Overview", passed through the URL)
   const [date, setDate] = useState(() => initialDate ?? todayIn(timezone));
   const [filter, setFilter] = useState<AppointmentStatus | "all">("all");
   const [reloadTick, setReloadTick] = useState(0);
 
-  // Same "key" trick as the booking page: the result remembers which request it answers.
   const [result, setResult] = useState<{ key: string; list?: BusinessAppointment[]; error?: unknown } | null>(null);
   const key = `${date}|${filter}|${reloadTick}`;
 
@@ -75,37 +65,35 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
     };
   }, [date, filter, reloadTick]);
 
-  const current = result?.key === key ? result : null; // null -> loading
+  const current = result?.key === key ? result : null;
 
   const changeStatus = async (id: string, status: AppointmentStatus) => {
     setActionError(null);
     setBusyId(id);
     try {
-      // Cancelling needs a reason (the backend refuses without one)
-      await api.patch(`/appointments/${id}/status`, status === "cancelled" ? { status, reason: cancelReason.trim() } : { status });
-      // Change only this one item in the list (no reload needed)
+      await api.patch(
+        `/appointments/${id}/status`,
+        status === "cancelled" ? { status, reason: cancelReason.trim() } : { status },
+      );
       setResult((prev) =>
-        prev?.list ? { ...prev, list: prev.list.map((a) => (a._id === id ? { ...a, status } : a)) } : prev
+        prev?.list ? { ...prev, list: prev.list.map((a) => (a._id === id ? { ...a, status } : a)) } : prev,
       );
       setConfirmCancelId(null);
       setCancelReason("");
     } catch (err) {
       setActionError({ id, err });
-      // 409 = the appointment changed meanwhile (e.g. the customer cancelled it) -> load the fresh list
       if (err instanceof ApiError && err.status === 409) setReloadTick((n) => n + 1);
     } finally {
       setBusyId(null);
     }
   };
 
-  // Called when the WhatsApp link is clicked. The link itself opens WhatsApp (a normal <a>,
-  // so the browser never blocks it as a popup) - here we only RECORD that it was sent.
   const markReminded = async (id: string) => {
     setActionError(null);
     try {
       const { reminderSentAt } = await api.patch<{ reminderSentAt: string }>(`/appointments/${id}/reminded`);
       setResult((prev) =>
-        prev?.list ? { ...prev, list: prev.list.map((a) => (a._id === id ? { ...a, reminderSentAt } : a)) } : prev
+        prev?.list ? { ...prev, list: prev.list.map((a) => (a._id === id ? { ...a, reminderSentAt } : a)) } : prev,
       );
     } catch (err) {
       setActionError({ id, err });
@@ -115,7 +103,6 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
   const today = todayIn(timezone);
   const list = current?.list ?? [];
 
-  // The ready-made reminder text. "today" / "tomorrow" read better than a date.
   const reminderText = (a: BusinessAppointment) => {
     const apptDate = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(a.startTime));
     const day =
@@ -134,25 +121,32 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
     });
   };
 
-  // Label + color of each action button
   const actionButton: Record<AppointmentStatus, { label: string; className: string }> = {
     confirmed: { label: s.confirm, className: "bg-navy-900 text-white hover:bg-navy-700" },
     completed: { label: s.complete, className: "bg-navy-900 text-white hover:bg-navy-700" },
     "no-show": { label: s.noShow, className: "border border-navy-200 bg-white text-navy-800 hover:bg-navy-50" },
     cancelled: { label: s.cancel, className: "text-red-700 hover:bg-red-50" },
-    pending: { label: "", className: "" }, // never a target
+    pending: { label: "", className: "" },
   };
 
   return (
     <div>
-      {/* ---- Day bar: ‹ date › + "today" ---- */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1">
-          {/* rtl:rotate-180 -> the arrows point the right way in Arabic too */}
-          <button onClick={() => setDate(addDays(date, -1))} className={`${btnSecondary} px-2.5`} aria-label={s.prevDay} title={s.prevDay}>
+          <button
+            onClick={() => setDate(addDays(date, -1))}
+            className={`${btnSecondary} px-2.5`}
+            aria-label={s.prevDay}
+            title={s.prevDay}
+          >
             <IconChevron className="h-4 w-4 rotate-180 rtl:rotate-0" />
           </button>
-          <button onClick={() => setDate(addDays(date, 1))} className={`${btnSecondary} px-2.5`} aria-label={s.nextDay} title={s.nextDay}>
+          <button
+            onClick={() => setDate(addDays(date, 1))}
+            className={`${btnSecondary} px-2.5`}
+            aria-label={s.nextDay}
+            title={s.nextDay}
+          >
             <IconChevron className="h-4 w-4 rtl:rotate-180" />
           </button>
           <h2 className="font-display ms-2 text-lg font-semibold">
@@ -180,7 +174,6 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
         </div>
       </div>
 
-      {/* ---- Status filter (segmented) ---- */}
       <div className="mt-5 flex gap-1 overflow-x-auto rounded-xl bg-navy-100/60 p-1">
         {FILTERS.map((f) => (
           <button
@@ -196,7 +189,6 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
         ))}
       </div>
 
-      {/* ---- The day as a timeline ---- */}
       <div className="mt-6">
         {!current ? (
           <p className="text-sm text-navy-500">{s.loading}</p>
@@ -216,7 +208,6 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                 const finished = a.status === "completed" || a.status === "cancelled" || a.status === "no-show";
                 return (
                   <li key={a._id} className="relative flex gap-3 pb-4 sm:gap-5">
-                    {/* Time rail: the time + a dot on a vertical line connecting the day */}
                     <div dir="ltr" className="tabular w-12 shrink-0 pt-4 text-end sm:w-14">
                       <p className="font-semibold text-navy-900">{start}</p>
                       <p className="text-xs text-navy-400">{end}</p>
@@ -230,10 +221,11 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                       />
                     </div>
 
-                    <div className={`min-w-0 flex-1 rounded-xl border border-navy-100 bg-white p-4 ${finished ? "opacity-75" : ""}`}>
+                    <div
+                      className={`min-w-0 flex-1 rounded-xl border border-navy-100 bg-white p-4 ${finished ? "opacity-75" : ""}`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          {/* Who booked: a guest (name + phone only) or a customer account */}
                           <p className="flex flex-wrap items-center gap-2 font-semibold">
                             {nameOf(a) ?? s.noCustomer}
                             {a.guest && (
@@ -244,22 +236,23 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                           </p>
                           <p className="mt-0.5 text-sm text-navy-600">
                             {a.serviceName}
-                            {/* The owner sees everyone's appointments -> show WHO does it */}
                             {user?.role === "owner" && (
                               <>
                                 {" "}
                                 {s.with} <span className="font-medium text-navy-900">{a.staffId.name}</span>
                               </>
                             )}
-                            {/* <bdi> keeps "50 ₪" in one piece inside Arabic text; the margin stays on the outer span
-                                (a dir="ltr" element would flip what "ms-2" means) */}
                             <span className="tabular ms-2 text-navy-400">
                               <bdi>{formatPrice(a.price)}</bdi>
                             </span>
                           </p>
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                             {phoneOf(a) && (
-                              <a href={`tel:${phoneOf(a)}`} dir="ltr" className="inline-flex items-center gap-1.5 text-navy-700 hover:text-coral-700">
+                              <a
+                                href={`tel:${phoneOf(a)}`}
+                                dir="ltr"
+                                className="inline-flex items-center gap-1.5 text-navy-700 hover:text-coral-700"
+                              >
                                 <IconPhone className="h-4 w-4" />
                                 {phoneOf(a)}
                               </a>
@@ -278,7 +271,6 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                       {(actions.length > 0 || canRemind(a)) && (
                         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-navy-50 pt-3">
                           {confirmCancelId === a._id ? (
-                            // Cancelling is the only "dangerous" action -> ask first
                             <div className="w-full space-y-2">
                               <p className="text-sm text-navy-600">{s.cancelQuestion}</p>
                               <label className="block">
@@ -299,7 +291,11 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                                 >
                                   {s.yesCancel}
                                 </button>
-                                <button onClick={() => setConfirmCancelId(null)} disabled={busy} className="rounded-md px-3 py-1.5 text-sm text-navy-600 hover:bg-navy-50">
+                                <button
+                                  onClick={() => setConfirmCancelId(null)}
+                                  disabled={busy}
+                                  className="rounded-md px-3 py-1.5 text-sm text-navy-600 hover:bg-navy-50"
+                                >
                                   {s.keep}
                                 </button>
                               </div>
@@ -312,7 +308,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                                   disabled={busy}
                                   onClick={() => {
                                     if (status !== "cancelled") return changeStatus(a._id, status);
-                                    setConfirmCancelId(a._id); // ask first + start with an empty reason
+                                    setConfirmCancelId(a._id);
                                     setCancelReason("");
                                   }}
                                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${actionButton[status].className}`}
@@ -320,7 +316,6 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                                   {actionButton[status].label}
                                 </button>
                               ))}
-                              {/* WhatsApp reminder - only when it still makes sense and we have a usable number */}
                               {canRemind(a) && toWhatsAppNumber(phoneOf(a)) && (
                                 <span className="ms-auto inline-flex flex-wrap items-center gap-2">
                                   {a.reminderSentAt && (

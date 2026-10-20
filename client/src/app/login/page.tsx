@@ -8,8 +8,6 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
 import { DEMO_ACCOUNTS, DEMO_ENABLED, DEMO_PASSWORD } from "@/lib/demo";
 
-// useSearchParams() reads the URL in the browser, so Next.js needs a <Suspense>
-// boundary around it (otherwise `next build` fails for this page).
 export default function LoginPage() {
   return (
     <Suspense fallback={<Loading />}>
@@ -22,7 +20,6 @@ function LoginForm() {
   const { login } = useAuth();
   const { t, tError } = useLanguage();
   const router = useRouter();
-  // e.g. /login?next=/book/al-ward -> go back to the booking page after login
   const next = safeNext(useSearchParams().get("next"));
 
   const [email, setEmail] = useState("");
@@ -30,22 +27,21 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Shared by the form AND the demo buttons
   const doLogin = async (loginEmail: string, loginPassword: string) => {
     setError("");
-    setSubmitting(true); // disables the buttons -> no double submit
+    setSubmitting(true);
     try {
       const user = await login(loginEmail, loginPassword);
-      router.replace(next ?? homeFor(user.role)); // replace: "back" won't return to the login form
+      router.replace(next ?? homeFor(user.role));
     } catch (err) {
-      setError(tError(err)); // e.g. "Invalid credentials" -> translated from the dictionary
+      setError(tError(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // stop the browser from reloading the page
+    e.preventDefault();
     doLogin(email, password);
   };
 
@@ -60,7 +56,6 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
           <span className="text-sm font-medium">{t.login.email}</span>
-          {/* dir="ltr": emails and passwords are always left-to-right, even on an Arabic page */}
           <input
             type="email"
             required
@@ -96,7 +91,6 @@ function LoginForm() {
         </button>
       </form>
 
-      {/* One-click demo: recruiters won't create an account just to look around */}
       {DEMO_ENABLED && (
         <div className="mt-6 rounded-lg bg-navy-50 p-4">
           <p className="text-center text-sm font-medium text-navy-900">{t.login.demoTitle}</p>

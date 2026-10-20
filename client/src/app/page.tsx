@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { btnPrimary } from "@/lib/ui";
 
-// The sample card's time slots. One of them is "taken by you" (coral) - the whole idea of the app.
 const SAMPLE_SLOTS = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30"];
 const SAMPLE_PICKED = "10:30";
 
@@ -14,7 +13,6 @@ export default function Home() {
 
   return (
     <>
-      {/* ---- Hero: the promise on one side, what the customer actually sees on the other ---- */}
       <section className="bg-navy-950 text-white">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:py-24 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
@@ -35,7 +33,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Sample booking card - a picture of the product, not a real form (aria-hidden) */}
           <div aria-hidden="true" className="rounded-2xl bg-white p-6 text-navy-900 shadow-2xl shadow-black/30">
             <p className="font-display text-lg font-semibold">{s.business}</p>
             <div className="mt-4 flex items-center justify-between rounded-xl border-2 border-coral-500 bg-coral-50 px-4 py-3">
@@ -69,7 +66,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---- For business owners ---- */}
       <section className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-4 py-12">
         <div>
           <h2 className="font-display text-xl font-semibold">{t.home.forBusinessTitle}</h2>

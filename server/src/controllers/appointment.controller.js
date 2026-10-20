@@ -2,8 +2,6 @@ const Appointment = require("../models/Appointment");
 const Tenant = require("../models/Tenant");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
-// ACTIVE_STATUSES: الحالات اللي بتحجز وقت الموظف - معرّفة بمكان واحد بس (booking.service)
-// قواعد الإلغاء (ساعتين + طول السبب) كمان هناك، لأنه الضيف بيلغي بنفس القواعد
 const {
   bookAppointment,
   ACTIVE_STATUSES,
@@ -11,20 +9,11 @@ const {
   MIN_REASON_LENGTH,
 } = require("../services/booking.service");
 
-// Allowed values for ?when= in "my appointments"
 const WHEN_VALUES = ["upcoming", "past"];
 
-// @route  POST /api/appointments
-// @access customer
-// Body: { slug, serviceId, staffId, date: "2026-09-25", time: "10:30", notes? }
-//
-// كل قواعد الحجز (التحقق، ساعات العمل، منع الحجز المزدوج...) صارت بـ
-// services/booking.service.js، لأنه حجز الضيف بيستخدمها كمان.
-// هون بس الشغلات الخاصة بالزبون المسجّل.
 exports.createAppointment = async (req, res) => {
   const { slug, serviceId, staffId, date, time, notes } = req.body || {};
 
-  // أي خطأ (400/404/409) بيترمي من جوا الـ service وبيوصل للـ errorHandler لحاله
   const { appointment, tenant } = await bookAppointment({
     slug,
     serviceId,
@@ -32,10 +21,9 @@ exports.createAppointment = async (req, res) => {
     date,
     time,
     notes,
-    customerId: req.user.id, // from the verified token
+    customerId: req.user.id,
   });
 
-  // First booking at this business? Link the customer to it (does nothing if already linked)
   await CustomerTenant.updateOne(
     { userId: req.user.id, tenantId: tenant._id },
     { $setOnInsert: { userId: req.user.id, tenantId: tenant._id } },
@@ -45,16 +33,9 @@ exports.createAppointment = async (req, res) => {
   res.status(201).json({ appointment });
 };
 
-// @route  GET /api/appointments/me?status=cancelled&when=upcoming
-// @access customer
-// Both query params are optional:
-//   status -> one of Appointment.STATUSES
-//   when   -> "upcoming" (from now on) | "past" (before now)
 exports.getMyAppointments = async (req, res) => {
   const { status, when } = req.query;
 
-  // 1) Validate the filters - a typo like ?status=canceled should be an error,
-  //    not a silent empty list
   if (status && !Appointment.STATUSES.includes(status)) {
     return res.status(400).json({
       message: `Invalid status. Valid statuses are: ${Appointment.STATUSES.join(", ")}`,
@@ -66,8 +47,6 @@ exports.getMyAppointments = async (req, res) => {
     });
   }
 
-  // 2) Build the filter step by step - only the customer's own appointments,
-  //    plus whatever the client asked for
   const filter = { customerId: req.user.id };
 
   if (status) filter.status = status;
@@ -76,11 +55,8 @@ exports.getMyAppointments = async (req, res) => {
   if (when === "upcoming") filter.startTime = { $gte: now };
   if (when === "past") filter.startTime = { $lt: now };
 
-  // 3) Upcoming: nearest first. Past: most recent first.
   const sortOrder = when === "past" ? -1 : 1;
 
-  // A customer can book at several businesses, so each appointment needs
-  // the business name (and slug, to link back to its booking page) + the staff name.
   const appointments = await Appointment.find(filter)
     .populate("tenantId", "name slug timezone")
     .populate("staffId", "name")
@@ -89,13 +65,8 @@ exports.getMyAppointments = async (req, res) => {
   res.status(200).json({ count: appointments.length, appointments });
 };
 
-// @route  PATCH /api/appointments/:id/cancel
-// @access customer
 exports.cancelMyAppointment = async (req, res) => {
-  // 0) A reason is required (trim first, so "   " counts as empty)
   const { reason } = req.body || {};
-  // typeof: لو انبعت reason كـ object أو رقم، reason.trim() كان بيضرب 500.
-  // نفس فكرة فحص الـ login: ما منثق إنه الـ body بيبعث نص.
   const cleanReason = typeof reason === "string" ? reason.trim() : "";
 
   if (!cleanReason) {
@@ -107,31 +78,21 @@ exports.cancelMyAppointment = async (req, res) => {
     });
   }
 
-  // 1) Get the appointment - but ONLY if it belongs to this customer.
-  //    Both conditions live in the query itself, so another customer's
-  //    appointment simply "doesn't exist" for this user (prevents IDOR).
   const appointment = await Appointment.findOne({
     _id: req.params.id,
-    customerId: req.user.id, // from the verified token, never from the body
+    customerId: req.user.id,
   });
 
-  // 404 (not 403): we don't even confirm that someone else's appointment exists
   if (!appointment) {
     return res.status(404).json({ message: "Appointment not found" });
   }
 
-  // 2) Only pending/confirmed appointments can be cancelled.
-  //    Cancelling a completed / cancelled / no-show one makes no sense.
-  //    409 Conflict: the request is valid, but it conflicts with the current state.
   if (!ACTIVE_STATUSES.includes(appointment.status)) {
     return res.status(409).json({
       message: `Can't cancel an appointment that is ${appointment.status}`,
     });
   }
 
-  // 3) Not less than 2 hours before the start.
-  //    This also covers appointments that already started or are in the past:
-  //    there timeLeft is negative, so it's always below the limit.
   const timeLeft = appointment.startTime - Date.now();
   if (timeLeft < CUSTOMER_CANCEL_LIMIT_MS) {
     return res.status(400).json({
@@ -139,62 +100,38 @@ exports.cancelMyAppointment = async (req, res) => {
     });
   }
 
-  // 4) الإلغاء بشكل ذرّي (atomic): نلغي فقط إذا الموعد لسا فعّال.
-  //    بين الخطوة 1 وهلأ، ممكن يكون الموظف أو صاحب البزنس غيّر الموعد
-  //    (مثلاً لغاه هو وكتب سببه). لو استخدمنا appointment.save()
-  //    رح نكتب فوق تعديلهم بدون ما ننتبه.
-  //    لما نحط الحالة جوا الفلتر، MongoDB بيعمل "تحقق + كتابة" بخطوة وحدة.
-  //    و"cancelled" مش من ACTIVE_STATUSES، فالموعد بيرجع متاح لغيره.
   const updated = await Appointment.findOneAndUpdate(
     {
       _id: appointment._id,
-      customerId: req.user.id, // لسا موعده هو بس (حماية من IDOR)
-      status: { $in: ACTIVE_STATUSES }, // لسا pending أو confirmed
+      customerId: req.user.id,
+      status: { $in: ACTIVE_STATUSES },
     },
     {
-      // $set بيغيّر هالحقول بس، والباقي (السعر، الوقت...) ما بينلمس
       $set: {
         status: "cancelled",
         cancellation: {
-          reason: cleanReason, // السبب بعد trim
-          cancelledBy: req.user.id, // مين لغى (من التوكن)
-          cancelledAt: new Date(), // إمتى لغى
+          reason: cleanReason,
+          cancelledBy: req.user.id,
+          cancelledAt: new Date(),
         },
       },
     },
-    // after = رجّع الموعد بعد التعديل، و runValidators = شغّل قواعد الـ Schema
     { returnDocument: "after", runValidators: true },
   );
 
-  // null = ما في موعد طابق الفلتر = حدا غيّر الحالة بعد ما قرأناها
-  // 409 لأنه الطلب سليم بس بيتعارض مع الحالة الحالية
   if (!updated) {
     return res.status(409).json({
       message: "This appointment was changed by someone else, please reload",
     });
   }
 
-  // نرجّع updated (النسخة الجديدة) وليس appointment (القديمة)
-  res
-    .status(200)
-    .json({ message: "Appointment cancelled", appointment: updated });
+  res.status(200).json({ message: "Appointment cancelled", appointment: updated });
 };
 
-// ============================================================
-// BUSINESS SIDE - owner and staff manage the appointments
-// ============================================================
+// Owners see the whole business; staff only their own appointments.
+const businessFilter = (user, tenantId) => (user.role === "staff" ? { tenantId, staffId: user.id } : { tenantId });
 
-// Who can see what:
-//   owner -> every appointment of HIS business
-//   staff -> only appointments where HE is the staff member
-// Both rules are built into the query filter itself, so a staff member can
-// never read or change a colleague's appointment (it simply "doesn't exist" for him).
-const businessFilter = (user, tenantId) =>
-  user.role === "staff" ? { tenantId, staffId: user.id } : { tenantId };
-
-// The status "map": from each status, where are you allowed to go?
-// Anything not listed here is forbidden (e.g. completed -> pending).
-// completed / cancelled / no-show are FINAL: history must not be rewritten.
+// completed / cancelled / no-show are final.
 const ALLOWED_TRANSITIONS = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["completed", "no-show", "cancelled"],
@@ -203,9 +140,6 @@ const ALLOWED_TRANSITIONS = {
   "no-show": [],
 };
 
-// @route  GET /api/appointments/business?date=2026-10-03&status=pending
-// @access owner, staff
-// The business's appointments for ONE day (the daily schedule). Default: today.
 exports.getBusinessAppointments = async (req, res) => {
   const { status } = req.query;
 
@@ -215,22 +149,14 @@ exports.getBusinessAppointments = async (req, res) => {
     });
   }
 
-  // "Today" and the day's boundaries are in the BUSINESS's local time, not the server's.
-  // The server may run in UTC: at 01:00 in Hebron it's still "yesterday" in UTC.
   const tenant = await Tenant.findById(req.tenantId).select("timezone");
-  const date =
-    req.query.date ||
-    new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(
-      new Date(),
-    ); // en-CA -> "YYYY-MM-DD"
+  const date = req.query.date || new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(new Date());
 
   if (!isValidDate(date)) {
-    return res
-      .status(400)
-      .json({ message: "date must be a real date in YYYY-MM-DD format" });
+    return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
 
-  // [start of this day, start of next day) in local time -> converted to real UTC moments
+  // Day boundaries in the business's timezone, not the server's.
   const dayStart = localToDate(date, "00:00", tenant.timezone);
   const dayEnd = localToDate(nextDate(date), "00:00", tenant.timezone);
 
@@ -240,8 +166,6 @@ exports.getBusinessAppointments = async (req, res) => {
   };
   if (status) filter.status = status;
 
-  // populate() = "join": replace the id with the few fields we need from that document.
-  // The business may see its customer's phone (to call about the booking) - but not the password etc.
   const appointments = await Appointment.find(filter)
     .populate("customerId", "name phone email")
     .populate("staffId", "name")
@@ -250,24 +174,15 @@ exports.getBusinessAppointments = async (req, res) => {
   res.status(200).json({ date, count: appointments.length, appointments });
 };
 
-// كم يوم لقدّام بتعرض "نظرة عامة" (اليوم + 6 أيام)
 const OVERVIEW_DAYS = 7;
 
-// @route  GET /api/appointments/business/stats
-// @access owner, staff
-// أرقام صفحة "نظرة عامة" بلوحة التحكم، بطلب واحد بدل 7 طلبات من الواجهة:
-//   today       -> مواعيد اليوم: العدد حسب الحالة + الدخل المتوقع
-//   week        -> عدد المواعيد الفعّالة بكل يوم من الأيام السبعة الجاية
-//   toConfirm   -> كم موعد "بانتظار التأكيد" لسا بالمستقبل (شغل لازم ينعمل)
-//   next        -> أقرب موعد فعّال جاي (لبطاقة "الموعد الجاي")
-// الموظف بيشوف أرقام مواعيده هو بس (businessFilter) - نفس قاعدة جدول المواعيد.
+// Everything the dashboard Overview needs, in one request.
 exports.getBusinessStats = async (req, res) => {
   const tenant = await Tenant.findById(req.tenantId).select("timezone");
   const tz = tenant.timezone;
   const now = new Date();
   const base = businessFilter(req.user, req.tenantId);
 
-  // "اليوم" حسب توقيت البزنس، مش السيرفر
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now);
   const days = [today];
   while (days.length < OVERVIEW_DAYS) days.push(nextDate(days[days.length - 1]));
@@ -275,9 +190,7 @@ exports.getBusinessStats = async (req, res) => {
   const rangeStart = localToDate(today, "00:00", tz);
   const rangeEnd = localToDate(nextDate(days[days.length - 1]), "00:00", tz);
 
-  // 3 طلبات مستقلة -> Promise.all بيبعتهم مع بعض بدل ما نستنى واحد ورا الثاني
   const [inRange, toConfirm, next] = await Promise.all([
-    // كل مواعيد الأسبوع، بس الحقول اللي بنحسب منها. lean() = كائنات JS عادية (أخف وأسرع)
     Appointment.find({ ...base, startTime: { $gte: rangeStart, $lt: rangeEnd } })
       .select("startTime status price")
       .lean(),
@@ -288,7 +201,6 @@ exports.getBusinessStats = async (req, res) => {
       .populate("staffId", "name"),
   ]);
 
-  // كل موعد -> تاريخه المحلي ("YYYY-MM-DD") عشان نعرف بأي يوم ينحسب
   const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
   const week = days.map((date) => ({ date, count: 0 }));
   const byStatus = Object.fromEntries(Appointment.STATUSES.map((s) => [s, 0]));
@@ -303,7 +215,6 @@ exports.getBusinessStats = async (req, res) => {
     }
     if (date === today) {
       byStatus[a.status] += 1;
-      // الدخل المتوقع = كل شي ما انلغى وما غاب صاحبه
       if (active) revenue += a.price;
     }
   }
@@ -319,16 +230,7 @@ exports.getBusinessStats = async (req, res) => {
   });
 };
 
-// @route  PATCH /api/appointments/:id/reminded
-// @access owner, staff
-// The dashboard opens WhatsApp with a ready reminder message, then calls this so the whole
-// team sees "reminded at 14:05". We don't send anything ourselves - the business does, from
-// its own WhatsApp - so this endpoint only RECORDS that it happened.
 exports.markReminded = async (req, res) => {
-  // ONE atomic step: find + check + write. The appointment must be
-  //   - in this business (and his own, if he's staff)  -> otherwise 404
-  //   - still active and still in the future           -> reminding about a cancelled
-  //     or finished appointment makes no sense
   const updated = await Appointment.findOneAndUpdate(
     {
       _id: req.params.id,
@@ -341,7 +243,6 @@ exports.markReminded = async (req, res) => {
   );
 
   if (!updated) {
-    // Why did it fail? Doesn't exist for this user -> 404. Exists but not remindable -> 409.
     const exists = await Appointment.exists({ _id: req.params.id, ...businessFilter(req.user, req.tenantId) });
     if (!exists) return res.status(404).json({ message: "Appointment not found" });
     return res.status(409).json({ message: "Only upcoming active appointments can be reminded" });
@@ -350,9 +251,6 @@ exports.markReminded = async (req, res) => {
   res.status(200).json({ reminderSentAt: updated.reminderSentAt });
 };
 
-// @route  PATCH /api/appointments/:id/status
-// @access owner, staff
-// Body: { status: "confirmed" | "completed" | "no-show" | "cancelled" }
 exports.updateAppointmentStatus = async (req, res) => {
   const { status, reason } = req.body || {};
 
@@ -362,13 +260,10 @@ exports.updateAppointmentStatus = async (req, res) => {
     });
   }
 
-  // A reason is required only when cancelling (same rule as the customer side)
   const cleanReason = typeof reason === "string" ? reason.trim() : "";
   if (status === "cancelled") {
     if (!cleanReason) {
-      return res
-        .status(400)
-        .json({ message: "Cancellation reason is required" });
+      return res.status(400).json({ message: "Cancellation reason is required" });
     }
     if (cleanReason.length < MIN_REASON_LENGTH) {
       return res.status(400).json({
@@ -377,43 +272,29 @@ exports.updateAppointmentStatus = async (req, res) => {
     }
   }
 
-  // 1) Find it - only inside this business (and only his own, if he's staff)
   const appointment = await Appointment.findOne({
     _id: req.params.id,
     ...businessFilter(req.user, req.tenantId),
   });
-  if (!appointment)
-    return res.status(404).json({ message: "Appointment not found" });
+  if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
-  // 2) Is this move allowed by the map?
   const current = appointment.status;
   if (!ALLOWED_TRANSITIONS[current].includes(status)) {
-    return res
-      .status(409)
-      .json({ message: `Can't change status from ${current} to ${status}` });
+    return res.status(409).json({ message: `Can't change status from ${current} to ${status}` });
   }
 
-  // 3) Time rules
   const hasStarted = appointment.startTime <= new Date();
-  // You can't say "completed" or "didn't come" about something that hasn't happened yet
   if ((status === "completed" || status === "no-show") && !hasStarted) {
     return res.status(400).json({
       message: `Can't mark as ${status} before the appointment starts`,
     });
   }
-  // Confirming or cancelling only makes sense BEFORE it starts
   if ((status === "confirmed" || status === "cancelled") && hasStarted) {
     return res.status(400).json({
       message: `Can't mark as ${status} after the appointment started`,
     });
   }
 
-  // 4) Save ATOMICALLY - only if the status is STILL what we read in step 1.
-  //    Between step 1 and now, the customer may have cancelled it
-  //    (or the owner and staff clicked at the same moment).
-  //    A plain appointment.save() would silently overwrite that change.
-  //    With the status inside the filter, MongoDB does "check + write" as one step.
-  //    When cancelling, also record who/why/when.
   const update = { status };
   if (status === "cancelled") {
     update.cancellation = {
@@ -435,7 +316,5 @@ exports.updateAppointmentStatus = async (req, res) => {
     });
   }
 
-  res
-    .status(200)
-    .json({ message: `Appointment ${status}`, appointment: updated });
+  res.status(200).json({ message: `Appointment ${status}`, appointment: updated });
 };

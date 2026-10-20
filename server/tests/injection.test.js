@@ -1,11 +1,3 @@
-// ============================================================
-// اختبارات NoSQL injection على تسجيل الدخول والتسجيل
-// ============================================================
-// الهجوم: بدل ما نبعت الإيميل كنص، نبعته ككائن فيه operator من MongoDB.
-//   { "email": { "$gt": "" } }  =  "أي إيميل أكبر من نص فاضي"  =  أي مستخدم
-// لو السيرفر حطه بالاستعلام كما هو، بيدخل على أول حساب بالداتابيس
-// بدون ما يعرف إيميله.
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 
@@ -15,7 +7,7 @@ afterAll(h.disconnect);
 
 describe("NoSQL injection", () => {
   test("login with an object as email is rejected (400) and returns no token", async () => {
-    await h.makeCustomer("victim"); // باسورده password123
+    await h.makeCustomer("victim");
 
     const res = await request(h.app)
       .post("/api/auth/login")
@@ -23,7 +15,7 @@ describe("NoSQL injection", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.token).toBeUndefined();
-    expect(res.headers["set-cookie"]).toBeUndefined(); // ولا كوكي دخول
+    expect(res.headers["set-cookie"]).toBeUndefined();
   });
 
   test("login with an object as password is rejected (400), not a 500", async () => {

@@ -1,6 +1,3 @@
-// ============================================================
-// تذكير الواتساب: لوحة التحكم بتسجّل إمتى انبعت التذكير
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 const Appointment = require("../src/models/Appointment");
@@ -11,7 +8,6 @@ afterAll(h.disconnect);
 
 const auth = (user) => ({ Authorization: `Bearer ${h.tokenFor(user)}` });
 
-// موعد مباشرة بالداتابيس، لموظف معيّن، بعد عدد دقائق من هلأ (سالب = بالماضي)
 async function makeAppointment(biz, { staffIndex = 0, startsInMinutes = 24 * 60, status = "pending" } = {}) {
   const startTime = new Date(Date.now() + startsInMinutes * 60000);
   return Appointment.create({
@@ -28,8 +24,7 @@ async function makeAppointment(biz, { staffIndex = 0, startsInMinutes = 24 * 60,
   });
 }
 
-const remind = (user, appt) =>
-  request(h.app).patch(`/api/appointments/${appt._id}/reminded`).set(auth(user));
+const remind = (user, appt) => request(h.app).patch(`/api/appointments/${appt._id}/reminded`).set(auth(user));
 
 describe("Mark appointment as reminded", () => {
   test("the owner marks an upcoming appointment as reminded, and the schedule shows it", async () => {
@@ -46,10 +41,10 @@ describe("Mark appointment as reminded", () => {
 
   test("a staff member can't mark a colleague's appointment (404, it doesn't exist for him)", async () => {
     const biz = await h.makeBusiness("colleague-salon", { staffCount: 2 });
-    const appt = await makeAppointment(biz, { staffIndex: 1 }); // Staff 2's appointment
+    const appt = await makeAppointment(biz, { staffIndex: 1 });
 
-    expect((await remind(biz.staff[0], appt)).status).toBe(404); // Staff 1 tries
-    expect((await remind(biz.staff[1], appt)).status).toBe(200); // Staff 2 can
+    expect((await remind(biz.staff[0], appt)).status).toBe(404);
+    expect((await remind(biz.staff[1], appt)).status).toBe(200);
   });
 
   test("another business can't touch it (404)", async () => {

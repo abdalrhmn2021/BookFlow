@@ -14,11 +14,10 @@ const customerTenantSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // createdAt = first time this customer joined this tenant
-  }
+    timestamps: true,
+  },
 );
 
-// Prevent the same customer from being linked to the same tenant twice
 customerTenantSchema.index({ userId: 1, tenantId: 1 }, { unique: true });
 
 module.exports = mongoose.model("CustomerTenant", customerTenantSchema);

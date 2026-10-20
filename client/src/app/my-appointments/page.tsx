@@ -1,9 +1,5 @@
 "use client";
 
-// The customer's bookings, at every business they booked with.
-//   Upcoming: pending/confirmed AND still in the future  -> can be cancelled
-//   Past:     everything else (done, cancelled, no-show, or time already passed)
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
@@ -23,11 +19,8 @@ export default function MyAppointmentsPage() {
   );
 }
 
-// Same minimum as the backend (MIN_REASON_LENGTH in services/booking.service.js)
 const MIN_REASON_LENGTH = 10;
 
-// Same rule as the backend's cancelMyAppointment: active status + not started yet.
-// (The backend checks it again anyway - this only decides whether to SHOW the button.)
 function isUpcoming(a: MyAppointment): boolean {
   return (a.status === "pending" || a.status === "confirmed") && new Date(a.startTime) > new Date();
 }
@@ -35,16 +28,12 @@ function isUpcoming(a: MyAppointment): boolean {
 function Content() {
   const { t, tError } = useLanguage();
 
-  // null = still loading. An empty array means "loaded, but you have no bookings".
   const [appointments, setAppointments] = useState<MyAppointment[] | null>(null);
-  // Errors are stored as-is and translated at render time (so a language switch re-translates them)
   const [loadError, setLoadError] = useState<unknown>(null);
 
-  // Cancelling is 2 clicks: "Cancel" -> "Yes, cancel". One accidental click can't lose a booking.
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<{ id: string; err: unknown } | null>(null);
-  // The backend requires a reason (at least MIN_REASON_LENGTH characters) - so the business knows why
   const [reason, setReason] = useState("");
 
   useEffect(() => {
@@ -67,17 +56,10 @@ function Content() {
     setCancellingId(id);
     try {
       await api.patch(`/appointments/${id}/cancel`, { reason: reason.trim() });
-      // Update ONLY the status in our list - no need to reload everything.
-      // (The response's appointment is not populated, so we keep our own copy
-      //  with the business/staff names and just change the status.)
-      // prev => ... : always based on the LATEST list, even if it changed meanwhile.
-      setAppointments((prev) =>
-        prev ? prev.map((a) => (a._id === id ? { ...a, status: "cancelled" } : a)) : prev
-      );
+      setAppointments((prev) => (prev ? prev.map((a) => (a._id === id ? { ...a, status: "cancelled" } : a)) : prev));
       setConfirmingId(null);
       setReason("");
     } catch (err) {
-      // e.g. 409 "Can't cancel an appointment that is completed" (the business changed it meanwhile)
       setCancelError({ id, err });
     } finally {
       setCancellingId(null);
@@ -100,8 +82,8 @@ function Content() {
     );
   }
 
-  const upcoming = appointments.filter(isUpcoming); // backend sorts oldest first = soonest first ✓
-  const past = appointments.filter((a) => !isUpcoming(a)).reverse(); // most recent first
+  const upcoming = appointments.filter(isUpcoming);
+  const past = appointments.filter((a) => !isUpcoming(a)).reverse();
 
   if (appointments.length === 0) {
     return (
@@ -135,7 +117,6 @@ function Content() {
           <ul className="mt-3 space-y-3">
             {upcoming.map((a) => (
               <AppointmentCard key={a._id} a={a}>
-                {/* The cancel area - its own little state machine: button -> confirm -> cancelling */}
                 <div className="mt-4 border-t border-navy-100 pt-3">
                   {confirmingId === a._id ? (
                     <div className="space-y-2 text-sm">
@@ -205,8 +186,6 @@ function Content() {
   );
 }
 
-// ---------- Building blocks ----------
-
 function Shell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -228,7 +207,6 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function AppointmentCard({ a, children }: { a: MyAppointment; children?: React.ReactNode }) {
   const { t } = useLanguage();
-  // Show the time in the BUSINESS's timezone - that's where the customer has to show up
   const { date, time } = formatMomentIn(a.startTime, a.tenantId.timezone, t.locale);
   return (
     <li className="rounded-xl border border-navy-100 bg-white p-4">
@@ -254,7 +232,9 @@ function AppointmentCard({ a, children }: { a: MyAppointment; children?: React.R
           {time}
         </span>
         <span className="text-navy-500">{formatDuration(a.duration, t.duration)}</span>
-        <span dir="ltr" className="tabular text-navy-500">{formatPrice(a.price)}</span>
+        <span dir="ltr" className="tabular text-navy-500">
+          {formatPrice(a.price)}
+        </span>
       </div>
       {a.notes && (
         <p className="mt-2 inline-flex items-start gap-1.5 text-sm text-navy-500">

@@ -1,7 +1,5 @@
 "use client";
 
-// Directory of businesses - where a customer starts when they don't have a booking link.
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -11,8 +9,6 @@ import type { BusinessListItem } from "@/lib/types";
 export default function BusinessesPage() {
   const { t, tError } = useLanguage();
   const [businesses, setBusinesses] = useState<BusinessListItem[] | null>(null);
-  // We keep the ERROR itself, not its text: the text is made at render time with tError(),
-  // so switching the language also re-translates an error that is already on screen.
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
@@ -49,7 +45,6 @@ export default function BusinessesPage() {
                 href={`/book/${b.slug}`}
                 className="flex items-center gap-4 rounded-xl border border-navy-100 bg-white p-4 transition hover:border-coral-300 hover:shadow-sm"
               >
-                {/* First letter as a simple "logo" */}
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-lg font-bold text-white">
                   {b.name.charAt(0).toUpperCase()}
                 </span>

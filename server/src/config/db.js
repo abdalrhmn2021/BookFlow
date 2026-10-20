@@ -1,9 +1,7 @@
 const dns = require("dns");
 const mongoose = require("mongoose");
 
-// Force Node to resolve DNS (including the mongodb+srv lookup) through
-// Google's public DNS servers. This works around ISPs/routers that don't
-// support SRV record queries, which causes "querySrv ECONNREFUSED".
+// Some ISPs/routers can't resolve mongodb+srv SRV records; use public DNS for the lookup.
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const connectDB = async () => {

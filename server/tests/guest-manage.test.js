@@ -1,11 +1,3 @@
-// ============================================================
-// رابط "إدارة حجزي" للضيف: /api/public/bookings/:token
-// ============================================================
-// ملاحظة عن الـ rate limits بهالملف (كل الطلبات من نفس الـ IP):
-//   - حجز الضيف (POST): 10 بالساعة  -> هون 4 بس
-//   - رابط الإدارة (GET/PATCH): 30 كل 15 دقيقة -> هون أقل من 20
-// لو زدت اختبارات، انتبه للعدد.
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 const Appointment = require("../src/models/Appointment");
@@ -16,21 +8,18 @@ afterEach(h.clear);
 afterAll(h.disconnect);
 
 const guestBook = (biz, time, date) =>
-  request(h.app)
-    .post(`/api/public/businesses/${biz.tenant.slug}/appointments`)
-    .send({
-      serviceId: biz.service._id,
-      staffId: biz.staff[0]._id,
-      date,
-      time,
-      name: "Ahmad Guest",
-      phone: "0599123456",
-    });
+  request(h.app).post(`/api/public/businesses/${biz.tenant.slug}/appointments`).send({
+    serviceId: biz.service._id,
+    staffId: biz.staff[0]._id,
+    date,
+    time,
+    name: "Ahmad Guest",
+    phone: "0599123456",
+  });
 
 const view = (token) => request(h.app).get(`/api/public/bookings/${token}`);
 const cancel = (token, reason) => request(h.app).patch(`/api/public/bookings/${token}/cancel`).send({ reason });
 
-// A guest booking written straight to the DB - lets us choose any start time (e.g. in 1 hour)
 async function makeGuestAppointment(biz, { startsInMinutes, status = "pending" }) {
   const { token, hash } = createManageToken();
   const startTime = new Date(Date.now() + startsInMinutes * 60000);
@@ -58,11 +47,9 @@ describe("Guest manage-booking link", () => {
     const token = res.body.manageToken;
     expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/);
 
-    // select("+manageTokenHash"): the field is hidden by default (select: false)
     const saved = await Appointment.findById(res.body.appointment.id).select("+manageTokenHash").lean();
     expect(saved.manageTokenHash).toBe(hashToken(token));
     expect(saved.manageTokenHash).not.toBe(token);
-    // and a normal query doesn't return it at all
     const normal = await Appointment.findById(res.body.appointment.id).lean();
     expect(normal.manageTokenHash).toBeUndefined();
   });
@@ -88,8 +75,8 @@ describe("Guest manage-booking link", () => {
     const biz = await h.makeBusiness("wrong-salon");
     await guestBook(biz, "10:00", h.nextOpenDate()).expect(201);
 
-    await view(createManageToken().token).expect(404); // well-formed, but not ours
-    await view("not-a-real-token").expect(404); //        malformed
+    await view(createManageToken().token).expect(404);
+    await view("not-a-real-token").expect(404);
   });
 
   test("the guest cancels with a reason; the slot is free again; a 2nd cancel is 409", async () => {
@@ -97,8 +84,8 @@ describe("Guest manage-booking link", () => {
     const date = h.nextOpenDate();
     const { body } = await guestBook(biz, "10:00", date).expect(201);
 
-    await cancel(body.manageToken, "busy").expect(400); // too short
-    await cancel(body.manageToken, { $ne: "" }).expect(400); // not a string -> 400, never 500
+    await cancel(body.manageToken, "busy").expect(400);
+    await cancel(body.manageToken, { $ne: "" }).expect(400);
 
     const res = await cancel(body.manageToken, "I have an exam that day").expect(200);
     expect(res.body.booking.status).toBe("cancelled");
@@ -107,7 +94,6 @@ describe("Guest manage-booking link", () => {
 
     await cancel(body.manageToken, "I have an exam that day").expect(409);
 
-    // the same time can be booked again
     await guestBook(biz, "10:00", date).expect(201);
   });
 

@@ -1,10 +1,5 @@
 "use client";
 
-// Shown ONCE, right after a guest books: their private "manage my booking" link.
-// The server keeps only a hash of the token - if the guest loses this link, nobody
-// (not even us) can show it again. So we make saving it as easy as possible:
-// copy it, or send it to themselves on WhatsApp.
-
 import { useState } from "react";
 import { useLanguage } from "@/i18n/LanguageContext";
 
@@ -12,14 +7,12 @@ export default function ManageLinkBox({ token, businessName }: { token: string; 
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
-  // Full address (https://.../booking/<token>) - it has to work when opened from WhatsApp
   const link = `${window.location.origin}/booking/${token}`;
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
     } catch {
-      // Clipboard blocked (old browser / http): select the text so the user can copy it by hand
       const input = document.getElementById("manage-link") as HTMLInputElement | null;
       input?.select();
       return;
@@ -28,7 +21,6 @@ export default function ManageLinkBox({ token, businessName }: { token: string; 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // wa.me without a number -> WhatsApp asks "send to whom?" -> the guest picks themselves
   const whatsApp = `https://wa.me/?text=${encodeURIComponent(t.book.manageWhatsApp(businessName, link))}`;
 
   return (

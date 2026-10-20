@@ -1,12 +1,5 @@
 "use client";
 
-// Guest "manage my booking" page: /booking/<secret token>
-// No login: whoever has this link owns the booking (the link came from the booking page,
-// copied or sent to themselves on WhatsApp). The guest can see the booking and cancel it.
-//
-// All the rules (still active? more than 2 hours left?) are decided by the SERVER
-// and sent as `canCancel` - the page never re-calculates them.
-
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
@@ -16,7 +9,6 @@ import StatusBadge from "@/components/StatusBadge";
 import { formatDuration, formatMomentIn, formatPrice } from "@/lib/format";
 import type { GuestBooking } from "@/lib/types";
 
-// Same minimum as the backend (MIN_REASON_LENGTH in services/booking.service.js)
 const MIN_REASON_LENGTH = 10;
 
 export default function ManageBookingPage({ params }: { params: Promise<{ token: string }> }) {
@@ -27,7 +19,6 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
   const [loadError, setLoadError] = useState<{ status: number; err: unknown } | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
 
-  // cancel flow
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
@@ -53,27 +44,26 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
     setCancelError(null);
     setCancelling(true);
     try {
-      const data = await api.patch<{ booking: GuestBooking }>(
-        `/public/bookings/${encodeURIComponent(token)}/cancel`,
-        { reason: reason.trim() }
-      );
-      setBooking(data.booking); // the server sends the fresh booking back
+      const data = await api.patch<{ booking: GuestBooking }>(`/public/bookings/${encodeURIComponent(token)}/cancel`, {
+        reason: reason.trim(),
+      });
+      setBooking(data.booking);
       setConfirming(false);
       setJustCancelled(true);
     } catch (err) {
       setCancelError(err);
-      // 409 = the business changed it meanwhile (e.g. confirmed or cancelled it) -> show the truth
       if (err instanceof ApiError && err.status === 409) setReloadTick((n) => n + 1);
     } finally {
       setCancelling(false);
     }
   };
 
-  // ---------- Render ----------
   if (loadError) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{loadError.status === 404 ? t.manage.notFoundTitle : t.book.loadErrorTitle}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {loadError.status === 404 ? t.manage.notFoundTitle : t.book.loadErrorTitle}
+        </h1>
         <p className="mt-2 text-navy-500">{loadError.status === 404 ? t.manage.notFoundText : tError(loadError.err)}</p>
         <Link href="/" className="mt-6 inline-block font-medium text-coral-700 hover:underline">
           {t.common.backHome}
@@ -85,7 +75,6 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
   if (!booking) return <Loading />;
 
   const business = booking.business;
-  // Times are shown in the BUSINESS's timezone - that's where the guest has to show up
   const tz = business?.timezone ?? "UTC";
   const start = formatMomentIn(booking.startTime, tz, t.locale);
   const deadline = formatMomentIn(booking.cancelDeadline, tz, t.locale);
@@ -134,7 +123,6 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
         </p>
         {booking.notes && <p className="mt-1 text-sm text-navy-500">📝 {booking.notes}</p>}
 
-        {/* ---- Cancelled: who and why ---- */}
         {booking.cancellation && (
           <div className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
             <p>
@@ -150,7 +138,6 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
           </div>
         )}
 
-        {/* ---- Cancel ---- */}
         {booking.canCancel ? (
           <div className="mt-5 border-t border-navy-100 pt-4">
             {confirming ? (

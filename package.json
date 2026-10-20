@@ -1,0 +1,12 @@
+{
+  "name": "bookflow",
+  "private": true,
+  "description": "Repo-wide tooling only. The apps live in client/ (Next.js) and server/ (Express).",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}

@@ -1,8 +1,5 @@
 "use client";
 
-// Business sign-up: creates the business (tenant) + its owner account in ONE request.
-// The backend does it inside a transaction: either both are created, or neither.
-
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,17 +7,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { btnPrimary, errorBox, inputClass } from "@/lib/ui";
 
-// Same rule as the Tenant model's `match` - checked here for quick feedback,
-// the backend checks it again (never trust the frontend).
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-// "Al Ward Salon!" -> "al-ward-salon"
-// An Arabic name gives "" (no English letters) - then the owner types the link himself.
 function toSlug(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-") // every run of "other characters" becomes ONE dash
-    .replace(/^-+|-+$/g, "") //     no dash at the start or the end
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 40);
 }
 
@@ -30,7 +23,6 @@ export default function RegisterBusinessPage() {
   const router = useRouter();
 
   const [form, setForm] = useState({ businessName: "", slug: "", ownerName: "", email: "", phone: "", password: "" });
-  // Once the owner edits the link by hand, we stop overwriting it from the business name
   const [slugEdited, setSlugEdited] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -73,14 +65,24 @@ export default function RegisterBusinessPage() {
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
           <span className="text-sm font-medium">{r.businessName}</span>
-          <input name="businessName" required value={form.businessName} onChange={handleChange} className={inputClass} />
+          <input
+            name="businessName"
+            required
+            value={form.businessName}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
 
         <label className="block">
           <span className="text-sm font-medium">{r.slug}</span>
-          {/* The prefix shows the final URL while typing */}
-          <div dir="ltr" className="mt-1 flex rounded-lg border border-navy-200 bg-white focus-within:border-navy-700 focus-within:ring-4 focus-within:ring-navy-100">
-            <span className="flex items-center border-r border-navy-100 bg-navy-50 px-3 text-sm text-navy-500">/book/</span>
+          <div
+            dir="ltr"
+            className="mt-1 flex rounded-lg border border-navy-200 bg-white focus-within:border-navy-700 focus-within:ring-4 focus-within:ring-navy-100"
+          >
+            <span className="flex items-center border-r border-navy-100 bg-navy-50 px-3 text-sm text-navy-500">
+              /book/
+            </span>
             <input
               name="slug"
               required
@@ -103,17 +105,44 @@ export default function RegisterBusinessPage() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">{r.email}</span>
-          <input name="email" type="email" required dir="ltr" autoComplete="email" value={form.email} onChange={handleChange} className={inputClass} />
+          <input
+            name="email"
+            type="email"
+            required
+            dir="ltr"
+            autoComplete="email"
+            value={form.email}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
         <label className="block">
           <span className="text-sm font-medium">
             {r.phone} <span className="text-navy-400">{t.common.optional}</span>
           </span>
-          <input name="phone" type="tel" dir="ltr" autoComplete="tel" value={form.phone} onChange={handleChange} className={inputClass} />
+          <input
+            name="phone"
+            type="tel"
+            dir="ltr"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
         <label className="block">
           <span className="text-sm font-medium">{r.password}</span>
-          <input name="password" type="password" required dir="ltr" minLength={8} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
+          <input
+            name="password"
+            type="password"
+            required
+            dir="ltr"
+            minLength={8}
+            autoComplete="new-password"
+            value={form.password}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
 
         {error && <p className={errorBox}>{error}</p>}

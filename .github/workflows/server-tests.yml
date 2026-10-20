@@ -1,32 +1,30 @@
-# ============================================================
-# CI: مع كل push على main (وكل pull request) GitHub بيشغّل اختبارات السيرفر
-# على سيرفر لينكس نظيف. إذا فشل أي اختبار بتطلع ❌ حمرا جنب الـ commit.
-#
-# الداتابيس: MongoDB 8.2 حقيقية بـ Docker، كـ replica set من عضو واحد
-# (الحجز بيستخدم transactions، وهاي بتشتغل بس على replica set).
-#   - host العضو = 127.0.0.1 و directConnection=true بالرابط:
-#     هيك الـ driver ما بيحاول يدوّر على اسم الـ container (هاد كان سبب
-#     فشل محاولات Docker القديمة).
-#   - 8.2 مش 8.0: سيرفرات GitHub صارت على Linux kernel 6.19+، و MongoDB 8.0
-#     بترفض تشتغل عليه (SERVER-121912). 8.2 بتشتغل عادي.
-#   - mongodb-memory-server (التنزيل التلقائي) كان يعلق على GitHub
-#     ويخلي الـ job يستنى لحد ما ينلغى - ضل للتشغيل المحلي بس.
-#
-# الأخطاء: بتنكتب كـ annotations (::error) - بتطلع بصفحة الـ PR مباشرة
-# بدون ما تفتح اللوغ.
-# ============================================================
+# Server tests on every push to main and every pull request.
+# MongoDB 8.2 runs in Docker as a single-node replica set (bookings use transactions).
+# 8.0 does not start on the runners' Linux kernel 6.19+ (SERVER-121912).
+# Failures are reported as PR annotations, so the raw log is rarely needed.
 name: Server tests
 
 on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch: # تشغيل يدوي من تبويب Actions
+  workflow_dispatch:
 
 jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+
   test:
     runs-on: ubuntu-24.04
-    # حماية: لو علق أي شي، وقّف بعد 12 دقيقة بدل ما يضل شغال
     timeout-minutes: 20
 
     defaults:
@@ -168,7 +166,7 @@ jobs:
           '
           exit $status
 
-      # كل اختبار فاشل -> annotation واضحة بصفحة الـ PR + جدول بالـ summary
+      # Every failed test -> an annotation on the PR + a table in the job summary
       - name: Report failed tests
         if: failure()
         run: |

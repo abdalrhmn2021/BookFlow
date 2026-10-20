@@ -1,62 +1,40 @@
-// Helpers for working with "HH:mm" times as minutes since midnight.
-// Comparing numbers (540 < 1020) is simpler and safer than comparing strings.
-
 const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/; // 00:00 - 23:59
+const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-// "09:30" -> 570
 const toMinutes = (hhmm) => {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;
 };
 
-// 570 -> "09:30"
 const toHHMM = (minutes) =>
   `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 
-// Does a service that starts at `startHHMM` and lasts `durationMin` fit
-// completely inside the business hours of `dayName`?
-// Both the START and the END must be within opening hours.
 const fitsInWorkingHours = (workingHours, dayName, startHHMM, durationMin) => {
   const day = workingHours.find((d) => d.day === dayName);
-  if (!day || !day.isOpen) return false; // closed that day
+  if (!day || !day.isOpen) return false;
 
   const start = toMinutes(startHHMM);
   const end = start + durationMin;
   return start >= toMinutes(day.open) && end <= toMinutes(day.close);
 };
 
-// Do two time ranges (minutes since midnight) share any time?
-//   600-660 (10:00-11:00) vs 630-690 (10:30-11:30) -> true
-//   600-660 (10:00-11:00) vs 660-720 (11:00-12:00) -> false
-//   (one ends exactly when the other starts = back-to-back, NOT an overlap)
 const isOverlapping = (aStart, aEnd, bStart, bEnd) => {
-  // Free if B starts after A ends, or B ends before A starts
   if (bStart >= aEnd || bEnd <= aStart) {
     return false;
   }
   return true;
 };
 
-// ============================================================
-// Dates (for appointments)
-// ============================================================
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/; // "2026-09-25"
-
-// "2026-09-25" -> true,  "2026-02-31" -> false (that day doesn't exist)
 const isValidDate = (dateStr) => {
   if (!DATE_REGEX.test(dateStr)) return false;
   const d = new Date(`${dateStr}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === dateStr;
 };
 
-// "2026-09-25" -> "friday"
-// A calendar date has the same weekday everywhere, so UTC is safe here.
 const dayNameOf = (dateStr) => DAYS[new Date(`${dateStr}T00:00:00Z`).getUTCDay()];
 
-// How many minutes `timeZone` is ahead of UTC at a given moment
-// (e.g. Asia/Hebron = +180 in summer, +120 in winter).
 const offsetMinutes = (date, timeZone) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -73,17 +51,12 @@ const offsetMinutes = (date, timeZone) => {
   return Math.round((asIfUtc - date.getTime()) / 60000);
 };
 
-// The business says "10:30 on 2026-09-25" in ITS local time.
-// MongoDB stores dates in UTC, so we convert to the real moment in time:
-//   ("2026-09-25", "10:30", "Asia/Hebron") -> 2026-09-25T07:30:00.000Z
+// Local date + time in `timeZone` -> the real UTC moment (handles DST via offsetMinutes).
 const localToDate = (dateStr, hhmm, timeZone) => {
-  const guess = new Date(`${dateStr}T${hhmm}:00Z`); // pretend it's UTC first
+  const guess = new Date(`${dateStr}T${hhmm}:00Z`);
   return new Date(guess.getTime() - offsetMinutes(guess, timeZone) * 60000);
 };
 
-// "2026-09-30" -> "2026-10-01"  (handles month/year ends and leap years)
-// We move the CALENDAR date, not "+24 hours": on a daylight-saving day
-// the local day is 23 or 25 hours long, so +24h would land on the wrong time.
 const nextDate = (dateStr) => {
   const d = new Date(`${dateStr}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
@@ -93,7 +66,6 @@ const nextDate = (dateStr) => {
 module.exports = {
   DAYS,
   TIME_REGEX,
-  DATE_REGEX,
   toMinutes,
   toHHMM,
   fitsInWorkingHours,
