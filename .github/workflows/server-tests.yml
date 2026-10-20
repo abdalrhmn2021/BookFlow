@@ -27,7 +27,7 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     # حماية: لو علق أي شي، وقّف بعد 12 دقيقة بدل ما يضل شغال
-    timeout-minutes: 12
+    timeout-minutes: 20
 
     defaults:
       run:
@@ -112,11 +112,48 @@ jobs:
             })().catch(fail);
           '
 
+      # One test FILE at a time, each with its own 2-minute limit:
+      # a file that hangs can't freeze the whole run, and each file's result
+      # (time + passed/failed) shows up as a note on the PR.
       - name: Run tests
-        timeout-minutes: 6
+        timeout-minutes: 14
         env:
           MONGO_URI_TEST: mongodb://127.0.0.1:27017/?directConnection=true
-        run: npx jest --runInBand --ci --forceExit --json --outputFile=jest-results.json
+        shell: bash
+        run: |
+          mkdir -p jest-out
+          status=0
+          for f in tests/*.test.js; do
+            name=$(basename "$f" .test.js)
+            start=$(date +%s)
+            timeout 120 npx jest --runInBand --ci --forceExit "$f" \
+              --json --outputFile="jest-out/$name.json" > "jest-out/$name.log" 2>&1
+            code=$?
+            secs=$(( $(date +%s) - start ))
+            if [ $code -eq 124 ]; then
+              last=$(grep -v '^\s*$' "jest-out/$name.log" | tail -8 | sed ':a;N;$!ba;s/\n/%0A/g')
+              echo "::error title=$f::TIMED OUT after ${secs}s. Last output:%0A${last}"
+              status=1
+            elif [ $code -ne 0 ]; then
+              echo "::warning title=$f::failed in ${secs}s"
+              status=1
+            else
+              echo "::notice title=$f::passed in ${secs}s"
+            fi
+          done
+          # merge every file's results into one jest-results.json for the report step
+          node -e '
+            const fs = require("fs");
+            const all = { numFailedTests: 0, numTotalTests: 0, testResults: [] };
+            for (const f of fs.readdirSync("jest-out").filter((x) => x.endsWith(".json"))) {
+              const r = JSON.parse(fs.readFileSync("jest-out/" + f, "utf8"));
+              all.numFailedTests += r.numFailedTests; all.numTotalTests += r.numTotalTests;
+              all.testResults.push(...r.testResults);
+            }
+            fs.writeFileSync("jest-results.json", JSON.stringify(all));
+            console.log(`${all.numTotalTests - all.numFailedTests}/${all.numTotalTests} tests passed`);
+          '
+          exit $status
 
       # كل اختبار فاشل -> annotation واضحة بصفحة الـ PR + جدول بالـ summary
       - name: Report failed tests
