@@ -72,12 +72,12 @@ export default function StaffTab() {
   };
 
   if (loadError) return <p className={errorBox}>{tError(loadError)}</p>;
-  if (!staff) return <p className="text-sm text-gray-500">{t.common.loading}</p>;
+  if (!staff) return <p className="text-sm text-navy-500">{t.common.loading}</p>;
 
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-gray-500">{st.hint}</p>
+        <p className="text-sm text-navy-500">{st.hint}</p>
         {editing !== "new" && (
           <button onClick={() => setEditing("new")} className={`shrink-0 ${btnPrimary}`}>
             {st.add}
@@ -92,7 +92,7 @@ export default function StaffTab() {
       )}
 
       {staff.length === 0 && editing !== "new" ? (
-        <p className="mt-6 rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
+        <p className="mt-6 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-8 text-center text-sm text-navy-500">
           {st.empty}
         </p>
       ) : (
@@ -103,22 +103,22 @@ export default function StaffTab() {
                 <StaffForm initial={s} onSave={(data) => save(data, s.id)} onCancel={() => setEditing(null)} />
               </li>
             ) : (
-              <li key={s.id} className={`rounded-lg border border-gray-200 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}>
+              <li key={s.id} className={`rounded-xl border border-navy-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-600">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-coral-100 font-bold text-coral-700">
                       {s.name.charAt(0).toUpperCase()}
                     </span>
                     <div>
                       <p className="font-semibold">
                         {s.name}
                         {!s.isActive && (
-                          <span className="ms-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                          <span className="ms-2 rounded-full bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-500">
                             {st.inactive}
                           </span>
                         )}
                       </p>
-                      <p dir="ltr" className="text-sm text-gray-500 rtl:text-right">
+                      <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
                         {s.email}
                         {s.phone && ` · ${s.phone}`}
                       </p>
@@ -182,7 +182,7 @@ function StaffForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
+    <form onSubmit={handleSubmit} className="rounded-xl border border-navy-200 bg-navy-50 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-sm font-medium">{st.name}</span>
@@ -190,7 +190,7 @@ function StaffForm({
         </label>
         <label className="block">
           <span className="text-sm font-medium">
-            {st.phone} <span className="text-gray-400">{t.common.optional}</span>
+            {st.phone} <span className="text-navy-400">{t.common.optional}</span>
           </span>
           <input name="phone" type="tel" dir="ltr" value={form.phone} onChange={handleChange} className={inputClass} />
         </label>

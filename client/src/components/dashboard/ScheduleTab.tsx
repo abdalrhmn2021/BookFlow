@@ -9,7 +9,8 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import StatusBadge from "@/components/StatusBadge";
 import { api, ApiError } from "@/lib/api";
 import { addDays, formatLongDate, formatMomentIn, formatPrice, todayIn } from "@/lib/format";
-import { btnSecondary, errorBox } from "@/lib/ui";
+import { IconChevron, IconNote, IconPhone, IconWhatsApp } from "@/components/icons";
+import { btnSecondary, emptyBox, errorBox } from "@/lib/ui";
 import { toWhatsAppNumber, whatsAppLink } from "@/lib/whatsapp";
 import type { AppointmentStatus, BusinessAppointment } from "@/lib/types";
 
@@ -35,13 +36,14 @@ function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
 
 const FILTERS: (AppointmentStatus | "all")[] = ["all", "pending", "confirmed", "completed", "cancelled", "no-show"];
 
-export default function ScheduleTab({ timezone }: { timezone: string }) {
+export default function ScheduleTab({ timezone, initialDate }: { timezone: string; initialDate?: string }) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
   const s = t.dashboard.schedule;
 
   // "Today" in the BUSINESS's timezone (lazy initializer: calculated once, on the first render)
-  const [date, setDate] = useState(() => todayIn(timezone));
+  // (or the day that was clicked in "Overview", passed through the URL)
+  const [date, setDate] = useState(() => initialDate ?? todayIn(timezone));
   const [filter, setFilter] = useState<AppointmentStatus | "all">("all");
   const [reloadTick, setReloadTick] = useState(0);
 
@@ -134,49 +136,59 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
 
   // Label + color of each action button
   const actionButton: Record<AppointmentStatus, { label: string; className: string }> = {
-    confirmed: { label: s.confirm, className: "bg-green-600 text-white hover:bg-green-700" },
-    completed: { label: s.complete, className: "bg-indigo-600 text-white hover:bg-indigo-700" },
-    "no-show": { label: s.noShow, className: "border border-gray-300 bg-white hover:bg-gray-50" },
-    cancelled: { label: s.cancel, className: "border border-red-200 bg-white text-red-600 hover:bg-red-50" },
+    confirmed: { label: s.confirm, className: "bg-navy-900 text-white hover:bg-navy-700" },
+    completed: { label: s.complete, className: "bg-navy-900 text-white hover:bg-navy-700" },
+    "no-show": { label: s.noShow, className: "border border-navy-200 bg-white text-navy-800 hover:bg-navy-50" },
+    cancelled: { label: s.cancel, className: "text-red-700 hover:bg-red-50" },
     pending: { label: "", className: "" }, // never a target
   };
 
   return (
     <div>
-      {/* ---- Day navigation ---- */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* rtl:rotate-180 -> the arrow points the right way in Arabic too */}
-        <button onClick={() => setDate(addDays(date, -1))} className={btnSecondary} title={s.prevDay}>
-          <span className="inline-block rtl:rotate-180">‹</span>
-        </button>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-        />
-        <button onClick={() => setDate(addDays(date, 1))} className={btnSecondary} title={s.nextDay}>
-          <span className="inline-block rtl:rotate-180">›</span>
-        </button>
-        {date !== today && (
-          <button onClick={() => setDate(today)} className={btnSecondary}>
-            {s.today}
+      {/* ---- Day bar: ‹ date › + "today" ---- */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          {/* rtl:rotate-180 -> the arrows point the right way in Arabic too */}
+          <button onClick={() => setDate(addDays(date, -1))} className={`${btnSecondary} px-2.5`} aria-label={s.prevDay} title={s.prevDay}>
+            <IconChevron className="h-4 w-4 rotate-180 rtl:rotate-0" />
           </button>
-        )}
+          <button onClick={() => setDate(addDays(date, 1))} className={`${btnSecondary} px-2.5`} aria-label={s.nextDay} title={s.nextDay}>
+            <IconChevron className="h-4 w-4 rtl:rotate-180" />
+          </button>
+          <h2 className="font-display ms-2 text-lg font-semibold">
+            {formatLongDate(date, t.locale)}
+            {date === today && (
+              <span className="ms-2 rounded-full bg-coral-100 px-2 py-0.5 align-middle font-sans text-xs font-medium text-coral-700">
+                {s.today}
+              </span>
+            )}
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {date !== today && (
+            <button onClick={() => setDate(today)} className={btnSecondary}>
+              {s.today}
+            </button>
+          )}
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+            aria-label={s.today}
+            className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm"
+          />
+        </div>
       </div>
-      <h2 className="mt-4 text-lg font-semibold">
-        {formatLongDate(date, t.locale)}
-        {date === today && <span className="ms-2 text-sm font-normal text-indigo-600">({s.today})</span>}
-      </h2>
 
-      {/* ---- Status filter ---- */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* ---- Status filter (segmented) ---- */}
+      <div className="mt-5 flex gap-1 overflow-x-auto rounded-xl bg-navy-100/60 p-1">
         {FILTERS.map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              filter === f ? "bg-indigo-600 text-white" : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"
+            aria-pressed={filter === f}
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              filter === f ? "bg-white text-navy-900 shadow-sm" : "text-navy-500 hover:text-navy-900"
             }`}
           >
             {f === "all" ? s.all : t.status[f]}
@@ -184,133 +196,151 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
         ))}
       </div>
 
-      {/* ---- The list ---- */}
-      <div className="mt-5">
+      {/* ---- The day as a timeline ---- */}
+      <div className="mt-6">
         {!current ? (
-          <p className="text-sm text-gray-500">{s.loading}</p>
+          <p className="text-sm text-navy-500">{s.loading}</p>
         ) : current.error ? (
           <p className={errorBox}>{tError(current.error)}</p>
         ) : list.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
-            {s.empty}
-          </p>
+          <p className={emptyBox}>{s.empty}</p>
         ) : (
           <>
-            <p className="mb-3 text-sm text-gray-500">{s.count(list.length)}</p>
-            <ul className="space-y-3">
-              {list.map((a) => {
+            <p className="mb-4 text-sm text-navy-500">{s.count(list.length)}</p>
+            <ol className="relative">
+              {list.map((a, i) => {
                 const start = formatMomentIn(a.startTime, timezone, t.locale).time;
                 const end = formatMomentIn(a.endTime, timezone, t.locale).time;
                 const actions = nextStatuses(a);
                 const busy = busyId === a._id;
+                const finished = a.status === "completed" || a.status === "cancelled" || a.status === "no-show";
                 return (
-                  <li key={a._id} className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
-                    {/* Time column */}
-                    <div dir="ltr" className="w-16 shrink-0 text-center">
-                      <p className="font-semibold">{start}</p>
-                      <p className="text-xs text-gray-400">{end}</p>
+                  <li key={a._id} className="relative flex gap-3 pb-4 sm:gap-5">
+                    {/* Time rail: the time + a dot on a vertical line connecting the day */}
+                    <div dir="ltr" className="tabular w-12 shrink-0 pt-4 text-end sm:w-14">
+                      <p className="font-semibold text-navy-900">{start}</p>
+                      <p className="text-xs text-navy-400">{end}</p>
+                    </div>
+                    <div aria-hidden="true" className="relative flex w-3 shrink-0 justify-center">
+                      {i < list.length - 1 && <span className="absolute top-6 -bottom-4 w-px bg-navy-200" />}
+                      <span
+                        className={`relative mt-5 h-3 w-3 rounded-full ring-4 ring-navy-50 ${
+                          finished ? "bg-navy-300" : a.status === "pending" ? "bg-amber-400" : "bg-coral-500"
+                        }`}
+                      />
                     </div>
 
-                    <div className="min-w-0 flex-1">
+                    <div className={`min-w-0 flex-1 rounded-xl border border-navy-100 bg-white p-4 ${finished ? "opacity-75" : ""}`}>
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0">
                           {/* Who booked: a guest (name + phone only) or a customer account */}
-                          <p className="flex items-center gap-2 font-semibold">
-                            {a.guest ? a.guest.name : (a.customerId?.name ?? s.noCustomer)}
+                          <p className="flex flex-wrap items-center gap-2 font-semibold">
+                            {nameOf(a) ?? s.noCustomer}
                             {a.guest && (
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              <span className="rounded-full bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-600">
                                 {s.guest}
                               </span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="mt-0.5 text-sm text-navy-600">
                             {a.serviceName}
                             {/* The owner sees everyone's appointments -> show WHO does it */}
                             {user?.role === "owner" && (
                               <>
                                 {" "}
-                                {s.with} <b className="font-medium">{a.staffId.name}</b>
+                                {s.with} <span className="font-medium text-navy-900">{a.staffId.name}</span>
                               </>
                             )}
-                            {" · "}
-                            {formatPrice(a.price)}
+                            {/* <bdi> keeps "50 ₪" in one piece inside Arabic text; the margin stays on the outer span
+                                (a dir="ltr" element would flip what "ms-2" means) */}
+                            <span className="tabular ms-2 text-navy-400">
+                              <bdi>{formatPrice(a.price)}</bdi>
+                            </span>
                           </p>
-                          {phoneOf(a) && (
-                            <a href={`tel:${phoneOf(a)}`} dir="ltr" className="text-sm text-indigo-600 hover:underline">
-                              📞 {phoneOf(a)}
-                            </a>
-                          )}
-                          {a.notes && <p className="mt-1 text-sm text-gray-500">📝 {a.notes}</p>}
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                            {phoneOf(a) && (
+                              <a href={`tel:${phoneOf(a)}`} dir="ltr" className="inline-flex items-center gap-1.5 text-navy-700 hover:text-coral-700">
+                                <IconPhone className="h-4 w-4" />
+                                {phoneOf(a)}
+                              </a>
+                            )}
+                            {a.notes && (
+                              <span className="inline-flex items-start gap-1.5 text-navy-500">
+                                <IconNote className="mt-0.5 h-4 w-4 shrink-0" />
+                                {a.notes}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <StatusBadge status={a.status} />
                       </div>
 
-                      {actions.length > 0 && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {(actions.length > 0 || canRemind(a)) && (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-navy-50 pt-3">
                           {confirmCancelId === a._id ? (
                             // Cancelling is the only "dangerous" action -> ask first
                             <div className="w-full space-y-2">
-                              <p className="text-sm text-gray-600">{s.cancelQuestion}</p>
+                              <p className="text-sm text-navy-600">{s.cancelQuestion}</p>
                               <label className="block">
-                                <span className="text-xs font-medium text-gray-600">{s.cancelReason}</span>
+                                <span className="text-xs font-medium text-navy-600">{s.cancelReason}</span>
                                 <input
                                   value={cancelReason}
                                   onChange={(e) => setCancelReason(e.target.value)}
                                   maxLength={300}
                                   placeholder={s.cancelReasonPlaceholder}
-                                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                                  className="mt-1 w-full rounded-lg border border-navy-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100"
                                 />
                               </label>
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   onClick={() => changeStatus(a._id, "cancelled")}
                                   disabled={busy || cancelReason.trim().length < MIN_REASON_LENGTH}
-                                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                                 >
                                   {s.yesCancel}
                                 </button>
-                                <button onClick={() => setConfirmCancelId(null)} disabled={busy} className="text-sm text-gray-600">
+                                <button onClick={() => setConfirmCancelId(null)} disabled={busy} className="rounded-md px-3 py-1.5 text-sm text-navy-600 hover:bg-navy-50">
                                   {s.keep}
                                 </button>
                               </div>
                             </div>
                           ) : (
-                            actions.map((status) => (
-                              <button
-                                key={status}
-                                disabled={busy}
-                                onClick={() => {
-                                  if (status !== "cancelled") return changeStatus(a._id, status);
-                                  setConfirmCancelId(a._id); // ask first + start with an empty reason
-                                  setCancelReason("");
-                                }}
-                                className={`rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-60 ${actionButton[status].className}`}
-                              >
-                                {actionButton[status].label}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                      {/* WhatsApp reminder - only when it still makes sense and we have a usable number */}
-                      {canRemind(a) && toWhatsAppNumber(phoneOf(a)) && (
-                        <div className="mt-3 flex flex-wrap items-center gap-3">
-                          <a
-                            href={whatsAppLink(toWhatsAppNumber(phoneOf(a))!, reminderText(a))}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => markReminded(a._id)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-green-600 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-50"
-                          >
-                            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                              <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.6-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3 1 2.5c.1.2 1.6 2.5 4 3.5 1.5.6 2 .7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.4-.3Z" />
-                            </svg>
-                            {a.reminderSentAt ? s.remindAgain : s.remind}
-                          </a>
-                          {a.reminderSentAt && (
-                            <span className="text-xs text-green-700">
-                              ✓ {s.reminded(formatMomentIn(a.reminderSentAt, timezone, t.locale).time)}
-                            </span>
+                            <>
+                              {actions.map((status) => (
+                                <button
+                                  key={status}
+                                  disabled={busy}
+                                  onClick={() => {
+                                    if (status !== "cancelled") return changeStatus(a._id, status);
+                                    setConfirmCancelId(a._id); // ask first + start with an empty reason
+                                    setCancelReason("");
+                                  }}
+                                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${actionButton[status].className}`}
+                                >
+                                  {actionButton[status].label}
+                                </button>
+                              ))}
+                              {/* WhatsApp reminder - only when it still makes sense and we have a usable number */}
+                              {canRemind(a) && toWhatsAppNumber(phoneOf(a)) && (
+                                <span className="ms-auto inline-flex flex-wrap items-center gap-2">
+                                  {a.reminderSentAt && (
+                                    <span className="text-xs text-emerald-700">
+                                      ✓ {s.reminded(formatMomentIn(a.reminderSentAt, timezone, t.locale).time)}
+                                    </span>
+                                  )}
+                                  <a
+                                    href={whatsAppLink(toWhatsAppNumber(phoneOf(a))!, reminderText(a))}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => markReminded(a._id)}
+                                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100"
+                                  >
+                                    <IconWhatsApp />
+                                    {a.reminderSentAt ? s.remindAgain : s.remind}
+                                  </a>
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
@@ -319,7 +349,7 @@ export default function ScheduleTab({ timezone }: { timezone: string }) {
                   </li>
                 );
               })}
-            </ul>
+            </ol>
           </>
         )}
       </div>

@@ -5,5 +5,10 @@ import { useLanguage } from "@/i18n/LanguageContext";
 // The same "Loading..." everywhere, in the current language
 export default function Loading({ text }: { text?: string }) {
   const { t } = useLanguage();
-  return <p className="p-8 text-center text-gray-500">{text ?? t.common.loading}</p>;
+  return (
+    <p role="status" className="flex items-center justify-center gap-2 p-10 text-sm text-navy-500">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-navy-200 border-t-coral-500" />
+      {text ?? t.common.loading}
+    </p>
+  );
 }

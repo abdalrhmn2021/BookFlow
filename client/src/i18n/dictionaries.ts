@@ -59,12 +59,22 @@ const en = {
   } satisfies Record<Role, string>,
 
   home: {
-    titleStart: "Bookings for your business, ",
-    titleHighlight: "without the phone calls",
+    title: "Let your customers book themselves",
     subtitle:
       "Salons, clinics, gyms and training centers get their own booking page. Customers pick a service, a staff member and a free time - no double bookings, ever.",
     book: "Book an appointment",
     createAccount: "Create an account",
+    forBusinessTitle: "Own a salon, clinic or gym?",
+    forBusinessText: "Get a booking page, a daily schedule and WhatsApp reminders in minutes.",
+    // The sample booking card next to the headline (demo data, not real)
+    sample: {
+      business: "Demo Salon",
+      service: "Haircut",
+      duration: "30 min",
+      staff: "with Sara",
+      day: "Tomorrow",
+      cta: "Book for 50 ₪",
+    },
   },
 
   login: {
@@ -125,7 +135,9 @@ const en = {
     publicPage: "Public booking page:",
     copy: "Copy link",
     copied: "Copied ✓",
+    bookingPage: "Your booking page",
     tabs: {
+      overview: "Overview",
       schedule: "Schedule",
       services: "Services",
       staff: "Staff",
@@ -160,6 +172,18 @@ const en = {
       reminderMessage: (p: ReminderParts) =>
         `Hi ${p.name} 👋\nA reminder of your appointment at ${p.business} ${p.day} at ${p.time}` +
         ` (${p.service} with ${p.staff}).\nTo cancel or change it, just reply to this message. See you soon!`,
+    },
+    overview: {
+      next: "Next appointment",
+      noNext: "No upcoming appointments. Share your booking page to get some.",
+      todayCount: "Appointments today",
+      toConfirm: "Waiting for confirmation",
+      toConfirmNone: "Nothing to confirm",
+      revenue: "Expected income today",
+      revenueHint: "Cancelled and no-shows not counted",
+      week: "Next 7 days",
+      openDay: "Open schedule",
+      loading: "Loading overview...",
     },
     services: {
       add: "+ Add service",
@@ -347,12 +371,21 @@ const ar: Dictionary = {
   },
 
   home: {
-    titleStart: "حجوزات لعملك، ",
-    titleHighlight: "بدون مكالمات هاتفية",
+    title: "دع زبائنك يحجزون بأنفسهم",
     subtitle:
       "الصالونات والعيادات والنوادي الرياضية ومراكز التدريب تحصل على صفحة حجز خاصة بها. يختار الزبون الخدمة والموظف والوقت المتاح - وبدون أي حجز مزدوج.",
     book: "احجز موعداً",
     createAccount: "أنشئ حساباً",
+    forBusinessTitle: "عندك صالون أو عيادة أو نادٍ؟",
+    forBusinessText: "صفحة حجز وجدول يومي وتذكير واتساب، جاهزة خلال دقائق.",
+    sample: {
+      business: "صالون تجريبي",
+      service: "قص شعر",
+      duration: "30 دقيقة",
+      staff: "مع سارة",
+      day: "غداً",
+      cta: "احجز بـ 50 ₪",
+    },
   },
 
   login: {
@@ -413,7 +446,9 @@ const ar: Dictionary = {
     publicPage: "صفحة الحجز العامة:",
     copy: "نسخ الرابط",
     copied: "تم النسخ ✓",
+    bookingPage: "صفحة الحجز الخاصة بك",
     tabs: {
+      overview: "نظرة عامة",
       schedule: "المواعيد",
       services: "الخدمات",
       staff: "الموظفون",
@@ -448,6 +483,18 @@ const ar: Dictionary = {
       reminderMessage: (p) =>
         `مرحباً ${p.name} 👋\nنذكّرك بموعدك في ${p.business} ${p.day} الساعة ${p.time}` +
         ` (${p.service} مع ${p.staff}).\nللإلغاء أو التعديل، ردّ على هذه الرسالة. بانتظارك!`,
+    },
+    overview: {
+      next: "الموعد القادم",
+      noNext: "لا توجد مواعيد قادمة. شارك صفحة الحجز حتى تصلك حجوزات.",
+      todayCount: "مواعيد اليوم",
+      toConfirm: "بانتظار التأكيد",
+      toConfirmNone: "لا شيء بانتظار التأكيد",
+      revenue: "الدخل المتوقع اليوم",
+      revenueHint: "بدون الملغاة والغياب",
+      week: "الأيام السبعة القادمة",
+      openDay: "افتح الجدول",
+      loading: "جارٍ تحميل النظرة العامة...",
     },
     services: {
       add: "+ إضافة خدمة",

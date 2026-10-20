@@ -16,14 +16,11 @@ Every business gets its own booking page; customers pick a service, a staff memb
 > The login page also has one-click demo buttons.
 > ⏳ The API runs on Render's free tier - if it was asleep, the first request can take ~50 seconds.
 
-<!-- SCREENSHOTS (hidden until the images exist): add the 4 PNGs to docs/screenshots/,
-     then delete these 2 lines and the closing comment line under the table.
 | Booking page | Business dashboard |
 |---|---|
 | ![Booking page](docs/screenshots/booking.png) | ![Dashboard](docs/screenshots/dashboard.png) |
 | **My appointments** | **Arabic / RTL** |
 | ![My appointments](docs/screenshots/my-appointments.png) | ![Arabic](docs/screenshots/arabic.png) |
--->
 
 ---
 
@@ -39,11 +36,13 @@ Every business gets its own booking page; customers pick a service, a staff memb
 
 **Business owners & staff**
 - Business sign-up creates the business **and** its owner in one transaction
-- Daily schedule with status workflow: `pending → confirmed → completed / no-show`, or `cancelled`
+- **Overview** page: the next appointment, today's count / to-confirm / expected income, and the next 7 days as a bar chart - all from one API call
+- Daily schedule (timeline) with status workflow: `pending → confirmed → completed / no-show`, or `cancelled`
 - Manage services (soft delete), staff accounts (deactivate / reactivate) and weekly working hours
 - Staff see only **their own** appointments - enforced by the API, not the UI
 
 **Platform**
+- Own navy + coral design system (Tailwind v4 theme tokens), Alexandria + IBM Plex Sans Arabic for both scripts
 - Full Arabic / English with RTL layout, no flash on load (language stored in a cookie, read on the server)
 - Backend error messages translated on the client
 - One-click demo accounts + a seed script with realistic sample data
@@ -193,6 +192,7 @@ on GitHub Actions they run on every push against a MongoDB replica set started i
 | POST | `/api/appointments` | customer |
 | GET · PATCH | `/api/appointments/me` · `/api/appointments/:id/cancel` | customer |
 | GET · PATCH | `/api/appointments/business` · `/api/appointments/:id/status` | owner, staff |
+| GET | `/api/appointments/business/stats` (dashboard overview) | owner, staff |
 | CRUD | `/api/services` | owner (staff: read) |
 | CRUD | `/api/staff` | owner |
 | GET · PUT | `/api/tenants/me` · `/api/tenants/me/working-hours` | owner (staff: read) |
@@ -201,11 +201,12 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 21 tests: concurrent double booking, tenant isolation, status transitions
+- [x] Automated tests (Jest + Supertest) and CI - 48 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [ ] Email reminders 24h before an appointment (background job queue)
 - [ ] Per-staff working hours and "which staff can do which service"
-- [ ] Analytics on the dashboard (bookings, revenue, no-show rate)
+- [x] Dashboard overview: next appointment, today's numbers, next 7 days
+- [ ] Longer-range analytics (monthly revenue, no-show rate)
 - [ ] A `pending` appointment that nobody confirmed can't be closed after its start time
 
 ## Author

@@ -6,6 +6,6 @@ and save them here with EXACTLY these names:
 | File | What to capture |
 |---|---|
 | `booking.png` | `/book/demo-salon` in English, with a service, staff, day and time selected (step 5 visible) |
-| `dashboard.png` | Log in as `owner@demo.com` -> Dashboard -> Schedule tab with today's appointments |
+| `dashboard.png` | Log in as `owner@demo.com` -> Dashboard -> Overview |
 | `my-appointments.png` | Log in as `customer@demo.com` -> My appointments |
-| `arabic.png` | Any page in Arabic (RTL) - the booking page or dashboard look best |
+| `arabic.png` | Dashboard -> Schedule (timeline) in Arabic (RTL) |

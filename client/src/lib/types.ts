@@ -180,3 +180,12 @@ export interface BusinessAppointment {
   notes?: string;
   reminderSentAt?: string; // ISO date - set when someone on the team sent a WhatsApp reminder
 }
+
+// GET /api/appointments/business/stats - the dashboard's "Overview" page
+export interface BusinessStats {
+  date: string; // today, "YYYY-MM-DD", in the business's timezone
+  today: { total: number; byStatus: Record<AppointmentStatus, number>; revenue: number };
+  week: { date: string; count: number }[]; // today + the next 6 days (active appointments only)
+  toConfirm: number; // pending AND still in the future
+  next: BusinessAppointment | null; // the soonest active appointment, or null
+}

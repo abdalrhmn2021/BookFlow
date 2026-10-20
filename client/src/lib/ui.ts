@@ -1,13 +1,34 @@
 // Tailwind class strings used on many pages.
-// One place to change how every input / button looks.
+// One place to change how every input / button / card looks.
+// The colors (navy-*, coral-*) are defined once in app/globals.css.
 
 export const inputClass =
-  "mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+  "mt-1.5 w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm text-navy-900 outline-none transition placeholder:text-navy-300 focus:border-navy-700 focus:ring-4 focus:ring-navy-100";
 
+// Coral background + DARK text (not white): white on coral is hard to read
 export const btnPrimary =
-  "rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-coral-500 px-4 py-2.5 text-sm font-semibold text-navy-950 transition hover:bg-coral-400 disabled:opacity-50";
+
+// For a second action next to the primary one, or a primary action on a coral-free screen
+export const btnDark =
+  "inline-flex items-center justify-center gap-2 rounded-lg bg-navy-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-navy-700 disabled:opacity-50";
 
 export const btnSecondary =
-  "rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-navy-200 bg-white px-4 py-2.5 text-sm font-medium text-navy-900 transition hover:border-navy-300 hover:bg-navy-50 disabled:opacity-50";
 
-export const errorBox = "rounded-md bg-red-50 px-3 py-2 text-sm text-red-700";
+// Small buttons inside a list row (Edit, Hide...)
+export const btnSmall =
+  "inline-flex items-center justify-center rounded-md border border-navy-200 bg-white px-3 py-1.5 text-sm font-medium text-navy-800 transition hover:bg-navy-50 disabled:opacity-50";
+
+export const link = "font-medium text-coral-700 underline-offset-4 hover:underline";
+
+export const card = "rounded-xl border border-navy-100 bg-white";
+
+export const label = "text-sm font-medium text-navy-800";
+
+export const errorBox = "rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800";
+
+export const emptyBox =
+  "rounded-xl border border-dashed border-navy-200 bg-white/60 px-4 py-10 text-center text-sm text-navy-500";
+
+export const pageTitle = "font-display text-2xl font-semibold tracking-tight text-navy-900 sm:text-3xl";
