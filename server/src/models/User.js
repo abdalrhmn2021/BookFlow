@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [8, "Password must be at least 8 characters"],
-      select: false, // never return password in queries by default
+      select: false,
     },
     phone: {
       type: String,
@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
-      default: null, // null for superadmin and customer
+      default: null,
     },
     isActive: {
       type: Boolean,
@@ -43,12 +43,9 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-// Hash the password before saving, but only if it was modified
-// Mongoose 9: pre hooks no longer receive `next` - an async function is enough,
-// the hook finishes when the returned promise resolves (throw to abort the save)
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
@@ -56,7 +53,6 @@ userSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Instance method to compare a plain password with the hashed one
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

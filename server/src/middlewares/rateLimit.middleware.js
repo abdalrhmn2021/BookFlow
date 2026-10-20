@@ -1,50 +1,40 @@
 const { rateLimit } = require("express-rate-limit");
 
-// Brute-force protection for login: after 5 FAILED attempts from the same IP
-// within 15 minutes, block further attempts until the window resets.
-// Successful logins don't count, so a real user who logs in normally is never blocked.
 exports.loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   limit: 5,
   skipSuccessfulRequests: true,
-  standardHeaders: "draft-8", // sends RateLimit-* headers so the client knows when to retry
+  standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { message: "Too many login attempts, please try again in 15 minutes" },
 });
 
-// Looser limit for registration - stops bots from mass-creating accounts
 exports.registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { message: "Too many accounts created from this IP, please try again later" },
 });
 
-// Public (no login) routes - generous enough for a real visitor browsing,
-// but stops a script from hammering/scraping the API.
 exports.publicLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   limit: 300,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { message: "Too many requests, please slow down" },
 });
 
-// Guest bookings create real appointments with no login behind them -
-// 10 per hour per IP is plenty for a family booking together, and useless for a bot.
 exports.guestBookingLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { message: "Too many bookings from this device, please try again later" },
 });
 
-// Guest "manage my booking" link (view + cancel). Guessing a 192-bit token is already
-// impossible, but a tight limit is cheap and stops a script from even trying.
 exports.manageBookingLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   limit: 30,
   standardHeaders: "draft-8",
   legacyHeaders: false,

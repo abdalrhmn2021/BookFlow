@@ -12,7 +12,6 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // The dashboard has its own navigation (the sidebar) -> no top bar there
   if (pathname.startsWith("/dashboard")) return null;
 
   const handleLogout = async () => {
@@ -30,10 +29,8 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-1 text-sm sm:gap-3">
-          {/* While loading, show no auth links - avoids a flash of "Log in" for a logged-in user */}
           {!loading && (
             <>
-              {/* Guests and customers book; owners/staff don't need the directory */}
               {user?.role !== "owner" && user?.role !== "staff" && (
                 <Link href="/businesses" className={`hidden sm:inline ${navLink}`}>
                   {t.nav.businesses}
@@ -64,7 +61,6 @@ export default function Navbar() {
             </>
           )}
 
-          {/* Language switch: shows the OTHER language's name */}
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
             className="whitespace-nowrap rounded-lg border border-navy-200 px-2.5 py-1.5 text-xs font-medium text-navy-700 transition hover:bg-navy-50"

@@ -1,14 +1,3 @@
-// ============================================================
-// أدوات مشتركة لكل ملفات الاختبار
-// ============================================================
-// وين بتشتغل الاختبارات؟
-//   - على جهازك: على Atlas (MONGO_URI)، بس بداتابيس منفصلة اسمها "bookflow_test".
-//     داتا الموقع الحقيقية (داتابيس "test") ما بتنلمس أبداً.
-//   - على GitHub Actions: MONGO_URI_TEST بيأشّر على MongoDB بـ Docker (شوف server-tests.yml).
-//   - إذا ما في ولا رابط: MongoDB مؤقتة بالذاكرة (mongodb-memory-server) كخطة أخيرة.
-// - دوال بتجهّز بزنس + موظفين + خدمة + زبائن بسرعة، مباشرة بالموديلز
-//   (بدون ما نمر على /register، عشان rate limit ما يوقفنا).
-// ============================================================
 require("dotenv").config({ quiet: true });
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret-".padEnd(64, "x");
@@ -17,34 +6,29 @@ process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 
-const app = require("../src/app"); // بيحمّل كل الموديلز كمان
+const app = require("../src/app");
 const Tenant = require("../src/models/Tenant");
 const User = require("../src/models/User");
 const Service = require("../src/models/Service");
 const { dayNameOf } = require("../src/utils/time");
 
-// اسم داتابيس الاختبارات - ثابت، ومستحيل يكون نفس داتابيس الموقع
 const TEST_DB_NAME = "bookflow_test";
 
 let replSet;
 
-// Jest runs our code in a sandbox where the MongoDB driver's `await import("os")` fails.
-// The driver then sends an EMPTY "client metadata" document when it connects; MongoDB 8.2
-// refuses that ("Missing required sub-document 'driver'"). Handing it `os` ourselves fixes it.
+// Inside Jest the driver's dynamic import("os") fails and it sends empty client metadata,
+// which MongoDB 8.2 rejects. Passing `os` explicitly avoids that.
 const CONNECT_OPTIONS = { dbName: TEST_DB_NAME, runtimeAdapters: { os: require("os") } };
 
 async function connect() {
   const uri = process.env.MONGO_URI_TEST || process.env.MONGO_URI;
 
   if (uri) {
-    // dbName بيجبرنا على داتابيس الاختبارات، مهما كان مكتوب بالرابط
     if (uri.startsWith("mongodb+srv://")) {
-      // نفس حل db.js: بعض مزودي الإنترنت ما بيدعموا SRV lookup
       require("dns").setServers(["8.8.8.8", "8.8.4.4"]);
     }
     await mongoose.connect(uri, CONNECT_OPTIONS);
   } else {
-    // ما في رابط -> MongoDB مؤقتة بالذاكرة (replica set لأنه الحجز بيستخدم transactions)
     const { MongoMemoryReplSet } = require("mongodb-memory-server");
     replSet = await MongoMemoryReplSet.create({
       replSet: { count: 1, storageEngine: "wiredTiger" },
@@ -52,16 +36,13 @@ async function connect() {
     await mongoose.connect(replSet.getUri(), CONNECT_OPTIONS);
   }
 
-  // حماية إضافية: لو لأي سبب مش على داتابيس الاختبارات -> وقّف فوراً قبل ما نمسح شي
+  // Safety net: never wipe a non-test database.
   if (mongoose.connection.name !== TEST_DB_NAME) {
     throw new Error(`Refusing to run tests on database "${mongoose.connection.name}"`);
   }
-  // ابنِ الـ indexes (unique على slug/email/staffId...) قبل أي اختبار،
-  // لأنه منع التكرار بيعتمد عليها
   await Promise.all(Object.values(mongoose.models).map((m) => m.init()));
 }
 
-// امسح كل الداتا بين الاختبارات (كل اختبار بيبدأ نظيف)
 async function clear() {
   const collections = Object.values(mongoose.connection.collections);
   await Promise.all(collections.map((c) => c.deleteMany({})));
@@ -72,13 +53,11 @@ async function disconnect() {
   if (replSet) await replSet.stop();
 }
 
-// توكن JWT لأي مستخدم - نفس اللي بيعمله السيرفر وقت تسجيل الدخول
 const tokenFor = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: "1h",
   });
 
-// بزنس كامل: مالك + موظفين + خدمة نص ساعة
 async function makeBusiness(slug, { staffCount = 1 } = {}) {
   const tenant = await Tenant.create({ name: `Business ${slug}`, slug });
   const owner = await User.create({
@@ -118,8 +97,6 @@ async function makeCustomer(name) {
   });
 }
 
-// أول يوم شغل (مش جمعة) بعد يومين من اليوم -> دايماً بالمستقبل
-// وأبعد من حد الساعتين تبع الإلغاء
 function nextOpenDate() {
   for (let d = 2; d < 10; d++) {
     const date = new Date(Date.now() + d * 86400000).toISOString().slice(0, 10);

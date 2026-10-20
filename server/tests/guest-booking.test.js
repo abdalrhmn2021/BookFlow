@@ -1,10 +1,3 @@
-// ============================================================
-// حجز الضيف: زبون بدون حساب بيحجز باسمه ورقمه
-// ============================================================
-// ملاحظة: guestBookingLimiter بيسمح بـ 10 طلبات بالساعة لكل IP، وكل
-// الاختبارات هون جاية من نفس الـ IP. فمجموع طلبات POST للضيف بهالملف
-// لازم يضل 10 أو أقل (هلأ: 9). لو زدت اختبار، انتبه للعدد.
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 const Appointment = require("../src/models/Appointment");
@@ -14,7 +7,6 @@ beforeAll(h.connect);
 afterEach(h.clear);
 afterAll(h.disconnect);
 
-// حجز ضيف (بدون أي توكن)
 const guestBook = (biz, time, date, who = {}) =>
   request(h.app)
     .post(`/api/public/businesses/${biz.tenant.slug}/appointments`)
@@ -36,15 +28,12 @@ describe("Guest booking", () => {
     const res = await guestBook(biz, "10:00", date);
     expect(res.status).toBe(201);
     expect(res.body.appointment.staffName).toBe("Staff 1");
-    // the public answer never echoes personal data back
     expect(res.body.appointment.guest).toBeUndefined();
 
-    // saved as a guest booking: guest filled, no customerId
     const saved = await Appointment.findById(res.body.appointment.id).lean();
     expect(saved.customerId).toBeUndefined();
     expect(saved.guest).toEqual({ name: "Ahmad Guest", phone: "0599123456" });
 
-    // the owner's daily schedule shows it
     const list = await request(h.app)
       .get(`/api/appointments/business?date=${date}`)
       .set("Authorization", `Bearer ${h.tokenFor(biz.owner)}`)
@@ -64,7 +53,6 @@ describe("Guest booking", () => {
       .send({ slug: biz.tenant.slug, serviceId: biz.service._id, staffId: biz.staff[0]._id, date, time: "10:00" })
       .expect(201);
 
-    // 10:15 is inside 10:00-10:30
     expect((await guestBook(biz, "10:15", date)).status).toBe(409);
   });
 
@@ -84,7 +72,6 @@ describe("Guest booking", () => {
     for (const time of ["10:00", "11:00", "12:00"]) {
       expect((await guestBook(biz, time, date)).status).toBe(201);
     }
-    // same number written differently is still the same person
     const fourth = await guestBook(biz, "13:00", date, { phone: "٠٥٩٩ ١٢٣-٤٥٦" });
     expect(fourth.status).toBe(429);
   });
@@ -98,10 +85,10 @@ describe("Guest booking", () => {
 
 describe("normalizePhone", () => {
   test.each([
-    ["٠٥٩٩ ١٢٣-٤٥٦", "0599123456"], // Arabic-Indic digits + spaces + dash
-    ["00970 599 123 456", "+970599123456"], // 00 -> +
+    ["٠٥٩٩ ١٢٣-٤٥٦", "0599123456"],
+    ["00970 599 123 456", "+970599123456"],
     ["(059) 912.3456", "0599123456"],
-    [12345678, ""], // not a string
+    [12345678, ""],
   ])("%p -> %p", (input, expected) => {
     expect(normalizePhone(input)).toBe(expected);
   });

@@ -1,6 +1,3 @@
-// ============================================================
-// اختبارات الجلسة: التوكن بـ httpOnly cookie
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 
@@ -18,25 +15,21 @@ describe("Session cookie", () => {
 
     const cookie = res.headers["set-cookie"].find((c) => c.startsWith("bookflow_token="));
     expect(cookie).toBeDefined();
-    expect(cookie).toMatch(/HttpOnly/i); //   JavaScript ما بيقدر يقرأها
-    expect(cookie).toMatch(/SameSite=Lax/i); // حماية من CSRF
+    expect(cookie).toMatch(/HttpOnly/i);
+    expect(cookie).toMatch(/SameSite=Lax/i);
   });
 
   test("the cookie alone (no Authorization header) is enough for /auth/me, until logout", async () => {
     await h.makeCustomer("ahmad");
-    // agent = متصفح صغير: بيحفظ الكوكيز وبيرجع يبعثها مع كل طلب
     const browser = request.agent(h.app);
 
-    await browser
-      .post("/api/auth/login")
-      .send({ email: "ahmad@customer.test", password: "password123" })
-      .expect(200);
+    await browser.post("/api/auth/login").send({ email: "ahmad@customer.test", password: "password123" }).expect(200);
 
     const me = await browser.get("/api/auth/me").expect(200);
     expect(me.body.user.email).toBe("ahmad@customer.test");
 
     await browser.post("/api/auth/logout").expect(200);
-    await browser.get("/api/auth/me").expect(401); // الكوكي انمسحت
+    await browser.get("/api/auth/me").expect(401);
   });
 
   test("register also logs the user in with the cookie", async () => {
@@ -49,9 +42,6 @@ describe("Session cookie", () => {
   });
 
   test("a fake cookie is rejected (401)", async () => {
-    await request(h.app)
-      .get("/api/auth/me")
-      .set("Cookie", "bookflow_token=not-a-real-jwt")
-      .expect(401);
+    await request(h.app).get("/api/auth/me").set("Cookie", "bookflow_token=not-a-real-jwt").expect(401);
   });
 });

@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 
 const serviceSchema = new mongoose.Schema(
   {
-    // Which business owns this service - ALWAYS set from req.user, never from the client
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
@@ -26,7 +25,7 @@ const serviceSchema = new mongoose.Schema(
       min: [0, "Price cannot be negative"],
     },
     duration: {
-      type: Number, // minutes
+      type: Number,
       required: [true, "Duration is required"],
       min: [5, "Duration must be at least 5 minutes"],
       max: [480, "Duration cannot exceed 8 hours"],
@@ -36,10 +35,9 @@ const serviceSchema = new mongoose.Schema(
       default: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-// Two different salons can both have "Haircut", but one salon can't have it twice
 serviceSchema.index({ tenantId: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model("Service", serviceSchema);

@@ -1,14 +1,5 @@
 "use client";
 
-// The business dashboard.
-//   owner -> Overview + Schedule + Services + Staff + Working hours
-//   staff -> Overview + Schedule (and the backend only returns HIS appointments)
-//
-// The open tab lives in the URL: /dashboard?tab=schedule&date=2026-10-21
-//   - refresh -> you stay on the same tab
-//   - you can share / bookmark a tab
-//   - the browser's Back button goes to the previous tab
-
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
@@ -32,7 +23,6 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 export default function DashboardPage() {
   return (
     <RequireAuth roles={["owner", "staff"]}>
-      {/* useSearchParams() needs a <Suspense> boundary (same as the login page) */}
       <Suspense fallback={<Loading />}>
         <Dashboard />
       </Suspense>
@@ -47,7 +37,6 @@ function Dashboard() {
   const pathname = usePathname();
   const params = useSearchParams();
 
-  // The business itself: name, slug, timezone, working hours (every tab needs some of it)
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -76,14 +65,11 @@ function Dashboard() {
   if (!tenant || !user) return <Loading />;
 
   const tabs = user.role === "owner" ? OWNER_TABS : STAFF_TABS;
-  // Never trust the URL: an unknown tab (or ?tab=staff for a staff member) -> the first tab
   const requested = params.get("tab") as Tab | null;
   const tab: Tab = requested && tabs.includes(requested) ? requested : tabs[0];
   const dateParam = params.get("date");
   const date = dateParam && DATE_REGEX.test(dateParam) ? dateParam : undefined;
 
-  // Change the URL -> useSearchParams changes -> this component re-renders with the new tab.
-  // push (not replace): every tab is a step in the history, so Back returns to the previous tab.
   const go = (next: Tab, nextDate?: string) => {
     const query = new URLSearchParams({ tab: next });
     if (nextDate) query.set("date", nextDate);
@@ -94,10 +80,7 @@ function Dashboard() {
     <DashboardShell tenant={tenant} tabs={tabs} active={tab} onSelect={(next) => go(next)}>
       <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{t.dashboard.tabs[tab]}</h1>
       <div className="mt-6">
-        {/* Only the active tab is rendered: switching tabs unmounts the old one, so each
-            tab loads fresh data when opened (e.g. a service added -> visible in the schedule) */}
         {tab === "overview" && <OverviewTab timezone={tenant.timezone} onOpenDay={(d) => go("schedule", d)} />}
-        {/* key={date}: a new date from the URL (e.g. clicked in Overview) = a fresh schedule */}
         {tab === "schedule" && <ScheduleTab key={date} timezone={tenant.timezone} initialDate={date} />}
         {tab === "services" && <ServicesTab />}
         {tab === "staff" && <StaffTab />}

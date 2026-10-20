@@ -1,11 +1,5 @@
 "use client";
 
-// "Overview": what the owner (or staff member) needs to see the moment they open the dashboard.
-//   1) the NEXT appointment - big, because it's the very next thing they have to do
-//   2) today in numbers: how many, how many still need a "confirm", expected income
-//   3) the next 7 days as small bars - click a day to open its schedule
-// All numbers come from ONE request: GET /appointments/business/stats
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -15,7 +9,6 @@ import { formatDayChip, formatMomentIn, formatPrice } from "@/lib/format";
 import { card, errorBox } from "@/lib/ui";
 import type { AppointmentStatus, BusinessStats } from "@/lib/types";
 
-// The order + color of each status in today's thin bar (same colors as StatusBadge)
 const BAR: { status: AppointmentStatus; color: string }[] = [
   { status: "completed", color: "bg-navy-500" },
   { status: "confirmed", color: "bg-emerald-500" },
@@ -24,7 +17,6 @@ const BAR: { status: AppointmentStatus; color: string }[] = [
   { status: "cancelled", color: "bg-red-400" },
 ];
 
-// "in 25 minutes" / "بعد 25 دقيقة" - Intl writes the words in the right language for us
 function timeUntil(iso: string, locale: string): string {
   const minutes = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
@@ -60,14 +52,12 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
   if (!stats) return <p className="text-sm text-navy-500">{o.loading}</p>;
 
   const { today, week, toConfirm, next } = stats;
-  const maxDay = Math.max(1, ...week.map((d) => d.count)); // the tallest bar = 100%
+  const maxDay = Math.max(1, ...week.map((d) => d.count));
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        {/* ---------- 1) Next appointment ---------- */}
         <section className="relative overflow-hidden rounded-2xl bg-navy-900 p-6 text-white sm:p-8">
-          {/* Decorative: a faint "slot grid" in the corner, echoing the logo */}
           <div aria-hidden="true" className="absolute -end-6 -top-6 grid grid-cols-3 gap-2 opacity-10">
             {Array.from({ length: 12 }, (_, i) => (
               <span key={i} className={`h-5 w-9 rounded ${i === 4 ? "bg-coral-500 opacity-100" : "bg-white"}`} />
@@ -81,26 +71,30 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
               timezone={timezone}
               today={stats.date}
               showStaff={user?.role === "owner"}
-              onOpen={() => onOpenDay(new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(next.startTime)))}
+              onOpen={() =>
+                onOpenDay(new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(next.startTime)))
+              }
             />
           ) : (
             <p className="mt-4 max-w-sm text-navy-200">{o.noNext}</p>
           )}
         </section>
 
-        {/* ---------- 2) Today in numbers ---------- */}
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
           <section className={`${card} p-5`}>
             <h2 className="text-sm text-navy-500">{o.todayCount}</h2>
             <p className="font-display tabular mt-1 text-3xl font-semibold">{today.total}</p>
             {today.total > 0 && (
               <>
-                {/* One thin bar split by status - see the shape of the day at a glance */}
                 <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-navy-100">
                   {BAR.map(({ status, color }) =>
                     today.byStatus[status] ? (
-                      <span key={status} className={color} style={{ width: `${(today.byStatus[status] / today.total) * 100}%` }} />
-                    ) : null
+                      <span
+                        key={status}
+                        className={color}
+                        style={{ width: `${(today.byStatus[status] / today.total) * 100}%` }}
+                      />
+                    ) : null,
                   )}
                 </div>
                 <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-navy-500">
@@ -115,7 +109,6 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
             )}
           </section>
 
-          {/* Coral when there is work to do - the only number that asks for an action */}
           <section
             className={`rounded-xl border p-5 ${toConfirm > 0 ? "border-coral-200 bg-coral-50" : "border-navy-100 bg-white"}`}
           >
@@ -134,7 +127,6 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
         </div>
       </div>
 
-      {/* ---------- 3) Next 7 days ---------- */}
       <section className={`${card} p-5 sm:p-6`}>
         <h2 className="font-display font-semibold">{o.week}</h2>
         <div className="mt-5 grid grid-cols-7 gap-2 sm:gap-4">
@@ -148,7 +140,6 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
                 aria-label={`${weekday} ${day}: ${t.dashboard.schedule.count(d.count)}`}
               >
                 <span className="tabular text-sm font-semibold">{d.count}</span>
-                {/* Bar height = this day's share of the busiest day */}
                 <span className="flex h-28 w-full max-w-10 items-end rounded-md bg-navy-50">
                   <span
                     className={`w-full rounded-md transition group-hover:opacity-80 ${i === 0 ? "bg-coral-500" : "bg-navy-700"}`}
@@ -191,7 +182,6 @@ function NextAppointment({
   return (
     <div className="relative">
       <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        {/* The one big number on the page: WHEN */}
         <p dir="ltr" className="font-display tabular text-6xl font-semibold tracking-tight text-coral-400 sm:text-7xl">
           {time}
         </p>

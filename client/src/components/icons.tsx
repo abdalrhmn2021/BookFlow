@@ -1,6 +1,3 @@
-// Small line icons (24x24, drawn with the current text color).
-// Inline SVG instead of an icon library: no extra package, and only what we use.
-
 type IconProps = { className?: string };
 
 function Icon({ className = "h-5 w-5", children }: IconProps & { children: React.ReactNode }) {
@@ -93,7 +90,6 @@ export const IconNote = (p: IconProps) => (
   </Icon>
 );
 
-// Points right. In Arabic "forward" is LEFT -> use it with rtl:rotate-180
 export const IconChevron = (p: IconProps) => (
   <Icon {...p}>
     <path d="M9.5 6l6 6-6 6" />

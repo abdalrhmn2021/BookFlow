@@ -10,7 +10,6 @@ const {
   deleteService,
 } = require("../controllers/service.controller");
 
-// Every route below needs: a valid token + a user that belongs to a business
 router.use(protect, requireTenant);
 
 router.get("/", restrictTo("owner", "staff"), getServices);

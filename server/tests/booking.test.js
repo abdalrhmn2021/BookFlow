@@ -1,6 +1,3 @@
-// ============================================================
-// اختبارات الحجز: أهم شي بالمشروع - مستحيل يصير حجزين بنفس الوقت
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 
@@ -8,7 +5,6 @@ beforeAll(h.connect);
 afterEach(h.clear);
 afterAll(h.disconnect);
 
-// بيبعث طلب حجز باسم زبون معيّن
 const book = (customer, biz, time, date) =>
   request(h.app)
     .post("/api/appointments")
@@ -29,10 +25,7 @@ describe("Booking", () => {
     const customers = [];
     for (let i = 0; i < 10; i++) customers.push(await h.makeCustomer(`racer${i}`));
 
-    // Promise.all = كل الطلبات بتنبعث مع بعض، مش ورا بعض
-    const responses = await Promise.all(
-      customers.map((c) => book(c, biz, "10:00", date)),
-    );
+    const responses = await Promise.all(customers.map((c) => book(c, biz, "10:00", date)));
     const codes = responses.map((r) => r.status);
 
     expect(codes.filter((c) => c === 201)).toHaveLength(1);

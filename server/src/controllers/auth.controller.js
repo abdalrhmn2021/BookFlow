@@ -5,15 +5,8 @@ const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 
-// ============================================================
-// حماية من NoSQL injection
-// ============================================================
-// express.json() بيقبل أي JSON، فالإيميل ممكن يوصل ككائن بدل نص:
-//   { "email": { "$gt": "" } }
-// ولو حطيناه بـ findOne({ email }) كما هو، MongoDB بيفهمه operator
-// ("أي إيميل أكبر من نص فاضي") وبيرجع أول مستخدم بالداتابيس.
-// الحل: كل حقل بيدخل باستعلام لازم يكون نص حقيقي ومش فاضي.
-// كائن = "الحقل مش موجود" -> 400، قبل ما نلمس الداتابيس.
+// Credentials must be real strings: an object like { "$gt": "" } would become a
+// MongoDB operator inside findOne (NoSQL injection).
 const isText = (value) => typeof value === "string" && value.length > 0;
 
 const generateToken = (user) => {
@@ -22,16 +15,12 @@ const generateToken = (user) => {
   });
 };
 
-// @route  POST /api/auth/register
-// @access Public (customer self-registration)
 exports.register = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
     if (!isText(name) || !isText(email) || !isText(password)) {
-      return res
-        .status(400)
-        .json({ message: "name, email and password are required" });
+      return res.status(400).json({ message: "name, email and password are required" });
     }
 
     const existingUser = await User.findOne({ email });
@@ -48,7 +37,6 @@ exports.register = async (req, res) => {
     });
 
     const token = generateToken(user);
-    // المتصفح: التوكن بـ httpOnly cookie. (و برجع كمان بالـ body لأدوات زي REST Client / Postman)
     setAuthCookie(res, token);
 
     res.status(201).json({
@@ -61,42 +49,28 @@ exports.register = async (req, res) => {
       token,
     });
   } catch (error) {
-    // Race condition: two requests with the same email can both pass the
-    // findOne check above - the unique index on email rejects the second one
-    // with code 11000, which is a conflict, not a server error.
     if (error.code === 11000) {
       return res.status(409).json({ message: "Email already exists" });
     }
-    // Schema validation failed (e.g. password too short, bad email) - that's
-    // the client's fault, so 400 with the actual reasons, not a 500.
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((e) => e.message);
       return res.status(400).json({ message: "Validation failed", errors });
     }
-    // log the real error on the server only - never send internals to the client
     console.error("[auth] error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// @route  POST /api/auth/login
-// @access Public (all roles: customer, owner, staff, superadmin)
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // isText وليس !email: الكائن { "$gt": "" } قيمته truthy فبيعدّي من !email
     if (!isText(email) || !isText(password)) {
-      return res
-        .status(400)
-        .json({ message: "email and password are required" });
+      return res.status(400).json({ message: "email and password are required" });
     }
 
-    // password has `select: false` on the schema, so pull it in explicitly
     const user = await User.findOne({ email }).select("+password");
 
-    // Same generic message for "no such user" and "wrong password" on purpose,
-    // so we don't leak which one was wrong.
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -106,27 +80,18 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Only reveal "disabled" AFTER the password is verified - otherwise anyone
-    // could probe emails and learn which accounts exist and are disabled.
     if (!user.isActive) {
       return res.status(403).json({ message: "Account is disabled" });
     }
 
-    // owner/staff are tied to one tenant - make sure that business hasn't been
-    // deactivated by an admin. customer/superadmin have no fixed tenantId, skip.
     if (user.role === "owner" || user.role === "staff") {
       const tenant = await Tenant.findById(user.tenantId);
       if (!tenant || !tenant.isActive) {
-        return res
-          .status(403)
-          .json({ message: "This business account is disabled" });
+        return res.status(403).json({ message: "This business account is disabled" });
       }
     }
 
-    // token payload stays generic (id + role only) - no tenantId baked in,
-    // since a customer can belong to more than one tenant via CustomerTenant
     const token = generateToken(user);
-    // المتصفح: التوكن بـ httpOnly cookie. (و برجع كمان بالـ body لأدوات زي REST Client / Postman)
     setAuthCookie(res, token);
 
     res.status(200).json({
@@ -135,25 +100,16 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        tenantId: user.tenantId, // returned for convenience, not part of the token
+        tenantId: user.tenantId,
       },
       token,
     });
   } catch (error) {
-    // log the real error on the server only - never send internals to the client
     console.error("[auth] error:", error);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
 
-// @route  POST /api/auth/register-business
-// @access Public (a business owner signs up their business)
-//
-// Creates the Tenant AND its owner User together inside a TRANSACTION:
-// either both are saved, or neither is. Without it, if creating the owner
-// failed (e.g. email taken) we'd be left with an orphan tenant that nobody
-// owns - and its slug would be blocked forever.
-// Note: MongoDB transactions need a replica set (MongoDB Atlas has one by default).
 exports.registerBusiness = async (req, res) => {
   const { businessName, slug, ownerName, email, password, phone } = req.body;
 
@@ -163,31 +119,13 @@ exports.registerBusiness = async (req, res) => {
     });
   }
 
-  // وضع البزنس الواحد: مسموح نسجّل بزنس واحد بس، اللي الـ slug تبعه
-  // نفس SINGLE_BUSINESS_SLUG. وبما إنه الـ slug عليه unique index،
-  // بعد أول تسجيل ناجح أي محاولة ثانية بتنرفض -> مستحيل يصير بزنس ثاني.
-  // 403 (ممنوع) مش 400: الطلب مكتوب صح، بس هالعملية مسكّرة بهالنسخة.
-  if (
-    SINGLE_BUSINESS_SLUG &&
-    String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG
-  ) {
-    return res
-      .status(403)
-      .json({ message: "Business registration is disabled" });
+  if (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG) {
+    return res.status(403).json({ message: "Business registration is disabled" });
   }
 
-  // Friendly early checks for clear messages. They are NOT the real guarantee -
-  // two requests can still race past them; the unique indexes + transaction are.
-  const [emailTaken, slugTaken] = await Promise.all([
-    User.exists({ email }),
-    Tenant.exists({ slug }),
-  ]);
-  if (emailTaken)
-    return res.status(409).json({ message: "Email already exists" });
-  if (slugTaken)
-    return res
-      .status(409)
-      .json({ message: "This business URL is already taken" });
+  const [emailTaken, slugTaken] = await Promise.all([User.exists({ email }), Tenant.exists({ slug })]);
+  if (emailTaken) return res.status(409).json({ message: "Email already exists" });
+  if (slugTaken) return res.status(409).json({ message: "This business URL is already taken" });
 
   const session = await mongoose.startSession();
   try {
@@ -206,7 +144,6 @@ exports.registerBusiness = async (req, res) => {
         tenantId: tenant._id,
       });
       await owner.save({ session });
-      // if anything above throws -> the whole transaction is rolled back
     });
 
     const token = generateToken(owner);
@@ -229,23 +166,13 @@ exports.registerBusiness = async (req, res) => {
       token,
     });
   } finally {
-    // errors (duplicate key, validation) go on to the global error handler
     await session.endSession();
   }
 };
 
-// @route  GET /api/auth/me
-// @access any logged-in user
-// protect() already verified the token and that the user is active.
-// We load the full user here because req.user only holds id/role/tenantId.
 exports.getMe = async (req, res) => {
-  const user = await User.findById(req.user.id).populate(
-    "tenantId",
-    "name slug",
-  );
+  const user = await User.findById(req.user.id).populate("tenantId", "name slug");
 
-  // owner/staff: include their business, so the dashboard can show its name
-  // and link to the public booking page (/book/<slug>)
   const business = user.tenantId
     ? {
         id: user.tenantId._id,
@@ -266,9 +193,6 @@ exports.getMe = async (req, res) => {
   });
 };
 
-// @route  POST /api/auth/logout
-// @access Public
-// التوكن بكوكي httpOnly -> الواجهة ما بتقدر تمسحه بنفسها، فالسيرفر بيمسحه.
 exports.logout = (req, res) => {
   clearAuthCookie(res);
   res.status(200).json({ message: "Logged out" });

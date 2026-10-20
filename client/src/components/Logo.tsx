@@ -1,7 +1,3 @@
-// The BookFlow mark: a small grid of time slots with ONE slot taken (coral) = a booking.
-// `light` = for dark backgrounds (the dashboard sidebar).
-// `compact` = hide the word "BookFlow" on phones (the top bar has little room there).
-
 export default function Logo({ light = false, compact = false }: { light?: boolean; compact?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
@@ -18,7 +14,7 @@ export default function Logo({ light = false, compact = false }: { light?: boole
               rx="1.5"
               className={row === 1 && col === 1 ? "fill-coral-500" : light ? "fill-white/40" : "fill-white/35"}
             />
-          ))
+          )),
         )}
       </svg>
       <span

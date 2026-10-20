@@ -2,7 +2,6 @@
 
 import { useLanguage } from "@/i18n/LanguageContext";
 
-// The same "Loading..." everywhere, in the current language
 export default function Loading({ text }: { text?: string }) {
   const { t } = useLanguage();
   return (

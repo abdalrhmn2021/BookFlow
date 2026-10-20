@@ -7,8 +7,6 @@ import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
 
-// Customer sign-up. (Business sign-up - /auth/register-business - gets its own page later.)
-// <Suspense> is required around useSearchParams() - same as the login page.
 export default function RegisterPage() {
   return (
     <Suspense fallback={<Loading />}>
@@ -23,12 +21,10 @@ function RegisterForm() {
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
 
-  // One state object for the whole form instead of 4 separate useState calls
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // One handler for every input: the input's `name` says which field to update
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -62,18 +58,44 @@ function RegisterForm() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">{t.register.email}</span>
-          <input name="email" type="email" required dir="ltr" autoComplete="email" value={form.email} onChange={handleChange} className={inputClass} />
+          <input
+            name="email"
+            type="email"
+            required
+            dir="ltr"
+            autoComplete="email"
+            value={form.email}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
         <label className="block">
           <span className="text-sm font-medium">
             {t.register.phone} <span className="text-navy-400">{t.common.optional}</span>
           </span>
-          <input name="phone" type="tel" dir="ltr" autoComplete="tel" value={form.phone} onChange={handleChange} className={inputClass} />
+          <input
+            name="phone"
+            type="tel"
+            dir="ltr"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
         <label className="block">
           <span className="text-sm font-medium">{t.register.password}</span>
-          {/* minLength matches the backend rule - quick feedback, but the backend still checks */}
-          <input name="password" type="password" required dir="ltr" minLength={8} autoComplete="new-password" value={form.password} onChange={handleChange} className={inputClass} />
+          <input
+            name="password"
+            type="password"
+            required
+            dir="ltr"
+            minLength={8}
+            autoComplete="new-password"
+            value={form.password}
+            onChange={handleChange}
+            className={inputClass}
+          />
         </label>
 
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

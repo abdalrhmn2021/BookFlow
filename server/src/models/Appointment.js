@@ -5,10 +5,7 @@ const STATUSES = ["pending", "confirmed", "completed", "cancelled", "no-show"];
 
 const appointmentSchema = new mongoose.Schema(
   {
-    // --- Who and where ---
     tenantId: { type: ObjectId, ref: "Tenant", required: true },
-    // Who booked: EITHER a logged-in customer (customerId) OR a guest without
-    // an account (guest). Never both, never neither - checked in pre("validate") below.
     customerId: { type: ObjectId, ref: "User" },
     guest: {
       type: new mongoose.Schema(
@@ -20,52 +17,38 @@ const appointmentSchema = new mongoose.Schema(
             minlength: [2, "Name must be at least 2 characters"],
             maxlength: [60, "Name is too long"],
           },
-          // stored normalized (digits only, optional leading +) - see public.controller
           phone: { type: String, required: [true, "Phone number is required"], trim: true },
         },
         { _id: false },
       ),
-      default: undefined, // no empty "guest: {}" on normal appointments
+      default: undefined,
     },
-    // Guest bookings only: SHA-256 of the secret "manage my booking" link (utils/manageToken.js).
-    // select: false -> never returned by a normal query (the dashboard, my-appointments...).
-    // The raw token is NEVER stored - only the guest has it.
     manageTokenHash: { type: String, select: false },
     staffId: { type: ObjectId, ref: "User", required: true },
     serviceId: { type: ObjectId, ref: "Service", required: true },
 
-    // --- Snapshot: the service as it was at booking time ---
-    // If the owner changes the price later, old appointments keep the original one.
     serviceName: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
     duration: { type: Number, required: true },
-    // minutes
 
-    // --- When ---
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
 
     status: { type: String, enum: STATUSES, default: "pending" },
     notes: { type: String, trim: true, maxlength: [500, "Notes are too long"] },
 
-    // --- Reminder: when the business last sent the customer a reminder (WhatsApp) ---
-    // Lets the owner and staff see "already reminded" - from any device, by anyone on the team.
     reminderSentAt: { type: Date },
 
-    // --- Cancellation info: filled ONLY when the appointment is cancelled ---
-    // Optional, no defaults: most appointments are never cancelled.
-    // The controller fills these at the moment of cancelling.
     cancellation: {
       reason: { type: String, trim: true, maxlength: [300, "Reason is too long"] },
-      cancelledBy: { type: ObjectId, ref: "User" }, // empty when a guest cancelled (no account)
-      byGuest: { type: Boolean }, // true = the guest cancelled from their manage-booking link
+      cancelledBy: { type: ObjectId, ref: "User" },
+      byGuest: { type: Boolean },
       cancelledAt: { type: Date },
     },
   },
   { timestamps: true },
 );
 
-// endTime must come after startTime + exactly one kind of booker
 appointmentSchema.pre("validate", function () {
   const hasCustomer = Boolean(this.customerId);
   const hasGuest = Boolean(this.guest);
@@ -77,19 +60,14 @@ appointmentSchema.pre("validate", function () {
   }
 });
 
-// Fast search for a staff member's appointments (used for the overlap check)
 appointmentSchema.index({ tenantId: 1, staffId: 1, startTime: 1 });
-// Fast business dashboard: "all of this business's appointments on a day" (owner view)
 appointmentSchema.index({ tenantId: 1, startTime: 1 });
-// Fast "my appointments" list for a customer
 appointmentSchema.index({ customerId: 1, startTime: -1 });
-// Anti-spam check for guests: "how many upcoming bookings does this phone have here?"
-appointmentSchema.index({ tenantId: 1, "guest.phone": 1, startTime: 1 },
-  { partialFilterExpression: { "guest.phone": { $exists: true } } }, // guests only - keeps it small
+appointmentSchema.index(
+  { tenantId: 1, "guest.phone": 1, startTime: 1 },
+  { partialFilterExpression: { "guest.phone": { $exists: true } } },
 );
 
-// Find a guest booking by its link. unique: two bookings can never share a link.
-// partial: customer bookings have no token, so they don't take space in this index.
 appointmentSchema.index(
   { manageTokenHash: 1 },
   { unique: true, partialFilterExpression: { manageTokenHash: { $exists: true } } },

@@ -1,11 +1,3 @@
-// Fill the database with a demo business, so the frontend has something to show.
-//
-//   npm run seed           -> creates the demo data (does nothing if it already exists)
-//   npm run seed -- --reset -> deletes the demo business + everything in it, then creates it again
-//
-// We use the models directly (not the API), but the rules still apply:
-// passwords are hashed by the User pre("save") hook, and the schemas validate every field.
-
 require("dotenv").config();
 const mongoose = require("mongoose");
 const connectDB = require("../src/config/db");
@@ -18,7 +10,7 @@ const StaffLock = require("../src/models/StaffLock");
 const { localToDate, nextDate, dayNameOf } = require("../src/utils/time");
 
 const SLUG = "demo-salon";
-const PASSWORD = "password123"; // demo only - every demo account uses it
+const PASSWORD = "password123";
 
 const OWNER = { name: "Omar (Owner)", email: "owner@demo.com", phone: "0590000001" };
 const STAFF = [
@@ -26,7 +18,6 @@ const STAFF = [
   { name: "Ahmad", email: "ahmad@demo.com", phone: "0590000003" },
 ];
 const CUSTOMER = { name: "Lina (Customer)", email: "customer@demo.com", phone: "0590000004" };
-// Extra customers, so the business schedule looks like a real day
 const OTHER_CUSTOMERS = [
   { name: "Khaled", email: "khaled@demo.com", phone: "0590000005" },
   { name: "Maya", email: "maya@demo.com", phone: "0590000006" },
@@ -39,16 +30,13 @@ const SERVICES = [
 
 const DEMO_EMAILS = [OWNER, ...STAFF, CUSTOMER, ...OTHER_CUSTOMERS].map((u) => u.email);
 
-// One day of bookings: [staff index, service index, customer index, "HH:mm"].
-// Each staff member's times never overlap (Hair coloring = 90 min).
-//   customer index 0 = Lina (the demo customer), 1-2 = the others
 const DAY_PLAN = [
-  [0, 0, 1, "09:00"], // Sara  - Haircut       09:00-09:30
-  [0, 2, 0, "11:30"], // Sara  - Hair coloring 11:30-13:00
-  [0, 1, 2, "14:30"], // Sara  - Beard trim    14:30-14:45
-  [1, 0, 2, "10:00"], // Ahmad - Haircut       10:00-10:30
-  [1, 1, 0, "13:00"], // Ahmad - Beard trim    13:00-13:15
-  [1, 0, 1, "16:00"], // Ahmad - Haircut       16:00-16:30
+  [0, 0, 1, "09:00"],
+  [0, 2, 0, "11:30"],
+  [0, 1, 2, "14:30"],
+  [1, 0, 2, "10:00"],
+  [1, 1, 0, "13:00"],
+  [1, 0, 1, "16:00"],
 ];
 
 async function reset() {
@@ -63,7 +51,6 @@ async function reset() {
     ]);
     await Tenant.deleteOne({ _id: tenant._id });
   }
-  // Demo users by email (also catches the customer, who has no tenantId)
   const users = await User.find({ email: { $in: DEMO_EMAILS } }).select("_id");
   await Appointment.deleteMany({ customerId: { $in: users.map((u) => u._id) } });
   await User.deleteMany({ email: { $in: DEMO_EMAILS } });
@@ -82,10 +69,8 @@ async function seed() {
     return;
   }
 
-  // Default working hours come from the Tenant model: Sat-Thu 09:00-17:00, Friday closed
   const tenant = await Tenant.create({ name: "Demo Salon", slug: SLUG });
 
-  // User.create() (not insertMany) so the pre("save") hook hashes each password
   await User.create({ ...OWNER, password: PASSWORD, role: "owner", tenantId: tenant._id });
   for (const s of STAFF) {
     await User.create({ ...s, password: PASSWORD, role: "staff", tenantId: tenant._id });
@@ -94,12 +79,10 @@ async function seed() {
   for (const c of [CUSTOMER, ...OTHER_CUSTOMERS]) {
     customers.push(await User.create({ ...c, password: PASSWORD, role: "customer" }));
   }
-  const staff = await User.find({ tenantId: tenant._id, role: "staff" }).sort({ name: -1 }); // Sara, Ahmad
+  const staff = await User.find({ tenantId: tenant._id, role: "staff" }).sort({ name: -1 });
 
   const services = await Service.insertMany(SERVICES.map((s) => ({ ...s, tenantId: tenant._id })));
 
-  // ---- Sample appointments: yesterday + today + the next 3 open days ----
-  // Written straight to the DB (no race to worry about in a seed script).
   const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(now);
   const yesterday = new Date(`${today}T00:00:00Z`);
@@ -107,7 +90,7 @@ async function seed() {
 
   const days = [];
   for (let d = yesterday.toISOString().slice(0, 10); days.length < 5; d = nextDate(d)) {
-    if (dayNameOf(d) !== "friday") days.push(d); // Friday is closed by default
+    if (dayNameOf(d) !== "friday") days.push(d);
   }
 
   const appointments = [];
@@ -117,15 +100,13 @@ async function seed() {
       const startTime = localToDate(date, time, tenant.timezone);
       const endTime = new Date(startTime.getTime() + service.duration * 60 * 1000);
 
-      // A realistic status for WHEN it is: the past is finished, the future is waiting
       let status;
       if (startTime <= now) status = i === 2 ? "no-show" : "completed";
       else status = (i + dayIndex) % 2 === 0 ? "confirmed" : "pending";
-      if (dayIndex === 0 && i === 5) status = "cancelled"; // one cancellation in the history
+      if (dayIndex === 0 && i === 5) status = "cancelled";
 
       appointments.push({
         tenantId: tenant._id,
-        // One booking a day is from a guest (no account) - so the demo dashboard shows both kinds
         ...(i === 3
           ? { guest: { name: "Khaled Mansour", phone: "0599000111" } }
           : { customerId: customers[customerI]._id }),

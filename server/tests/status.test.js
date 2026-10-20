@@ -1,6 +1,3 @@
-// ============================================================
-// اختبارات حالات الموعد (state machine) وقواعد الإلغاء
-// ============================================================
 const request = require("supertest");
 const h = require("./helpers");
 const Appointment = require("../src/models/Appointment");
@@ -11,7 +8,6 @@ afterAll(h.disconnect);
 
 const auth = (user) => ({ Authorization: `Bearer ${h.tokenFor(user)}` });
 
-// موعد مباشرة بالداتابيس - بيخلينا نحط أي وقت (حتى قريب أو ماضي)
 async function makeAppointment(biz, customer, { startsInMinutes, status = "pending" }) {
   const startTime = new Date(Date.now() + startsInMinutes * 60000);
   return Appointment.create({
@@ -46,7 +42,7 @@ describe("Status transitions (owner/staff)", () => {
   test("pending -> confirmed is allowed", async () => {
     const appt = await makeAppointment(biz, customer, { startsInMinutes: ONE_DAY });
     const res = await setStatus(biz.owner, appt, { status: "confirmed" }).expect(200);
-    expect(res.body.appointment.status).toBe("confirmed"); // returnDocument: "after"
+    expect(res.body.appointment.status).toBe("confirmed");
   });
 
   test("pending -> completed is NOT in the map (409)", async () => {
@@ -98,7 +94,6 @@ describe("Customer cancellation", () => {
   });
 
   test("the owner's cancellation is never overwritten by the customer (409)", async () => {
-    // الموظف لغى أول وكتب سببه -> الزبون ما لازم يكتب فوقه
     const appt = await makeAppointment(biz, customer, { startsInMinutes: ONE_DAY });
     await setStatus(biz.owner, appt, { status: "cancelled", reason: "The barber is sick today" }).expect(200);
 
@@ -108,10 +103,6 @@ describe("Customer cancellation", () => {
   });
 });
 
-// ============================================================
-// reason لازم يكون نص - أي نوع ثاني (object, رقم, array) لازم يرجع 400 مش 500
-// (قبل الإصلاح: reason?.trim() على object كان بيضرب TypeError -> 500)
-// ============================================================
 describe("Cancellation reason must be a string", () => {
   let biz, customer;
   beforeEach(async () => {
@@ -126,7 +117,6 @@ describe("Cancellation reason must be a string", () => {
   ])("customer cancel with %s as the reason -> 400", async (_label, badReason) => {
     const appt = await makeAppointment(biz, customer, { startsInMinutes: ONE_DAY });
     await cancelAsCustomer(customer, appt, badReason).expect(400);
-    // and the appointment is untouched
     expect((await Appointment.findById(appt._id)).status).toBe("pending");
   });
 

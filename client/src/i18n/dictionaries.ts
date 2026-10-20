@@ -1,14 +1,3 @@
-// Every piece of text the user sees, in both languages.
-//
-// How it works:
-//   - `en` is the "master" shape. `Dictionary = typeof en`.
-//   - `ar` is typed as Dictionary -> if you add a key to `en` and forget it in `ar`,
-//     TypeScript shows an error. You can never ship a half-translated page.
-//   - Text with a value inside (a name, a price) is a small FUNCTION, not string gluing:
-//     word order differs between languages ("Book for 50 ₪" vs "احجز بـ 50 ₪").
-//
-// No "use client" here: this is plain data, so the server (layout) can import it too.
-
 import type { AppointmentStatus, DayName, Role } from "@/lib/types";
 
 export type Lang = "ar" | "en";
@@ -17,19 +6,19 @@ export const LANG_COOKIE = "bookflow_lang";
 
 export const isLang = (value: unknown): value is Lang => value === "ar" || value === "en";
 
-// What the WhatsApp reminder message is built from (see dashboard.schedule.reminderMessage)
 export interface ReminderParts {
-  name: string; //     customer / guest name
+  name: string;
   business: string;
-  day: string; //      "today" / "tomorrow" / "on Saturday, October 18"
-  time: string; //     "10:30"
+  day: string;
+  time: string;
   service: string;
   staff: string;
 }
 
+// `en` defines the shape; `ar` is typed as Dictionary, so a missing translation is a type error.
 const en = {
   dir: "ltr" as "ltr" | "rtl",
-  locale: "en-US", // for Intl date formatting
+  locale: "en-US",
 
   common: {
     loading: "Loading...",
@@ -48,7 +37,7 @@ const en = {
     login: "Log in",
     signup: "Sign up",
     logout: "Log out",
-    switchLang: "العربية", // the button shows the OTHER language
+    switchLang: "العربية",
   },
 
   roles: {
@@ -66,7 +55,6 @@ const en = {
     createAccount: "Create an account",
     forBusinessTitle: "Own a salon, clinic or gym?",
     forBusinessText: "Get a booking page, a daily schedule and WhatsApp reminders in minutes.",
-    // The sample booking card next to the headline (demo data, not real)
     sample: {
       business: "Demo Salon",
       service: "Haircut",
@@ -131,8 +119,6 @@ const en = {
   } satisfies Record<DayName, string>,
 
   dashboard: {
-    welcome: (name: string, role: string) => `Welcome, ${name} (${role})`,
-    publicPage: "Public booking page:",
     copy: "Copy link",
     copied: "Copied ✓",
     bookingPage: "Your booking page",
@@ -272,9 +258,9 @@ const en = {
     willConfirm: (business: string) => `${business} will confirm your appointment.`,
     myAppointments: "My appointments",
     bookAnother: "Book another",
-    // guest "manage my booking" link (shown once, right after booking)
     manageTitle: "Save your booking link 🔗",
-    manageText: "Use this private link to see or cancel your booking. Anyone who has it can manage the booking, so keep it to yourself.",
+    manageText:
+      "Use this private link to see or cancel your booking. Anyone who has it can manage the booking, so keep it to yourself.",
     copyLink: "Copy link",
     copied: "Copied ✓",
     sendToMe: "Send it to me on WhatsApp",
@@ -294,7 +280,8 @@ const en = {
     cancelledByBusiness: (business: string) => `${business} cancelled this booking.`,
     reason: "Reason:",
     cancelUntil: (date: string, time: string) => `You can cancel online until ${date}, ${time}.`,
-    tooLate: "It's less than 2 hours before your appointment, so it can't be cancelled online anymore. Please contact the business directly.",
+    tooLate:
+      "It's less than 2 hours before your appointment, so it can't be cancelled online anymore. Please contact the business directly.",
     cancelledNow: "Your booking was cancelled. The time is free for someone else now.",
     bookAgain: "Book again",
   },
@@ -330,10 +317,8 @@ const en = {
     "no-show": "No-show",
   } satisfies Record<AppointmentStatus, string>,
 
-  // 45 -> "45 min",  90 -> "1h 30min",  60 -> "1h"
   duration: (h: number, m: number) => (h === 0 ? `${m} min` : m === 0 ? `${h}h` : `${h}h ${m}min`),
 
-  // Backend error message (always English) -> text to show. English shows them as they are.
   errors: {} as Record<string, string>,
 };
 
@@ -341,7 +326,7 @@ export type Dictionary = typeof en;
 
 const ar: Dictionary = {
   dir: "rtl",
-  locale: "ar-u-nu-latn", // Arabic month/day names, but digits stay 0-9
+  locale: "ar-u-nu-latn",
 
   common: {
     loading: "جاري التحميل...",
@@ -442,8 +427,6 @@ const ar: Dictionary = {
   },
 
   dashboard: {
-    welcome: (name, role) => `أهلاً ${name} (${role})`,
-    publicPage: "صفحة الحجز العامة:",
     copy: "نسخ الرابط",
     copied: "تم النسخ ✓",
     bookingPage: "صفحة الحجز الخاصة بك",
@@ -583,7 +566,8 @@ const ar: Dictionary = {
     myAppointments: "مواعيدي",
     bookAnother: "حجز موعد آخر",
     manageTitle: "احفظ رابط حجزك 🔗",
-    manageText: "من خلال هذا الرابط الخاص تقدر تشوف حجزك أو تلغيه. أي شخص معه الرابط يقدر يدير الحجز، فاحتفظ فيه لنفسك.",
+    manageText:
+      "من خلال هذا الرابط الخاص تقدر تشوف حجزك أو تلغيه. أي شخص معه الرابط يقدر يدير الحجز، فاحتفظ فيه لنفسك.",
     copyLink: "نسخ الرابط",
     copied: "تم النسخ ✓",
     sendToMe: "ابعته لنفسي على واتساب",
@@ -639,20 +623,15 @@ const ar: Dictionary = {
     "no-show": "لم يحضر",
   },
 
-  // 45 -> "45 دقيقة",  60 -> "ساعة",  90 -> "ساعة و30 دقيقة",  120 -> "ساعتان"
   duration: (h, m) => {
     const hours = h === 1 ? "ساعة" : h === 2 ? "ساعتان" : `${h} ساعات`;
     if (h === 0) return `${m} دقيقة`;
     return m === 0 ? hours : `${hours} و${m} دقيقة`;
   },
 
-  // Keys = the EXACT English message the backend sends.
-  // A message that isn't here is shown in English (better than showing nothing).
   errors: {
-    // frontend (lib/api.ts)
     "Can't reach the server. Is the backend running?": "تعذّر الاتصال بالخادم. تأكد أن الخادم يعمل.",
     "Something went wrong": "حدث خطأ ما، حاول مرة أخرى",
-    // auth
     "Invalid credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
     "email and password are required": "البريد الإلكتروني وكلمة المرور مطلوبان",
     "name, email and password are required": "الاسم والبريد الإلكتروني وكلمة المرور مطلوبة",
@@ -664,9 +643,9 @@ const ar: Dictionary = {
     "User no longer exists": "هذا المستخدم لم يعد موجوداً",
     "You do not have permission to perform this action": "ليس لديك صلاحية للقيام بهذا الإجراء",
     "Too many login attempts, please try again in 15 minutes": "محاولات دخول كثيرة، حاول مجدداً بعد 15 دقيقة",
-    "Too many accounts created from this IP, please try again later": "تم إنشاء حسابات كثيرة من هذا الجهاز، حاول لاحقاً",
+    "Too many accounts created from this IP, please try again later":
+      "تم إنشاء حسابات كثيرة من هذا الجهاز، حاول لاحقاً",
     "Too many requests, please slow down": "طلبات كثيرة، تمهّل قليلاً",
-    // validation (shown one by one from `errors`)
     "Validation failed": "البيانات المدخلة غير صحيحة",
     "Please provide a valid email": "أدخل بريداً إلكترونياً صحيحاً",
     "Password must be at least 8 characters": "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
@@ -674,20 +653,17 @@ const ar: Dictionary = {
     "Email is required": "البريد الإلكتروني مطلوب",
     "Password is required": "كلمة المرور مطلوبة",
     "Notes are too long": "الملاحظات طويلة جداً",
-    // booking
     "Business not found": "المكان غير موجود",
     "Service not found": "الخدمة غير موجودة",
     "Staff member not found": "الموظف غير موجود",
     "This staff member is already booked at that time": "هذا الموظف محجوز في هذا الوقت",
     "This time is outside working hours": "هذا الوقت خارج ساعات العمل",
     "You can't book a time in the past": "لا يمكن الحجز في وقت مضى",
-    // guest booking
     "Name must be at least 2 characters": "الاسم يجب أن يكون حرفين على الأقل",
     "Name is too long": "الاسم طويل جداً",
     "Please provide a valid phone number": "أدخل رقم جوال صحيح",
     "You already have too many upcoming bookings here": "لديك حجوزات قادمة كثيرة هنا بالفعل",
     "Too many bookings from this device, please try again later": "حجوزات كثيرة من هذا الجهاز، حاول لاحقاً",
-    // my appointments
     "Appointment not found": "الموعد غير موجود",
     "Booking not found": "الحجز غير موجود أو الرابط غير صحيح",
     "You can't cancel an appointment that has already started": "لا يمكن إلغاء موعد بدأ بالفعل",
@@ -699,16 +675,15 @@ const ar: Dictionary = {
     "Cancellation reason must be at least 10 characters long": "سبب الإلغاء يجب أن يكون 10 أحرف على الأقل",
     "You can't cancel less than 2 hours before the appointment": "لا يمكن الإلغاء قبل أقل من ساعتين من الموعد",
     "Only upcoming active appointments can be reminded": "يمكن التذكير بالمواعيد القادمة فقط",
-    // business sign-up
     "businessName, slug, ownerName, email and password are required": "جميع الحقول مطلوبة ما عدا رقم الهاتف",
     "This business URL is already taken": "رابط صفحة الحجز هذا مستخدم بالفعل، اختر رابطاً آخر",
     "slug already exists": "رابط صفحة الحجز هذا مستخدم بالفعل، اختر رابطاً آخر",
     "Slug is required": "رابط صفحة الحجز مطلوب",
     "Slug must be at least 3 characters": "الرابط يجب أن يكون 3 أحرف على الأقل",
     "Slug must be at most 40 characters": "الرابط يجب ألا يزيد عن 40 حرفاً",
-    "Slug can only contain lowercase letters, numbers and dashes": "الرابط يقبل فقط أحرفاً إنجليزية صغيرة وأرقاماً وشرطات",
+    "Slug can only contain lowercase letters, numbers and dashes":
+      "الرابط يقبل فقط أحرفاً إنجليزية صغيرة وأرقاماً وشرطات",
     "Tenant name is required": "اسم العمل مطلوب",
-    // dashboard
     "This action requires a business account": "هذا الإجراء يتطلب حساب عمل",
     "This business account is disabled": "حساب هذا العمل معطّل",
     "name already exists": "هذا الاسم مستخدم بالفعل",
@@ -720,8 +695,8 @@ const ar: Dictionary = {
     "Duration is required": "المدة مطلوبة",
     "Duration must be at least 5 minutes": "المدة يجب أن تكون 5 دقائق على الأقل",
     "Duration cannot exceed 8 hours": "المدة لا يمكن أن تتجاوز 8 ساعات",
-    "Can't mark as completed before the appointment starts": "لا يمكن وضع \"مكتمل\" قبل بدء الموعد",
-    "Can't mark as no-show before the appointment starts": "لا يمكن وضع \"لم يحضر\" قبل بدء الموعد",
+    "Can't mark as completed before the appointment starts": 'لا يمكن وضع "مكتمل" قبل بدء الموعد',
+    "Can't mark as no-show before the appointment starts": 'لا يمكن وضع "لم يحضر" قبل بدء الموعد',
     "Can't mark as confirmed after the appointment started": "لا يمكن تأكيد موعد بدأ بالفعل",
     "Can't mark as cancelled after the appointment started": "لا يمكن إلغاء موعد بدأ بالفعل",
   },
