@@ -43,31 +43,47 @@ jobs:
       - name: Start MongoDB 8 (single-node replica set)
         timeout-minutes: 4
         working-directory: .
+        shell: bash # no "-e": we handle every error ourselves and report it
         run: |
-          docker run -d --name mongo -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+          # Any problem -> an ::error annotation with the details (visible on the PR without logs).
+          # %0A = a new line inside an annotation.
+          fail() {
+            local details
+            details=$( { echo "$1"; echo "--- docker ps -a ---"; docker ps -a; echo "--- docker logs (tail) ---"; docker logs mongo 2>&1 | tail -25; } | sed ':a;N;$!ba;s/\n/%0A/g' )
+            echo "::error title=MongoDB::${details}"
+            exit 1
+          }
+          mongo() { docker exec mongo mongosh --quiet --eval "$1" 2>&1; }
 
-          # 1) استنى لحد ما السيرفر يرد
-          for i in $(seq 1 45); do
-            docker exec mongo mongosh --quiet --eval "db.adminCommand('ping').ok" >/dev/null 2>&1 && break
+          docker run -d --name mongo -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all \
+            || fail "docker run failed"
+
+          # 1) wait until the server answers
+          ready=""
+          for i in $(seq 1 60); do
+            [ "$(mongo 'db.adminCommand({ping:1}).ok')" = "1" ] && ready=1 && break
             sleep 2
           done
+          [ -n "$ready" ] || fail "mongod did not answer ping"
 
-          # 2) اعمل الـ replica set - العضو الوحيد = 127.0.0.1 (نفس اللي بنتصل عليه)
-          docker exec mongo mongosh --quiet --eval \
-            "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })"
+          # 2) create the replica set (one member = 127.0.0.1, the same address the tests use).
+          #    Retried: right after start-up the server can still refuse it.
+          for i in $(seq 1 10); do
+            out=$(mongo "try { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok } catch (e) { e.codeName === 'AlreadyInitialized' ? 1 : e.message }")
+            [ "$out" = "1" ] && break
+            sleep 2
+          done
+          [ "$out" = "1" ] || fail "rs.initiate failed: $out"
 
-          # 3) استنى لحد ما يصير primary (بيقبل كتابة + transactions)
-          for i in $(seq 1 45); do
-            if [ "$(docker exec mongo mongosh --quiet --eval 'db.hello().isWritablePrimary')" = "true" ]; then
+          # 3) wait until it is primary (accepts writes + transactions)
+          for i in $(seq 1 60); do
+            if [ "$(mongo 'db.hello().isWritablePrimary')" = "true" ]; then
               echo "MongoDB replica set is ready"
               exit 0
             fi
             sleep 2
           done
-
-          echo "::error title=MongoDB::Replica set did not become primary in time"
-          docker logs mongo | tail -40
-          exit 1
+          fail "replica set did not become primary: $(mongo 'JSON.stringify(rs.status().members.map(m => m.stateStr))')"
 
       - run: npm ci
 
