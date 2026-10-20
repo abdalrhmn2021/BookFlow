@@ -2,11 +2,13 @@
 # CI: مع كل push على main (وكل pull request) GitHub بيشغّل اختبارات السيرفر
 # على سيرفر لينكس نظيف. إذا فشل أي اختبار بتطلع ❌ حمرا جنب الـ commit.
 #
-# الداتابيس: MongoDB 8 حقيقية بـ Docker، كـ replica set من عضو واحد
+# الداتابيس: MongoDB 8.2 حقيقية بـ Docker، كـ replica set من عضو واحد
 # (الحجز بيستخدم transactions، وهاي بتشتغل بس على replica set).
 #   - host العضو = 127.0.0.1 و directConnection=true بالرابط:
 #     هيك الـ driver ما بيحاول يدوّر على اسم الـ container (هاد كان سبب
 #     فشل محاولات Docker القديمة).
+#   - 8.2 مش 8.0: سيرفرات GitHub صارت على Linux kernel 6.19+، و MongoDB 8.0
+#     بترفض تشتغل عليه (SERVER-121912). 8.2 بتشتغل عادي.
 #   - mongodb-memory-server (التنزيل التلقائي) كان يعلق على GitHub
 #     ويخلي الـ job يستنى لحد ما ينلغى - ضل للتشغيل المحلي بس.
 #
@@ -40,7 +42,7 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      - name: Start MongoDB 8 (single-node replica set)
+      - name: Start MongoDB 8.2 (single-node replica set)
         timeout-minutes: 4
         working-directory: .
         shell: bash # no "-e": we handle every error ourselves and report it
@@ -55,7 +57,7 @@ jobs:
           }
           mongo() { docker exec mongo mongosh --quiet --eval "$1" 2>&1; }
 
-          docker run -d --name mongo -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all \
+          docker run -d --name mongo -p 27017:27017 mongo:8.2 --replSet rs0 --bind_ip_all \
             || fail "docker run failed"
 
           # 1) wait until the server answers
