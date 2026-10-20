@@ -134,7 +134,7 @@ BookFlow/
 │   │   ├── models/          Mongoose schemas
 │   │   ├── routes/
 │   │   └── utils/time.js    time-zone & overlap helpers
-│   ├── scripts/seed.js      demo data
+│   ├── scripts/seed.js      demo data (src/demo/demoData.js)
 │   ├── tests/               Jest + Supertest API tests (in-memory MongoDB replica set)
 │   └── api-tests.http       every endpoint, runnable in VS Code REST Client
 └── render.yaml              backend deploy blueprint
@@ -150,7 +150,7 @@ The easiest option is a free [MongoDB Atlas](https://www.mongodb.com/atlas) clus
 cd server
 cp .env.example .env        # set MONGO_URI and a JWT_SECRET of 32+ characters
 npm install
-npm run seed                # demo business, staff, customers and sample bookings
+npm run seed                # 2 demo businesses (English + Arabic), staff, customers and sample bookings
 npm run dev                 # http://localhost:5000
 
 # 2) Frontend (new terminal)
@@ -161,14 +161,14 @@ npm run dev                 # http://localhost:3000
 ```
 
 Generate a secret: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
-Reset the demo data any time: `npm run seed -- --reset`
+Reset the demo data any time: `npm run seed -- --reset`. On the live server, `DEMO_REFRESH=true` rebuilds it once a day so the dates stay current.
 
 ### Tests
 ```bash
 cd server
 npm test
 ```
-48 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine, cancellation rules, guest bookings and the dashboard stats.
+51 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine, cancellation rules, guest bookings, the dashboard stats and the daily demo refresh.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -215,7 +215,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 48 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
+- [x] Automated tests (Jest + Supertest) and CI - 51 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [ ] Email reminders 24h before an appointment (background job queue)
 - [ ] Per-staff working hours and "which staff can do which service"

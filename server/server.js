@@ -23,4 +23,5 @@ connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
+  if (process.env.DEMO_REFRESH === "true") require("./src/demo/demoData").startDemoRefresh();
 });
