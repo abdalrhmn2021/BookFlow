@@ -89,10 +89,33 @@ jobs:
 
       - run: npm ci
 
+      # Quick check (20 s max) that the tests can really connect AND run a transaction.
+      # If not -> a clear annotation, instead of every test timing out one by one.
+      - name: Check database connection
+        timeout-minutes: 2
+        env:
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/?directConnection=true
+        run: |
+          node -e '
+            const mongoose = require("mongoose");
+            const fail = (e) => { console.log(`::error title=Database check::${String(e && e.stack || e).split("\n").slice(0, 4).join(" | ")}`); process.exit(1); };
+            setTimeout(() => fail("timed out after 20 s"), 20000).unref();
+            (async () => {
+              await mongoose.connect(process.env.MONGO_URI_TEST, { dbName: "ci_check", serverSelectionTimeoutMS: 10000 });
+              const C = mongoose.connection.collection("ping");
+              const session = await mongoose.startSession();
+              await session.withTransaction(() => C.insertOne({ at: new Date() }, { session }));
+              await session.endSession();
+              console.log("connected + transaction OK");
+              await mongoose.disconnect();
+              process.exit(0);
+            })().catch(fail);
+          '
+
       - name: Run tests
         timeout-minutes: 6
         env:
-          MONGO_URI_TEST: mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/?directConnection=true
         run: npx jest --runInBand --ci --forceExit --json --outputFile=jest-results.json
 
       # كل اختبار فاشل -> annotation واضحة بصفحة الـ PR + جدول بالـ summary
