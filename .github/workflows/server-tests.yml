@@ -2,10 +2,16 @@
 # CI: مع كل push على main (وكل pull request) GitHub بيشغّل اختبارات السيرفر
 # على سيرفر لينكس نظيف. إذا فشل أي اختبار بتطلع ❌ حمرا جنب الـ commit.
 #
-# الداتابيس: ما في Docker ولا Atlas. الاختبارات (tests/helpers.js) لما ما تلاقي
-# MONGO_URI ولا MONGO_URI_TEST بتشغّل MongoDB مؤقتة بالذاكرة كـ replica set
-# (mongodb-memory-server) - نفس اللي بيصير على جهازك لو ما حطيت رابط.
-# أبسط وأثبت من تشغيل Docker وانتظار الـ replica set يجهز.
+# الداتابيس: MongoDB 8 حقيقية بـ Docker، كـ replica set من عضو واحد
+# (الحجز بيستخدم transactions، وهاي بتشتغل بس على replica set).
+#   - host العضو = 127.0.0.1 و directConnection=true بالرابط:
+#     هيك الـ driver ما بيحاول يدوّر على اسم الـ container (هاد كان سبب
+#     فشل محاولات Docker القديمة).
+#   - mongodb-memory-server (التنزيل التلقائي) كان يعلق على GitHub
+#     ويخلي الـ job يستنى لحد ما ينلغى - ضل للتشغيل المحلي بس.
+#
+# الأخطاء: بتنكتب كـ annotations (::error) - بتطلع بصفحة الـ PR مباشرة
+# بدون ما تفتح اللوغ.
 # ============================================================
 name: Server tests
 
@@ -18,8 +24,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    # حماية: لو علق أي شي، وقّف بعد 15 دقيقة بدل ما يضل شغال ساعات
-    timeout-minutes: 15
+    # حماية: لو علق أي شي، وقّف بعد 12 دقيقة بدل ما يضل شغال
+    timeout-minutes: 12
 
     defaults:
       run:
@@ -34,13 +40,67 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
-      # ملف MongoDB اللي بتنزّله mongodb-memory-server (~100MB) - نخزّنه
-      # عشان كل تشغيل بعد الأول ما ينزّله من جديد
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/mongodb-binaries
-          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+      - name: Start MongoDB 8 (single-node replica set)
+        timeout-minutes: 4
+        working-directory: .
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:8.0 --replSet rs0 --bind_ip_all
+
+          # 1) استنى لحد ما السيرفر يرد
+          for i in $(seq 1 45); do
+            docker exec mongo mongosh --quiet --eval "db.adminCommand('ping').ok" >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          # 2) اعمل الـ replica set - العضو الوحيد = 127.0.0.1 (نفس اللي بنتصل عليه)
+          docker exec mongo mongosh --quiet --eval \
+            "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })"
+
+          # 3) استنى لحد ما يصير primary (بيقبل كتابة + transactions)
+          for i in $(seq 1 45); do
+            if [ "$(docker exec mongo mongosh --quiet --eval 'db.hello().isWritablePrimary')" = "true" ]; then
+              echo "MongoDB replica set is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error title=MongoDB::Replica set did not become primary in time"
+          docker logs mongo | tail -40
+          exit 1
 
       - run: npm ci
 
-      - run: npm test -- --forceExit
+      - name: Run tests
+        timeout-minutes: 6
+        env:
+          MONGO_URI_TEST: mongodb://127.0.0.1:27017/?replicaSet=rs0&directConnection=true
+        run: npx jest --runInBand --ci --forceExit --json --outputFile=jest-results.json
+
+      # كل اختبار فاشل -> annotation واضحة بصفحة الـ PR + جدول بالـ summary
+      - name: Report failed tests
+        if: failure()
+        run: |
+          [ -f jest-results.json ] || { echo "::error title=Jest::No results file (tests crashed before finishing)"; exit 0; }
+          node -e '
+            const r = require("./jest-results.json");
+            const lines = [];
+            for (const file of r.testResults) {
+              const rel = file.name.slice(file.name.indexOf("tests/"));
+              if (file.status === "failed" && file.assertionResults.length === 0) {
+                const msg = (file.message || "suite failed").replace(/\u001b\[[0-9;]*m/g, "").split("\n").slice(0, 6).join(" | ");
+                console.log(`::error title=${rel}::${msg.slice(0, 900)}`);
+                lines.push(`| ${rel} | (whole file) | ${msg.slice(0, 200)} |`);
+              }
+              for (const t of file.assertionResults.filter((a) => a.status === "failed")) {
+                const msg = (t.failureMessages[0] || "").replace(/\u001b\[[0-9;]*m/g, "").split("\n").slice(0, 4).join(" | ");
+                console.log(`::error title=${rel} - ${t.title}::${msg.slice(0, 900)}`);
+                lines.push(`| ${rel} | ${t.title} | ${msg.slice(0, 200)} |`);
+              }
+            }
+            const summary = [
+              `### ${r.numFailedTests} failed / ${r.numTotalTests} tests`,
+              "| File | Test | Error |", "|---|---|---|", ...lines,
+            ].join("\n");
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + "\n");
+          '
