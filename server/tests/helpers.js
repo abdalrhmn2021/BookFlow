@@ -28,6 +28,11 @@ const TEST_DB_NAME = "bookflow_test";
 
 let replSet;
 
+// Jest runs our code in a sandbox where the MongoDB driver's `await import("os")` fails.
+// The driver then sends an EMPTY "client metadata" document when it connects; MongoDB 8.2
+// refuses that ("Missing required sub-document 'driver'"). Handing it `os` ourselves fixes it.
+const CONNECT_OPTIONS = { dbName: TEST_DB_NAME, runtimeAdapters: { os: require("os") } };
+
 async function connect() {
   const uri = process.env.MONGO_URI_TEST || process.env.MONGO_URI;
 
@@ -37,14 +42,14 @@ async function connect() {
       // نفس حل db.js: بعض مزودي الإنترنت ما بيدعموا SRV lookup
       require("dns").setServers(["8.8.8.8", "8.8.4.4"]);
     }
-    await mongoose.connect(uri, { dbName: TEST_DB_NAME });
+    await mongoose.connect(uri, CONNECT_OPTIONS);
   } else {
     // ما في رابط -> MongoDB مؤقتة بالذاكرة (replica set لأنه الحجز بيستخدم transactions)
     const { MongoMemoryReplSet } = require("mongodb-memory-server");
     replSet = await MongoMemoryReplSet.create({
       replSet: { count: 1, storageEngine: "wiredTiger" },
     });
-    await mongoose.connect(replSet.getUri(), { dbName: TEST_DB_NAME });
+    await mongoose.connect(replSet.getUri(), CONNECT_OPTIONS);
   }
 
   // حماية إضافية: لو لأي سبب مش على داتابيس الاختبارات -> وقّف فوراً قبل ما نمسح شي
