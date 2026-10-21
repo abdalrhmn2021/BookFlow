@@ -1,9 +1,9 @@
-const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
+const { createBusinessWithOwner } = require("../services/business.service");
 
 // Credentials must be real strings: an object like { "$gt": "" } would become a
 // MongoDB operator inside findOne (NoSQL injection).
@@ -123,51 +123,27 @@ exports.registerBusiness = async (req, res) => {
     return res.status(403).json({ message: "Business registration is disabled" });
   }
 
-  const [emailTaken, slugTaken] = await Promise.all([User.exists({ email }), Tenant.exists({ slug })]);
-  if (emailTaken) return res.status(409).json({ message: "Email already exists" });
-  if (slugTaken) return res.status(409).json({ message: "This business URL is already taken" });
+  const { tenant, owner } = await createBusinessWithOwner({ businessName, slug, ownerName, email, password, phone });
 
-  const session = await mongoose.startSession();
-  try {
-    let tenant, owner;
+  const token = generateToken(owner);
+  setAuthCookie(res, token);
 
-    await session.withTransaction(async () => {
-      tenant = new Tenant({ name: businessName, slug });
-      await tenant.save({ session });
-
-      owner = new User({
-        name: ownerName,
-        email,
-        password,
-        phone,
-        role: "owner",
-        tenantId: tenant._id,
-      });
-      await owner.save({ session });
-    });
-
-    const token = generateToken(owner);
-    setAuthCookie(res, token);
-
-    res.status(201).json({
-      tenant: {
-        id: tenant._id,
-        name: tenant.name,
-        slug: tenant.slug,
-        plan: tenant.plan,
-      },
-      user: {
-        id: owner._id,
-        name: owner.name,
-        email: owner.email,
-        role: owner.role,
-        tenantId: tenant._id,
-      },
-      token,
-    });
-  } finally {
-    await session.endSession();
-  }
+  res.status(201).json({
+    tenant: {
+      id: tenant._id,
+      name: tenant.name,
+      slug: tenant.slug,
+      plan: tenant.plan,
+    },
+    user: {
+      id: owner._id,
+      name: owner.name,
+      email: owner.email,
+      role: owner.role,
+      tenantId: tenant._id,
+    },
+    token,
+  });
 };
 
 exports.getMe = async (req, res) => {

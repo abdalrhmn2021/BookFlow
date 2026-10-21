@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
+    "setup-client": "node scripts/setup-client.js",
     "test": "jest --runInBand"
   },
   "keywords": [],
