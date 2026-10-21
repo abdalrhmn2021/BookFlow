@@ -60,7 +60,7 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
         <section className="relative overflow-hidden rounded-2xl bg-navy-900 p-6 text-white sm:p-8">
           <div aria-hidden="true" className="absolute -end-6 -top-6 grid grid-cols-3 gap-2 opacity-10">
             {Array.from({ length: 12 }, (_, i) => (
-              <span key={i} className={`h-5 w-9 rounded ${i === 4 ? "bg-coral-500 opacity-100" : "bg-white"}`} />
+              <span key={i} className={`h-5 w-9 rounded ${i === 4 ? "bg-brand-500 opacity-100" : "bg-white"}`} />
             ))}
           </div>
 
@@ -110,9 +110,9 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
           </section>
 
           <section
-            className={`rounded-xl border p-5 ${toConfirm > 0 ? "border-coral-200 bg-coral-50" : "border-navy-100 bg-white"}`}
+            className={`rounded-xl border p-5 ${toConfirm > 0 ? "border-brand-200 bg-brand-50" : "border-navy-100 bg-white"}`}
           >
-            <h2 className={`text-sm ${toConfirm > 0 ? "text-coral-700" : "text-navy-500"}`}>{o.toConfirm}</h2>
+            <h2 className={`text-sm ${toConfirm > 0 ? "text-brand-700" : "text-navy-500"}`}>{o.toConfirm}</h2>
             <p className="font-display tabular mt-1 text-3xl font-semibold">{toConfirm}</p>
             {toConfirm === 0 && <p className="mt-1 text-xs text-navy-500">{o.toConfirmNone}</p>}
           </section>
@@ -142,7 +142,7 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
                 <span className="tabular text-sm font-semibold">{d.count}</span>
                 <span className="flex h-28 w-full max-w-10 items-end rounded-md bg-navy-50">
                   <span
-                    className={`w-full rounded-md transition group-hover:opacity-80 ${i === 0 ? "bg-coral-500" : "bg-navy-700"}`}
+                    className={`w-full rounded-md transition group-hover:opacity-80 ${i === 0 ? "bg-brand-500" : "bg-navy-700"}`}
                     style={{ height: `${d.count ? Math.max((d.count / maxDay) * 100, 6) : 0}%` }}
                   />
                 </span>
@@ -182,7 +182,7 @@ function NextAppointment({
   return (
     <div className="relative">
       <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p dir="ltr" className="font-display tabular text-6xl font-semibold tracking-tight text-coral-400 sm:text-7xl">
+        <p dir="ltr" className="font-display tabular text-6xl font-semibold tracking-tight text-brand-400 sm:text-7xl">
           {time}
         </p>
         <p className="text-sm text-navy-200">
@@ -212,7 +212,7 @@ function NextAppointment({
       <div className="mt-6 flex flex-wrap gap-2">
         <button
           onClick={onOpen}
-          className="inline-flex items-center gap-1 rounded-md bg-coral-500 px-3 py-1.5 text-sm font-semibold text-navy-950 transition hover:bg-coral-400"
+          className="inline-flex items-center gap-1 rounded-md bg-brand-500 px-3 py-1.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-400"
         >
           {t.dashboard.overview.openDay}
           <IconChevron className="h-4 w-4 rtl:rotate-180" />

@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-/* Brand tokens: Tailwind turns each --color-* into utilities (bg-navy-900, text-coral-700...). */
+/* Design tokens: Tailwind turns each --color-* into utilities (bg-navy-900, text-brand-700...).
+   navy  = the base colors (text, backgrounds, dark panels) - the same in every copy.
+   brand = the client's color (buttons, highlights, links). The values below are the defaults
+           (BookFlow coral). BRAND_COLOR in .env replaces them: the root layout puts new
+           --color-brand-* values on <html>, and those win over these. */
 @theme {
   --color-navy-50: #f3f5fa;
   --color-navy-100: #e6ebf4;
@@ -14,14 +18,16 @@
   --color-navy-900: #16244a;
   --color-navy-950: #0e1a33;
 
-  --color-coral-50: #fff4f2;
-  --color-coral-100: #ffe4e0;
-  --color-coral-200: #ffc9c1;
-  --color-coral-300: #ffa699;
-  --color-coral-400: #ff8a7d;
-  --color-coral-500: #ff6b5b;
-  --color-coral-600: #ec5242;
-  --color-coral-700: #c8402f;
+  --color-brand-50: #fff4f2;
+  --color-brand-100: #ffe4e0;
+  --color-brand-200: #ffc9c1;
+  --color-brand-300: #ffa699;
+  --color-brand-400: #ff8a7d;
+  --color-brand-500: #ff6b5b;
+  --color-brand-600: #ec5242;
+  --color-brand-700: #c8402f;
+  /* Text color ON a brand-500 background (dark for light brand colors, white for dark ones). */
+  --color-brand-ink: #0e1a33;
 
   --font-sans: var(--font-body), sans-serif;
   --font-display: var(--font-heading), var(--font-body), sans-serif;
@@ -37,7 +43,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-coral-500);
+  outline: 2px solid var(--color-brand-500);
   outline-offset: 2px;
 }
 

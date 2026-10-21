@@ -105,7 +105,7 @@ export default function StaffTab() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-coral-100 font-bold text-coral-700">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-700">
                       {s.name.charAt(0).toUpperCase()}
                     </span>
                     <div>

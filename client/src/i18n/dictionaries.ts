@@ -32,6 +32,7 @@ const en = {
 
   nav: {
     businesses: "Businesses",
+    book: "Book now",
     myAppointments: "My appointments",
     dashboard: "Dashboard",
     login: "Log in",
@@ -80,7 +81,7 @@ const en = {
 
   register: {
     title: "Create an account",
-    subtitle: "Book appointments at any business on BookFlow.",
+    subtitle: "Book and manage your appointments in one place.",
     name: "Name",
     email: "Email",
     phone: "Phone",
@@ -340,6 +341,7 @@ const ar: Dictionary = {
 
   nav: {
     businesses: "الأماكن",
+    book: "احجز موعد",
     myAppointments: "مواعيدي",
     dashboard: "لوحة التحكم",
     login: "تسجيل الدخول",
@@ -388,7 +390,7 @@ const ar: Dictionary = {
 
   register: {
     title: "إنشاء حساب",
-    subtitle: "احجز مواعيدك في أي مكان على BookFlow.",
+    subtitle: "احجز مواعيدك وتابعها من مكان واحد.",
     name: "الاسم",
     email: "البريد الإلكتروني",
     phone: "رقم الهاتف",

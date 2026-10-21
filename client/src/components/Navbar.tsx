@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { homeFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useBrand } from "@/context/BrandContext";
 import Logo from "@/components/Logo";
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
   const { t, lang, setLang } = useLanguage();
+  const { name, bookHref, isSingleBusiness } = useBrand();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -24,7 +26,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-20 border-b border-navy-100 bg-white/90 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
-        <Link href="/" aria-label="BookFlow" className="shrink-0">
+        <Link href="/" aria-label={name} className="shrink-0">
           <Logo compact />
         </Link>
 
@@ -32,8 +34,8 @@ export default function Navbar() {
           {!loading && (
             <>
               {user?.role !== "owner" && user?.role !== "staff" && (
-                <Link href="/businesses" className={`hidden sm:inline ${navLink}`}>
-                  {t.nav.businesses}
+                <Link href={bookHref} className={`hidden sm:inline ${navLink}`}>
+                  {isSingleBusiness ? t.nav.book : t.nav.businesses}
                 </Link>
               )}
               {user ? (

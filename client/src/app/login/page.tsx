@@ -85,7 +85,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-coral-500 py-2.5 font-semibold text-navy-950 transition hover:bg-coral-400 disabled:opacity-50"
+          className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
         >
           {submitting ? t.login.submitting : t.login.submit}
         </button>
@@ -114,7 +114,7 @@ function LoginForm() {
         {t.login.noAccount}{" "}
         <Link
           href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
-          className="font-medium text-coral-700 hover:underline"
+          className="font-medium text-brand-700 hover:underline"
         >
           {t.login.signup}
         </Link>

@@ -43,14 +43,14 @@ export default function BusinessesPage() {
             <li key={b.slug}>
               <Link
                 href={`/book/${b.slug}`}
-                className="flex items-center gap-4 rounded-xl border border-navy-100 bg-white p-4 transition hover:border-coral-300 hover:shadow-sm"
+                className="flex items-center gap-4 rounded-xl border border-navy-100 bg-white p-4 transition hover:border-brand-300 hover:shadow-sm"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-lg font-bold text-white">
                   {b.name.charAt(0).toUpperCase()}
                 </span>
                 <span>
                   <span className="block font-semibold">{b.name}</span>
-                  <span className="text-sm text-coral-700">{t.businesses.bookNow}</span>
+                  <span className="text-sm text-brand-700">{t.businesses.bookNow}</span>
                 </span>
               </Link>
             </li>

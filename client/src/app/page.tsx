@@ -35,7 +35,7 @@ export default function Home() {
 
           <div aria-hidden="true" className="rounded-2xl bg-white p-6 text-navy-900 shadow-2xl shadow-black/30">
             <p className="font-display text-lg font-semibold">{s.business}</p>
-            <div className="mt-4 flex items-center justify-between rounded-xl border-2 border-coral-500 bg-coral-50 px-4 py-3">
+            <div className="mt-4 flex items-center justify-between rounded-xl border-2 border-brand-500 bg-brand-50 px-4 py-3">
               <span>
                 <span className="block font-semibold">{s.service}</span>
                 <span className="text-sm text-navy-500">
@@ -51,7 +51,7 @@ export default function Home() {
                   key={slot}
                   className={`rounded-lg py-2 text-center text-sm font-medium ${
                     slot === SAMPLE_PICKED
-                      ? "bg-coral-500 text-navy-950"
+                      ? "bg-brand-500 text-brand-ink"
                       : slot === "09:30" || slot === "12:00"
                         ? "bg-navy-50 text-navy-300 line-through"
                         : "border border-navy-100 text-navy-700"

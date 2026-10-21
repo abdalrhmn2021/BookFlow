@@ -86,8 +86,8 @@ export default function DashboardShell({
                     current ? "bg-white/10 text-white" : "text-navy-300 hover:bg-white/5 hover:text-white"
                   }`}
                 >
-                  {current && <span className="absolute inset-y-2 start-0 w-1 rounded-full bg-coral-500" />}
-                  <Icon className={`h-5 w-5 ${current ? "text-coral-400" : ""}`} />
+                  {current && <span className="absolute inset-y-2 start-0 w-1 rounded-full bg-brand-500" />}
+                  <Icon className={`h-5 w-5 ${current ? "text-brand-400" : ""}`} />
                   {t.dashboard.tabs[name]}
                 </button>
               );
@@ -108,7 +108,7 @@ export default function DashboardShell({
             </Link>
             <button
               onClick={copyLink}
-              className="mt-2 w-full rounded-md bg-coral-500 py-1.5 text-xs font-semibold text-navy-950 transition hover:bg-coral-400"
+              className="mt-2 w-full rounded-md bg-brand-500 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-400"
             >
               {copied ? t.dashboard.copied : t.dashboard.copy}
             </button>
@@ -160,7 +160,7 @@ export default function DashboardShell({
                 onClick={() => onSelect(name)}
                 aria-current={name === active ? "page" : undefined}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-                  name === active ? "bg-coral-500 text-navy-950" : "text-navy-200 hover:bg-white/10"
+                  name === active ? "bg-brand-500 text-brand-ink" : "text-navy-200 hover:bg-white/10"
                 }`}
               >
                 {t.dashboard.tabs[name]}
@@ -174,7 +174,7 @@ export default function DashboardShell({
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2 lg:hidden">
             <p className="font-display font-semibold">{tenant.name}</p>
-            <button onClick={copyLink} className="flex items-center gap-1.5 text-sm font-medium text-coral-700">
+            <button onClick={copyLink} className="flex items-center gap-1.5 text-sm font-medium text-brand-700">
               <IconLink className="h-4 w-4" />
               {copied ? t.dashboard.copied : t.dashboard.copy}
             </button>

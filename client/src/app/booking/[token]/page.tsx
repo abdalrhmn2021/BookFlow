@@ -65,7 +65,7 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
           {loadError.status === 404 ? t.manage.notFoundTitle : t.book.loadErrorTitle}
         </h1>
         <p className="mt-2 text-navy-500">{loadError.status === 404 ? t.manage.notFoundText : tError(loadError.err)}</p>
-        <Link href="/" className="mt-6 inline-block font-medium text-coral-700 hover:underline">
+        <Link href="/" className="mt-6 inline-block font-medium text-brand-700 hover:underline">
           {t.common.backHome}
         </Link>
       </div>
@@ -102,7 +102,7 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
               {business && (
                 <>
                   {t.manage.at}{" "}
-                  <Link href={`/book/${business.slug}`} className="font-medium text-coral-700 hover:underline">
+                  <Link href={`/book/${business.slug}`} className="font-medium text-brand-700 hover:underline">
                     {business.name}
                   </Link>
                 </>

@@ -39,7 +39,7 @@ export default function ManageLinkBox({ token, businessName }: { token: string; 
         <button
           type="button"
           onClick={copy}
-          className="rounded-lg bg-coral-500 px-3 py-1.5 text-sm font-semibold text-navy-950 transition hover:bg-coral-400"
+          className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-400"
         >
           {copied ? t.book.copied : t.book.copyLink}
         </button>

@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
+import { useBrand } from "@/context/BrandContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
 
@@ -18,6 +19,7 @@ export default function RegisterPage() {
 function RegisterForm() {
   const { register } = useAuth();
   const { t, tError } = useLanguage();
+  const { isSingleBusiness } = useBrand();
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
 
@@ -103,7 +105,7 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-coral-500 py-2.5 font-semibold text-navy-950 transition hover:bg-coral-400 disabled:opacity-50"
+          className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
         >
           {submitting ? t.register.submitting : t.register.submit}
         </button>
@@ -113,16 +115,19 @@ function RegisterForm() {
         {t.register.haveAccount}{" "}
         <Link
           href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
-          className="font-medium text-coral-700 hover:underline"
+          className="font-medium text-brand-700 hover:underline"
         >
           {t.register.login}
         </Link>
       </p>
-      <p className="mt-2 text-center text-sm">
-        <Link href="/register-business" className="text-navy-500 hover:text-coral-700">
-          {t.registerBusiness.cta}
-        </Link>
-      </p>
+      {/* One-business copies have no "register your business" - the business already exists. */}
+      {!isSingleBusiness && (
+        <p className="mt-2 text-center text-sm">
+          <Link href="/register-business" className="text-navy-500 hover:text-brand-700">
+            {t.registerBusiness.cta}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

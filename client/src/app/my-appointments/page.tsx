@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import { useAuth } from "@/context/AuthContext";
+import { useBrand } from "@/context/BrandContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
 import { formatDuration, formatMomentIn, formatPrice } from "@/lib/format";
@@ -27,6 +28,7 @@ function isUpcoming(a: MyAppointment): boolean {
 
 function Content() {
   const { t, tError } = useLanguage();
+  const { bookHref, isSingleBusiness } = useBrand();
 
   const [appointments, setAppointments] = useState<MyAppointment[] | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -92,10 +94,10 @@ function Content() {
           <p className="font-medium">{t.myAppointments.emptyTitle}</p>
           <p className="mt-1 text-sm text-navy-500">{t.myAppointments.emptyText}</p>
           <Link
-            href="/businesses"
-            className="mt-5 inline-block rounded-lg bg-coral-500 px-4 py-2.5 font-semibold text-navy-950 transition hover:bg-coral-400"
+            href={bookHref}
+            className="mt-5 inline-block rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400"
           >
-            {t.myAppointments.browse}
+            {isSingleBusiness ? t.nav.book : t.myAppointments.browse}
           </Link>
         </div>
       </Shell>
@@ -109,7 +111,7 @@ function Content() {
         {upcoming.length === 0 ? (
           <p className="mt-3 text-sm text-navy-500">
             {t.myAppointments.nothingUpcoming}{" "}
-            <Link href="/businesses" className="font-medium text-coral-700 hover:underline">
+            <Link href={bookHref} className="font-medium text-brand-700 hover:underline">
               {t.myAppointments.bookSomething}
             </Link>
           </p>
@@ -189,6 +191,7 @@ function Content() {
 function Shell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { bookHref } = useBrand();
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="flex items-end justify-between gap-4">
@@ -196,7 +199,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t.myAppointments.title}</h1>
           <p className="mt-1 text-navy-500">{t.myAppointments.hi(user?.name ?? "")}</p>
         </div>
-        <Link href="/businesses" className="text-sm font-medium text-coral-700 hover:underline">
+        <Link href={bookHref} className="text-sm font-medium text-brand-700 hover:underline">
           {t.myAppointments.newBooking}
         </Link>
       </div>
@@ -215,7 +218,7 @@ function AppointmentCard({ a, children }: { a: MyAppointment; children?: React.R
           <p className="font-semibold">{a.serviceName}</p>
           <p className="mt-0.5 text-sm text-navy-600">
             {t.myAppointments.with} {a.staffId.name} {t.myAppointments.at}{" "}
-            <Link href={`/book/${a.tenantId.slug}`} className="font-medium text-coral-700 hover:underline">
+            <Link href={`/book/${a.tenantId.slug}`} className="font-medium text-brand-700 hover:underline">
               {a.tenantId.name}
             </Link>
           </p>
