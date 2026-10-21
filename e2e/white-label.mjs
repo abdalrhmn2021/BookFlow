@@ -42,6 +42,28 @@ async function newPage(lang = "en", width = 1280) {
 }
 const shot = (page, name) => page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
 const bodyText = (page) => page.evaluate(() => document.body.innerText);
+
+// Is the page wider than the screen? If so, name the elements that stick out.
+const overflowReport = (page) =>
+  page.evaluate(() => {
+    const vw = document.documentElement.clientWidth;
+    const sw = document.documentElement.scrollWidth;
+    const out = [];
+    for (const el of document.querySelectorAll("body *")) {
+      const r = el.getBoundingClientRect();
+      if (r.width && (r.left < -1 || r.right > vw + 1)) {
+        const name = `${el.tagName.toLowerCase()}.${String(el.className).split(" ").slice(0, 6).join(".")}`;
+        out.push(`${name} [${Math.round(r.left)}..${Math.round(r.right)}] "${el.innerText?.slice(0, 30) ?? ""}"`);
+      }
+    }
+    return { vw, sw, out: out.slice(0, 8) };
+  });
+const overflowLog = [];
+async function checkOverflow(page, label) {
+  const r = await overflowReport(page);
+  overflowLog.push(`== ${label}: viewport ${r.vw}, page ${r.sw}${r.sw > r.vw ? "  <-- WIDER" : ""}`, ...r.out);
+  await page.screenshot({ path: `${OUT}/view-${label}.png` });
+}
 const waitText = (page, text) =>
   page.waitForFunction((t) => document.body.innerText.includes(t), { timeout: 30000 }, text);
 async function clickText(page, selector, text) {
@@ -198,10 +220,12 @@ await check("guest fills name + phone and confirms", async () => {
   await customer.type('input[autocomplete="name"]', "Ahmad Ali");
   await customer.type('input[type="tel"]', "0599123456");
   await shot(customer, "5-guest-confirm-ar-mobile");
+  await checkOverflow(customer, "booking-ar-390");
   await clickText(customer, "button", "احجز ب");
   await waitText(customer, "تم الحجز");
 });
 await shot(customer, "6-guest-booked-ar-mobile");
+await checkOverflow(customer, "booked-ar-390");
 
 await check("the same time is no longer offered (no double booking)", async () => {
   const page = await newPage("en");
@@ -228,6 +252,10 @@ await check("booking appears in the owner's schedule", async () => {
   await waitText(owner, "Ahmad Ali");
 });
 await shot(owner, "7-owner-overview-with-booking-en");
+await checkOverflow(owner, "dashboard-en-1280");
+await owner.setViewport({ width: 390, height: 900 });
+await checkOverflow(owner, "dashboard-en-390");
+await owner.setViewport({ width: 1280, height: 900 });
 
 // ---------- 6. Owner dashboard in Arabic ----------
 await check("dashboard in Arabic shows the brand", async () => {
@@ -239,8 +267,26 @@ await check("dashboard in Arabic shows the brand", async () => {
   await ar.waitForFunction(() => location.pathname.startsWith("/dashboard"), { timeout: 30000 });
   await waitText(ar, "صالون ليلى");
   await shot(ar, "8-owner-dashboard-ar");
+  await checkOverflow(ar, "dashboard-ar-1280");
+  await ar.setViewport({ width: 390, height: 900 });
+  await checkOverflow(ar, "dashboard-ar-390");
+  for (const tab of ["schedule", "services", "staff", "hours"]) {
+    await ar.goto(`${BASE}/dashboard?tab=${tab}`, { waitUntil: "networkidle0" });
+    await checkOverflow(ar, `dashboard-${tab}-ar-390`);
+  }
   await ar.close();
 });
+
+for (const [path, lang] of [
+  ["/login", "ar"],
+  ["/register", "ar"],
+  ["/my-appointments", "ar"],
+]) {
+  const p = await newPage(lang, 390);
+  await p.goto(BASE + path, { waitUntil: "networkidle0" });
+  await checkOverflow(p, `${path.slice(1)}-${lang}-390`);
+}
+fs.writeFileSync(`${OUT}/overflow.txt`, overflowLog.join("\n") + "\n");
 
 await browser.close();
 results.push("", `${results.length - failed} passed, ${failed} failed`);
