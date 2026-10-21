@@ -1,0 +1,19 @@
+
+> bookflow@1.0.0 setup-client
+> node scripts/setup-client.js --name صالون ليلى --slug laila-salon --owner ليلى --email laila@test.com
+
+MongoDB Connected: 127.0.0.1
+
+Client set up ✅
+
+  Business:  صالون ليلى  (slug: laila-salon, time zone: Asia/Hebron)
+  Owner:     ليلى
+  Login:     laila@test.com
+  Password:  ****   <- generated, give it to the owner (shown only now)
+
+Next:
+  1. New Vercel project for this client with SINGLE_BUSINESS_SLUG=laila-salon + the BRAND_* values (docs/INSTALL.md).
+  2. Add the client's site URL to CLIENT_URL on the server (comma-separated list).
+  3. Log in as the owner and add: services, staff (at least one - customers book a staff member) and working hours.
+  4. Open the site and make a test booking.
+

@@ -1,0 +1,7 @@
+
+> bookflow@1.0.0 start
+> node server.js
+
+◇ injected env (0) from .env
+MongoDB Connected: 127.0.0.1
+Server running on port 5000

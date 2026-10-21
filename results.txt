@@ -1,0 +1,18 @@
+PASS  Laila site: / opens Laila's booking page with her name and color  (صالون ليلى)
+PASS  Laila site: exactly one tab icon = her logo
+PASS  Reem site: / opens Reem's booking page with her name and color  (عيادة ريم)
+PASS  Laila site: /book/reem-clinic redirects back to Laila
+PASS  Laila site: /businesses and /register-business are closed
+PASS  API: list of businesses is hidden (404)
+PASS  API: nobody can register a business (403)
+PASS  Reem's owner can't log in on Laila's site (clear message, logged out)
+PASS  Laila's owner logs in on her site (password from setup-client)
+PASS  Laila's owner adds a service and a staff member from the dashboard
+PASS  Reem's owner logs in on her site and sees her clinic
+PASS  Reem's owner sets up her clinic (API) - and sees none of Laila's data
+PASS  guest books at Laila's from a phone, and the slot disappears
+PASS  Laila's dashboard shows the guest booking
+PASS  Reem's dashboard does NOT show Laila's booking
+PASS  a customer with bookings at both clients sees only that client's on each site  (2026-10-24)
+
+16 passed, 0 failed
