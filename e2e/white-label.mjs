@@ -31,8 +31,10 @@ const assert = (cond, msg) => {
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, args: ["--no-sandbox"] });
 
+// Each person gets their own browser context (separate cookies), like a separate device.
 async function newPage(lang = "en", width = 1280) {
-  const page = await browser.newPage();
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
   await page.setViewport({ width, height: 900 });
   await page.setCookie({ name: "bookflow_lang", value: lang, url: BASE });
   page.setDefaultTimeout(30000);
