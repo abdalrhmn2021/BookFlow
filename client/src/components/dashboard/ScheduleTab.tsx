@@ -152,7 +152,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
           <h2 className="font-display ms-2 text-lg font-semibold">
             {formatLongDate(date, t.locale)}
             {date === today && (
-              <span className="ms-2 rounded-full bg-coral-100 px-2 py-0.5 align-middle font-sans text-xs font-medium text-coral-700">
+              <span className="ms-2 rounded-full bg-brand-100 px-2 py-0.5 align-middle font-sans text-xs font-medium text-brand-700">
                 {s.today}
               </span>
             )}
@@ -216,7 +216,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                       {i < list.length - 1 && <span className="absolute top-6 -bottom-4 w-px bg-navy-200" />}
                       <span
                         className={`relative mt-5 h-3 w-3 rounded-full ring-4 ring-navy-50 ${
-                          finished ? "bg-navy-300" : a.status === "pending" ? "bg-amber-400" : "bg-coral-500"
+                          finished ? "bg-navy-300" : a.status === "pending" ? "bg-amber-400" : "bg-brand-500"
                         }`}
                       />
                     </div>
@@ -251,7 +251,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
                               <a
                                 href={`tel:${phoneOf(a)}`}
                                 dir="ltr"
-                                className="inline-flex items-center gap-1.5 text-navy-700 hover:text-coral-700"
+                                className="inline-flex items-center gap-1.5 text-navy-700 hover:text-brand-700"
                               >
                                 <IconPhone className="h-4 w-4" />
                                 {phoneOf(a)}

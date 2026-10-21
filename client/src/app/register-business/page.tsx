@@ -154,7 +154,7 @@ export default function RegisterBusinessPage() {
 
       <p className="mt-6 text-center text-sm text-navy-600">
         {r.haveAccount}{" "}
-        <Link href="/login" className="font-medium text-coral-700 hover:underline">
+        <Link href="/login" className="font-medium text-brand-700 hover:underline">
           {r.login}
         </Link>
       </p>

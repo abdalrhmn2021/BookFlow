@@ -57,7 +57,7 @@ export default function HoursTab({ tenant, onSaved }: { tenant: TenantInfo; onSa
                 onChange={(e) =>
                   update(d.day, { isOpen: e.target.checked, open: d.open ?? "09:00", close: d.close ?? "17:00" })
                 }
-                className="h-4 w-4 accent-coral-600"
+                className="h-4 w-4 accent-brand-600"
               />
               <span className="font-medium">{t.days[d.day]}</span>
             </label>

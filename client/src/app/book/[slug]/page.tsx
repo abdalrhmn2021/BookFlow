@@ -206,7 +206,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           {pageError.status === 404 ? t.book.notFoundTitle : t.book.loadErrorTitle}
         </h1>
         <p className="mt-2 text-navy-500">{pageError.status === 404 ? t.book.notFoundText : tError(pageError.err)}</p>
-        <Link href="/" className="mt-6 inline-block font-medium text-coral-700 hover:underline">
+        <Link href="/" className="mt-6 inline-block font-medium text-brand-700 hover:underline">
           {t.common.backHome}
         </Link>
       </div>
@@ -236,7 +236,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           {!booked.guestPhone && (
             <Link
               href="/my-appointments"
-              className="rounded-lg bg-coral-500 px-4 py-2.5 font-semibold text-navy-950 transition hover:bg-coral-400"
+              className="rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400"
             >
               {t.book.myAppointments}
             </Link>
@@ -265,7 +265,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
     <>
       <header className="bg-navy-950 text-white">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-10">
-          <span className="font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-coral-500 text-2xl font-semibold text-navy-950">
+          <span className="font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-2xl font-semibold text-brand-ink">
             {business.name.charAt(0).toUpperCase()}
           </span>
           <div>
@@ -286,8 +286,8 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   onClick={() => choose(setServiceId, s.id)}
                   className={`rounded-lg border p-4 text-start transition ${
                     s.id === serviceId
-                      ? "border-coral-500 bg-coral-50 ring-2 ring-coral-100"
-                      : "border-navy-100 bg-white hover:border-coral-300"
+                      ? "border-brand-500 bg-brand-50 ring-2 ring-brand-100"
+                      : "border-navy-100 bg-white hover:border-brand-300"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -333,9 +333,9 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                     onClick={() => choose(setDate, d)}
                     className={`flex w-16 shrink-0 flex-col items-center rounded-lg border py-2 text-sm transition ${
                       d === date
-                        ? "border-coral-500 bg-coral-500 text-navy-950"
+                        ? "border-brand-500 bg-brand-500 text-brand-ink"
                         : open
-                          ? "border-navy-100 bg-white hover:border-coral-300"
+                          ? "border-navy-100 bg-white hover:border-brand-300"
                           : "cursor-not-allowed border-navy-100 bg-navy-50 text-navy-300"
                     }`}
                   >
@@ -457,7 +457,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full rounded-lg bg-coral-500 py-3 font-semibold text-navy-950 transition hover:bg-coral-400 disabled:opacity-50"
+                    className="w-full rounded-lg bg-brand-500 py-3 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
                   >
                     {submitting ? t.book.booking : t.book.bookFor(formatPrice(service.price))}
                   </button>
@@ -468,7 +468,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                       <Link
                         href={`/login?next=${encodeURIComponent(nextUrl)}`}
                         onClick={saveDraft}
-                        className="font-medium text-coral-700 hover:underline"
+                        className="font-medium text-brand-700 hover:underline"
                       >
                         {t.book.loginToBook}
                       </Link>
@@ -476,7 +476,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                       <Link
                         href={`/register?next=${encodeURIComponent(nextUrl)}`}
                         onClick={saveDraft}
-                        className="font-medium text-coral-700 hover:underline"
+                        className="font-medium text-brand-700 hover:underline"
                       >
                         {t.book.signup}
                       </Link>
@@ -511,7 +511,7 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
     <button
       onClick={onClick}
       className={`tabular rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
-        selected ? "border-coral-500 bg-coral-500 text-navy-950" : "border-navy-100 bg-white hover:border-coral-300"
+        selected ? "border-brand-500 bg-brand-500 text-brand-ink" : "border-navy-100 bg-white hover:border-brand-300"
       }`}
     >
       {children}
