@@ -20,12 +20,15 @@ const nextConfig: NextConfig = {
   //   /                   (landing page for all businesses) -> straight to the booking page
   //   /businesses         (directory of businesses)         -> the booking page
   //   /register-business  (sign up a new business)          -> login (the owner already exists)
+  //   /book/<other slug>  (another business on the server)  -> this business's booking page
   // permanent: false (307) so browsers don't remember it if the copy is ever switched back.
   async redirects() {
     if (!SINGLE_BUSINESS_SLUG) return [];
     const bookingPage = `/book/${SINGLE_BUSINESS_SLUG}`;
     return [
       { source: "/", destination: bookingPage, permanent: false },
+      // On a shared server the API knows every client's business - this site shows only its own.
+      { source: `/book/:slug((?!${SINGLE_BUSINESS_SLUG}$)[^/]+)`, destination: bookingPage, permanent: false },
       { source: "/businesses", destination: bookingPage, permanent: false },
       { source: "/register-business", destination: "/login", permanent: false },
     ];

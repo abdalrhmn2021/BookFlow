@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { useBrand } from "@/context/BrandContext";
 import type { Role, User } from "@/lib/types";
 
 interface RegisterData {
@@ -31,6 +32,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+export const OTHER_BUSINESS_ERROR = "This account belongs to another business";
+
 export function homeFor(role: Role): string {
   if (role === "owner" || role === "staff") return "/dashboard";
   if (role === "customer") return "/my-appointments";
@@ -46,11 +49,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { singleBusinessSlug } = useBrand();
+
   const loadMe = useCallback(async () => {
     const { user } = await api.get<{ user: User }>("/auth/me");
+    // One shared server holds all your clients' businesses. On a client's own site, an owner
+    // or staff account of ANOTHER business is logged straight out again.
+    const otherBusiness =
+      singleBusinessSlug &&
+      (user.role === "owner" || user.role === "staff") &&
+      user.business?.slug !== singleBusinessSlug;
+    if (otherBusiness) {
+      await api.post("/auth/logout").catch(() => {});
+      setUser(null);
+      throw new ApiError(403, OTHER_BUSINESS_ERROR);
+    }
     setUser(user);
     return user;
-  }, []);
+  }, [singleBusinessSlug]);
 
   useEffect(() => {
     const restoreSession = async () => {

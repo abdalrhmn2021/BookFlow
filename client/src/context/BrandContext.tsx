@@ -20,6 +20,7 @@ export function useBrand() {
     name: brand.name[lang],
     logoUrl: brand.logoUrl,
     isSingleBusiness: slug !== null,
+    singleBusinessSlug: slug,
     // Where "book an appointment" links go: straight to the one business, or to the directory.
     bookHref: slug ? `/book/${slug}` : "/businesses",
   };
