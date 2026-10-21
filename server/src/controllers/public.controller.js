@@ -2,7 +2,7 @@ const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
-const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { SINGLE_BUSINESS_SLUG, PUBLIC_DIRECTORY } = require("../config/mode");
 const {
   bookAppointment,
   httpError,
@@ -16,6 +16,9 @@ const { isValidDate, dayNameOf, localToDate, toMinutes, toHHMM, isOverlapping } 
 const SLOT_STEP = 15;
 
 exports.listBusinesses = async (req, res) => {
+  // A shared server must not tell one client's visitors who the other clients are.
+  if (!PUBLIC_DIRECTORY) return res.status(404).json({ message: "Business directory is disabled" });
+
   const filter = { isActive: true };
   if (SINGLE_BUSINESS_SLUG) filter.slug = SINGLE_BUSINESS_SLUG;
 

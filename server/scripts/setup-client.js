@@ -1,5 +1,6 @@
 // Sets up a NEW copy of BookFlow for one client: creates the business and its owner account.
-// Run it once, against the client's own database (MONGO_URI in server/.env):
+// Run it once per client, against the database of the server that will serve it (MONGO_URI in server/.env)
+// - usually your one shared server for all clients:
 //
 //   npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@example.com
 //
@@ -106,16 +107,18 @@ function printSummary({ tenant, owner }, values) {
 
   console.log("\nNext:");
   console.log(
-    `  1. Set SINGLE_BUSINESS_SLUG=${tenant.slug} on the server (Render) AND the client (Vercel), then redeploy.`,
+    `  1. New Vercel project for this client with SINGLE_BUSINESS_SLUG=${tenant.slug} + the BRAND_* values (docs/INSTALL.md).`,
   );
+  console.log("  2. Add the client's site URL to CLIENT_URL on the server (comma-separated list).");
   console.log(
-    "  2. Log in as the owner and add: services, staff (at least one - customers book a staff member) and working hours.",
+    "  3. Log in as the owner and add: services, staff (at least one - customers book a staff member) and working hours.",
   );
-  console.log("  3. Open the site and make a test booking.\n");
+  console.log("  4. Open the site and make a test booking.\n");
 
+  // Only for a dedicated one-client server (SINGLE_BUSINESS_SLUG on the server itself).
   if (configured && configured !== tenant.slug) {
     console.log(
-      `⚠️  SINGLE_BUSINESS_SLUG in this .env is "${configured}", not "${tenant.slug}". Fix it, or this business won't be shown.\n`,
+      `⚠️  This server's SINGLE_BUSINESS_SLUG is "${configured}", not "${tenant.slug}" - a dedicated server only serves that one business.\n`,
     );
   }
 }
