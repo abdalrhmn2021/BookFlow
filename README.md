@@ -124,19 +124,21 @@ BookFlow/
 │   └── src/
 │       ├── app/             pages: book/[slug], businesses, dashboard, my-appointments, login, register...
 │       ├── components/      Navbar, RequireAuth, StatusBadge, dashboard/ tabs
-│       ├── context/         AuthContext (who is logged in)
+│       ├── context/         AuthContext (who is logged in), BrandContext (white-label name/logo)
 │       ├── i18n/            dictionaries (ar/en) + LanguageContext
-│       └── lib/             api client, types, date/price formatting
+│       └── lib/             api client, types, formatting, brand.ts + color.ts (white-label)
 ├── server/                  Express API
 │   ├── src/
 │   │   ├── controllers/     business logic per resource
 │   │   ├── middlewares/     auth, tenant, rate limit, errors
 │   │   ├── models/          Mongoose schemas
 │   │   ├── routes/
+│   │   ├── services/        booking (double-booking safe), business + owner creation
 │   │   └── utils/time.js    time-zone & overlap helpers
-│   ├── scripts/seed.js      demo data
+│   ├── scripts/             seed.js (demo data), setup-client.js (a sold copy's business + owner)
 │   ├── tests/               Jest + Supertest API tests (in-memory MongoDB replica set)
 │   └── api-tests.http       every endpoint, runnable in VS Code REST Client
+├── docs/INSTALL.md          install guide for each sold copy (Arabic)
 └── render.yaml              backend deploy blueprint
 ```
 
@@ -151,6 +153,7 @@ cd server
 cp .env.example .env        # set MONGO_URI and a JWT_SECRET of 32+ characters
 npm install
 npm run seed                # demo business, staff, customers and sample bookings
+                            # (for a real client use `npm run setup-client` instead - see below)
 npm run dev                 # http://localhost:5000
 
 # 2) Frontend (new terminal)
@@ -168,7 +171,7 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-48 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine, cancellation rules, guest bookings and the dashboard stats.
+60 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine, cancellation rules, guest bookings, the dashboard stats and the new-client setup.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -189,6 +192,26 @@ CI checks formatting on every push and pull request.
 
 > Render's free tier sleeps after 15 minutes of inactivity - the first request can take ~50 seconds.
 
+## Selling a copy to one business (white-label)
+
+The same code runs as a **branded site for one business** - no code changes, only environment variables:
+
+| Variable (client) | Effect |
+|---|---|
+| `SINGLE_BUSINESS_SLUG` | `/` opens that business's booking page; the directory and "register a business" are hidden (also set on the server, where it limits the API to that business) |
+| `BRAND_NAME` · `BRAND_NAME_AR` | Name in the header, dashboard and browser tab |
+| `BRAND_LOGO_URL` | Logo (a file in `client/public` or a full URL), also the tab icon |
+| `BRAND_COLOR` | One hex color → the full button / highlight / link palette, generated in OKLCH with readable contrast (`client/src/lib/color.ts`) |
+
+A new client's business and owner account are created with one command - no demo data:
+
+```bash
+cd server
+npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@example.com
+```
+
+Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
+
 ## API overview
 
 | Method | Endpoint | Access |
@@ -208,7 +231,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 48 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
+- [x] Automated tests (Jest + Supertest) and CI - 60 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [ ] Email reminders 24h before an appointment (background job queue)
 - [ ] Per-staff working hours and "which staff can do which service"
