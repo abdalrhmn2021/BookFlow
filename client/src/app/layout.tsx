@@ -33,8 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: name, template: `%s · ${name}` },
     description: brand.singleBusinessSlug ? name : "Online booking for salons, clinics, gyms and more",
-    // The client's logo doubles as the browser-tab icon.
-    icons: brand.logoUrl ? { icon: brand.logoUrl } : undefined,
+    // The tab icon: the client's logo, or the default BookFlow icon (public/favicon.ico).
+    // It is set here and not as app/favicon.ico, because a file in app/ would always win.
+    icons: { icon: brand.logoUrl ?? "/favicon.ico" },
   };
 }
 
