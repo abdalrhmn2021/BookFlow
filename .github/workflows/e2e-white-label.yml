@@ -1,0 +1,103 @@
+# TEMPORARY - full trial of a sold copy, following docs/INSTALL.md:
+# real MongoDB -> npm run setup-client -> server with SINGLE_BUSINESS_SLUG ->
+# production build of the branded client -> a browser that sets up and books.
+# Screenshots + results are pushed to the e2e-results branch. Not meant for main.
+name: E2E white-label trial
+
+on:
+  push:
+    branches: [test/e2e-white-label]
+
+permissions:
+  contents: write
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      MONGO_URI: mongodb://127.0.0.1:27017/laila-salon?directConnection=true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Start MongoDB 8.2 (single-node replica set)
+        run: |
+          set +e
+          docker run -d --name mongo -p 27017:27017 mongo:8.2 --replSet rs0 --bind_ip_all
+          m() { docker exec mongo mongosh --quiet --eval "$1" 2>&1; }
+          for i in $(seq 1 60); do [ "$(m 'db.adminCommand({ping:1}).ok')" = "1" ] && break; sleep 2; done
+          for i in $(seq 1 10); do
+            out=$(m "try { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] }).ok } catch (e) { e.codeName === 'AlreadyInitialized' ? 1 : e.message }")
+            [ "$out" = "1" ] && break; sleep 2
+          done
+          for i in $(seq 1 60); do [ "$(m 'db.hello().isWritablePrimary')" = "true" ] && echo ready && exit 0; sleep 2; done
+          echo "::error::MongoDB not ready"; exit 1
+
+      - name: Install
+        run: |
+          (cd server && npm ci) && (cd client && npm ci)
+          npm i --no-save --no-audit --no-fund puppeteer-core
+          mkdir -p e2e-out
+
+      # Step 2 of the guide - exactly the command from docs/INSTALL.md, no --password
+      - name: setup-client (new client's business + owner)
+        working-directory: server
+        run: |
+          npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@test.com --phone 0599123456 | tee ../e2e-out/setup-client.txt
+          PASS=$(grep "Password:" ../e2e-out/setup-client.txt | awk '{print $2}')
+          [ ${#PASS} -eq 16 ] || { echo "::error::no generated password found"; exit 1; }
+          echo "OWNER_PASSWORD=$PASS" >> $GITHUB_ENV
+          echo "--- running it again must be refused ---" | tee -a ../e2e-out/setup-client.txt
+          if npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@test.com >> ../e2e-out/setup-client.txt 2>&1; then
+            echo "::error::second run should fail"; exit 1
+          fi
+          tail -3 ../e2e-out/setup-client.txt
+
+      # Step 3 - the server as Render runs it
+      - name: Start server
+        working-directory: server
+        env:
+          NODE_ENV: production
+          PORT: 5000
+          JWT_SECRET: e2e-secret-0123456789012345678901234567890123456789
+          JWT_EXPIRES_IN: 7d
+          CLIENT_URL: http://localhost:3000
+          SINGLE_BUSINESS_SLUG: laila-salon
+        run: |
+          nohup npm start > ../e2e-out/server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:5000/ >/dev/null && echo up && exit 0; sleep 1; done
+          cat ../e2e-out/server.log; exit 1
+
+      # Step 4 - the client as Vercel builds it, with the client's brand
+      - name: Build + start branded client
+        working-directory: client
+        env:
+          API_URL: http://localhost:5000
+          NEXT_PUBLIC_DEMO_MODE: "false"
+          SINGLE_BUSINESS_SLUG: laila-salon
+          BRAND_NAME: Laila Salon
+          BRAND_NAME_AR: صالون ليلى
+          BRAND_COLOR: "#7c3aed"
+          BRAND_LOGO_URL: /clients/laila-salon/logo.svg
+        run: |
+          mkdir -p public/clients/laila-salon
+          echo '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" rx="10" fill="#7c3aed"/><text x="20" y="27" font-size="20" text-anchor="middle" fill="#fff" font-family="sans-serif">L</text></svg>' > public/clients/laila-salon/logo.svg
+          npm run build > ../e2e-out/client-build.log 2>&1 || { tail -40 ../e2e-out/client-build.log; exit 1; }
+          nohup npm start -- -p 3000 > ../e2e-out/client.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000/login && echo up && exit 0; sleep 1; done
+          cat ../e2e-out/client.log; exit 1
+
+      - name: Browser trial
+        run: CHROME_PATH=$(which google-chrome) node e2e/white-label.mjs "$OWNER_PASSWORD"
+
+      - name: Publish results to the e2e-results branch
+        if: always()
+        run: |
+          cd e2e-out
+          git init -q -b e2e-results
+          git config user.name "e2e" && git config user.email "e2e@users.noreply.github.com"
+          git add -A && git commit -q -m "E2E results for ${GITHUB_SHA::7} (${{ job.status }})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" e2e-results
