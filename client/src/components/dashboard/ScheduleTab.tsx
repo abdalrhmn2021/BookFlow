@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import StatusBadge from "@/components/StatusBadge";
+import BookingForm, { type BookingFormMode } from "@/components/dashboard/BookingForm";
 import { api, ApiError } from "@/lib/api";
 import { addDays, formatLongDate, formatMomentIn, formatPrice, todayIn } from "@/lib/format";
 import { IconChevron, IconNote, IconPhone, IconWhatsApp } from "@/components/icons";
-import { btnSecondary, emptyBox, errorBox } from "@/lib/ui";
+import { btnPrimary, btnSecondary, emptyBox, errorBox } from "@/lib/ui";
 import { toWhatsAppNumber, whatsAppLink } from "@/lib/whatsapp";
 import type { AppointmentStatus, BusinessAppointment } from "@/lib/types";
 
@@ -31,10 +32,12 @@ const FILTERS: (AppointmentStatus | "all")[] = ["all", "pending", "confirmed", "
 
 export default function ScheduleTab({
   timezone,
+  slug,
   initialDate,
   refreshKey = 0,
 }: {
   timezone: string;
+  slug: string;
   initialDate?: string;
   refreshKey?: number;
 }) {
@@ -53,6 +56,7 @@ export default function ScheduleTab({
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [actionError, setActionError] = useState<{ id: string; err: unknown } | null>(null);
+  const [form, setForm] = useState<BookingFormMode | null>(null);
 
   useEffect(() => {
     const requestKey = `${date}|${filter}|${reloadTick}|${refreshKey}`;
@@ -167,6 +171,9 @@ export default function ScheduleTab({
           </h2>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setForm({ kind: "new", date: date < today ? today : date })} className={btnPrimary}>
+            + {t.dashboard.booking.newButton}
+          </button>
           {date !== today && (
             <button onClick={() => setDate(today)} className={btnSecondary}>
               {s.today}
@@ -324,6 +331,15 @@ export default function ScheduleTab({
                                   {actionButton[status].label}
                                 </button>
                               ))}
+                              {canRemind(a) && (
+                                <button
+                                  disabled={busy}
+                                  onClick={() => setForm({ kind: "move", appointment: a })}
+                                  className="rounded-md border border-navy-200 bg-white px-3 py-1.5 text-sm font-medium text-navy-800 transition hover:bg-navy-50 disabled:opacity-50"
+                                >
+                                  {t.dashboard.booking.moveButton}
+                                </button>
+                              )}
                               {canRemind(a) && toWhatsAppNumber(phoneOf(a)) && (
                                 <span className="ms-auto inline-flex flex-wrap items-center gap-2">
                                   {a.reminderSentAt && (
@@ -356,6 +372,19 @@ export default function ScheduleTab({
           </>
         )}
       </div>
+
+      {form && (
+        <BookingForm
+          mode={form}
+          slug={slug}
+          timezone={timezone}
+          onClose={() => setForm(null)}
+          onSaved={(savedDate) => {
+            setDate(savedDate);
+            setReloadTick((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

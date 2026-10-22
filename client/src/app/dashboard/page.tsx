@@ -92,7 +92,13 @@ function Dashboard() {
           <OverviewTab timezone={tenant.timezone} onOpenDay={(d) => go("schedule", d)} refreshKey={refreshKey} />
         )}
         {tab === "schedule" && (
-          <ScheduleTab key={date} timezone={tenant.timezone} initialDate={date} refreshKey={refreshKey} />
+          <ScheduleTab
+            key={date}
+            timezone={tenant.timezone}
+            slug={tenant.slug}
+            initialDate={date}
+            refreshKey={refreshKey}
+          />
         )}
         {tab === "services" && <ServicesTab />}
         {tab === "staff" && <StaffTab />}
