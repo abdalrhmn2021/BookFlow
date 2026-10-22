@@ -21,3 +21,5 @@ services:
         value: 7d
       - key: CLIENT_URL
         sync: false # your Vercel URL, e.g. https://bookflow.vercel.app
+      - key: PROXY_SECRET
+        generateValue: true # copy this value into PROXY_SECRET on Vercel too

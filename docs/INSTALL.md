@@ -65,6 +65,7 @@ npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" 
 4. بعد الإنشاء، من **Environment** أضف:
    - `SINGLE_BUSINESS_SLUG` = `laila-salon`
 5. انسخ رابط السيرفر، مثلاً `https://laila-salon-api.onrender.com`.
+6. من **Environment** انسخ قيمة `PROXY_SECRET` (Render بيولّدها لحاله) - بتحتاجها في Vercel بالخطوة 4.
 
 ---
 
@@ -78,6 +79,7 @@ npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" 
 | المتغير | القيمة | ملاحظة |
 |---|---|---|
 | `API_URL` | `https://laila-salon-api.onrender.com` | بدون `/api` في الآخر |
+| `PROXY_SECRET` | نفس قيمة `PROXY_SECRET` على Render | **ضروري:** بدونه كل الزبائن بيتحسبوا كزائر واحد في حدود الحجز والدخول |
 | `NEXT_PUBLIC_DEMO_MODE` | `false` | يخفي أزرار حسابات الديمو |
 | `SINGLE_BUSINESS_SLUG` | `laila-salon` | **نفس** القيمة اللي على Render بالضبط |
 | `BRAND_NAME` | `Laila Salon` | |
@@ -143,4 +145,5 @@ npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" 
 | الموقع ما بيجيب أي بيانات | `API_URL` على Vercel غلط (لازم رابط Render بدون `/api`)، أو السيرفر نايم - استنى دقيقة وحدّث |
 | اللون أو الاسم ما تغيّر | ما عملت Redeploy على Vercel بعد تعديل المتغيرات |
 | اللوجو ما بيظهر | المسار غلط - لازم يبدأ بـ `/` لو الملف في `public`، أو `https://` لو رابط خارجي |
+| "Too many bookings" أو "Too many login attempts" لزبائن مختلفين | `PROXY_SECRET` ناقص أو مختلف بين Render و Vercel |
 | السكربت: `Email already exists` | الإيميل مستخدم في **هالقاعدة** - تأكد أن `MONGO_URI` هو قاعدة الزبون |
