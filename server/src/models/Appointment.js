@@ -62,6 +62,7 @@ appointmentSchema.pre("validate", function () {
 
 appointmentSchema.index({ tenantId: 1, staffId: 1, startTime: 1 });
 appointmentSchema.index({ tenantId: 1, startTime: 1 });
+appointmentSchema.index({ tenantId: 1, createdAt: 1 }); // dashboard "new bookings" alerts
 appointmentSchema.index({ customerId: 1, startTime: -1 });
 appointmentSchema.index(
   { tenantId: 1, "guest.phone": 1, startTime: 1 },

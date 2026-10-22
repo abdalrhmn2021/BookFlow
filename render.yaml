@@ -23,3 +23,7 @@ services:
         sync: false # your Vercel URL, e.g. https://bookflow.vercel.app
       - key: PROXY_SECRET
         generateValue: true # copy this value into PROXY_SECRET on Vercel too
+      - key: BREVO_API_KEY
+        sync: false # optional: new-booking emails (see docs/INSTALL.md)
+      - key: MAIL_FROM
+        sync: false # optional: a sender address verified in Brevo

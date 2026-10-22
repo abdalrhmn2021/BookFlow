@@ -29,7 +29,15 @@ function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
 
 const FILTERS: (AppointmentStatus | "all")[] = ["all", "pending", "confirmed", "completed", "cancelled", "no-show"];
 
-export default function ScheduleTab({ timezone, initialDate }: { timezone: string; initialDate?: string }) {
+export default function ScheduleTab({
+  timezone,
+  initialDate,
+  refreshKey = 0,
+}: {
+  timezone: string;
+  initialDate?: string;
+  refreshKey?: number;
+}) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
   const s = t.dashboard.schedule;
@@ -39,7 +47,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
   const [reloadTick, setReloadTick] = useState(0);
 
   const [result, setResult] = useState<{ key: string; list?: BusinessAppointment[]; error?: unknown } | null>(null);
-  const key = `${date}|${filter}|${reloadTick}`;
+  const key = `${date}|${filter}|${reloadTick}|${refreshKey}`;
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
@@ -47,7 +55,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
   const [actionError, setActionError] = useState<{ id: string; err: unknown } | null>(null);
 
   useEffect(() => {
-    const requestKey = `${date}|${filter}|${reloadTick}`;
+    const requestKey = `${date}|${filter}|${reloadTick}|${refreshKey}`;
     let ignore = false;
     const query = new URLSearchParams({ date });
     if (filter !== "all") query.set("status", filter);
@@ -63,7 +71,7 @@ export default function ScheduleTab({ timezone, initialDate }: { timezone: strin
     return () => {
       ignore = true;
     };
-  }, [date, filter, reloadTick]);
+  }, [date, filter, reloadTick, refreshKey]);
 
   const current = result?.key === key ? result : null;
 

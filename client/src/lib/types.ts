@@ -146,6 +146,22 @@ export interface BusinessAppointment {
   reminderSentAt?: string;
 }
 
+export interface NewBooking {
+  _id: string;
+  serviceName: string;
+  startTime: string;
+  status: AppointmentStatus;
+  guest?: { name: string; phone: string };
+  customerId?: { _id: string; name: string; phone?: string } | null;
+  staffId: { _id: string; name: string };
+  createdAt: string;
+}
+
+export interface NewBookingsResponse {
+  now: string;
+  appointments: NewBooking[];
+}
+
 export interface BusinessStats {
   date: string;
   today: { total: number; byStatus: Record<AppointmentStatus, number>; revenue: number };

@@ -11,6 +11,7 @@ const {
   MIN_REASON_LENGTH,
 } = require("../services/booking.service");
 const { TOKEN_REGEX, hashToken, createManageToken, maskPhone } = require("../utils/manageToken");
+const { notifyNewBooking } = require("../services/notify.service");
 const { isValidDate, dayNameOf, localToDate, toMinutes, toHHMM, isOverlapping } = require("../utils/time");
 
 const SLOT_STEP = 15;
@@ -162,7 +163,11 @@ exports.createGuestAppointment = async (req, res) => {
 
   const { token: manageToken, hash: manageTokenHash } = createManageToken();
 
-  const { appointment, staff } = await bookAppointment({
+  const {
+    appointment,
+    staff,
+    tenant: business,
+  } = await bookAppointment({
     slug: req.params.slug,
     serviceId,
     staffId,
@@ -172,6 +177,11 @@ exports.createGuestAppointment = async (req, res) => {
     guest: { name: cleanName, phone: cleanPhone },
     manageTokenHash,
   });
+
+  // Not awaited: the guest gets the answer now, the email goes out in the background.
+  notifyNewBooking({ tenant: business, appointment, staff }).catch((err) =>
+    console.error("[notify] new booking email failed:", err.message),
+  );
 
   res.status(201).json({
     manageToken,

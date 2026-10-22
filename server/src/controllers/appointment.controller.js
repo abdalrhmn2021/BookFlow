@@ -8,13 +8,14 @@ const {
   CUSTOMER_CANCEL_LIMIT_MS,
   MIN_REASON_LENGTH,
 } = require("../services/booking.service");
+const { notifyNewBooking } = require("../services/notify.service");
 
 const WHEN_VALUES = ["upcoming", "past"];
 
 exports.createAppointment = async (req, res) => {
   const { slug, serviceId, staffId, date, time, notes } = req.body || {};
 
-  const { appointment, tenant } = await bookAppointment({
+  const { appointment, tenant, staff } = await bookAppointment({
     slug,
     serviceId,
     staffId,
@@ -28,6 +29,10 @@ exports.createAppointment = async (req, res) => {
     { userId: req.user.id, tenantId: tenant._id },
     { $setOnInsert: { userId: req.user.id, tenantId: tenant._id } },
     { upsert: true },
+  );
+
+  notifyNewBooking({ tenant, appointment, staff }).catch((err) =>
+    console.error("[notify] new booking email failed:", err.message),
   );
 
   res.status(201).json({ appointment });
@@ -228,6 +233,37 @@ exports.getBusinessStats = async (req, res) => {
     toConfirm,
     next,
   });
+};
+
+const NEW_BOOKINGS_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+const NEW_BOOKINGS_LIMIT = 20;
+
+// The dashboard polls this to alert on bookings made since its last look.
+// Without `since` it only returns the server's clock, which the dashboard keeps as its first
+// bookmark - using the server's time (not the browser's) means a wrong phone clock can't skip bookings.
+exports.getNewBusinessAppointments = async (req, res) => {
+  const now = new Date();
+  if (!req.query.since) return res.status(200).json({ now, appointments: [] });
+
+  const since = typeof req.query.since === "string" ? new Date(req.query.since) : null;
+  if (!since || Number.isNaN(since.getTime())) {
+    return res.status(400).json({ message: "since must be a date" });
+  }
+
+  // A laptop that slept for days shouldn't get a flood of old alerts.
+  const from = new Date(Math.max(since.getTime(), now.getTime() - NEW_BOOKINGS_LOOKBACK_MS));
+
+  const appointments = await Appointment.find({
+    ...businessFilter(req.user, req.tenantId),
+    createdAt: { $gt: from, $lte: now },
+  })
+    .sort({ createdAt: 1 })
+    .limit(NEW_BOOKINGS_LIMIT)
+    .select("serviceName startTime status guest customerId staffId createdAt")
+    .populate("customerId", "name phone")
+    .populate("staffId", "name");
+
+  res.status(200).json({ now, appointments });
 };
 
 exports.markReminded = async (req, res) => {

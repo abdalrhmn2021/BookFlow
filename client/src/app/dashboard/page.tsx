@@ -9,6 +9,7 @@ import ScheduleTab from "@/components/dashboard/ScheduleTab";
 import ServicesTab from "@/components/dashboard/ServicesTab";
 import StaffTab from "@/components/dashboard/StaffTab";
 import HoursTab from "@/components/dashboard/HoursTab";
+import NewBookingAlerts from "@/components/dashboard/NewBookingAlerts";
 import Loading from "@/components/Loading";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -39,6 +40,8 @@ function Dashboard() {
 
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [error, setError] = useState<unknown>(null);
+  // Bumped by NewBookingAlerts: the open tab re-fetches so the new booking shows up.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let ignore = false;
@@ -78,10 +81,19 @@ function Dashboard() {
 
   return (
     <DashboardShell tenant={tenant} tabs={tabs} active={tab} onSelect={(next) => go(next)}>
+      <NewBookingAlerts
+        timezone={tenant.timezone}
+        onOpenDay={(d) => go("schedule", d)}
+        onNew={() => setRefreshKey((n) => n + 1)}
+      />
       <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{t.dashboard.tabs[tab]}</h1>
       <div className="mt-6">
-        {tab === "overview" && <OverviewTab timezone={tenant.timezone} onOpenDay={(d) => go("schedule", d)} />}
-        {tab === "schedule" && <ScheduleTab key={date} timezone={tenant.timezone} initialDate={date} />}
+        {tab === "overview" && (
+          <OverviewTab timezone={tenant.timezone} onOpenDay={(d) => go("schedule", d)} refreshKey={refreshKey} />
+        )}
+        {tab === "schedule" && (
+          <ScheduleTab key={date} timezone={tenant.timezone} initialDate={date} refreshKey={refreshKey} />
+        )}
         {tab === "services" && <ServicesTab />}
         {tab === "staff" && <StaffTab />}
         {tab === "hours" && <HoursTab tenant={tenant} onSaved={setTenant} />}
