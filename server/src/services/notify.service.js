@@ -150,4 +150,42 @@ async function notifyNewBooking({ tenant, appointment, staff }) {
   return { sent: recipients.size };
 }
 
-module.exports = { notifyNewBooking, buildNewBookingEmail, isEmailConfigured, setSenderForTests };
+// Pure: the "reset your password" email.
+function buildPasswordResetEmail({ name, link, minutes }) {
+  const e = escapeHtml;
+  const button = (text) =>
+    `<p><a href="${e(link)}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${e(text)}</a></p>`;
+
+  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a">
+<div dir="rtl" style="text-align:right">
+<p>مرحباً ${e(name)}،</p>
+<p>وصلنا طلب لتغيير كلمة المرور لحسابك. الرابط صالح لمدة ${minutes} دقيقة ولمرة واحدة.</p>
+${button("اختر كلمة مرور جديدة")}
+<p style="color:#64748b">إذا ما طلبت هذا، تجاهل الرسالة وكلمة المرور الحالية بتضل زي ما هي.</p>
+</div>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+<div dir="ltr" style="text-align:left">
+<p>Hi ${e(name)},</p>
+<p>We got a request to reset your password. The link works once, for ${minutes} minutes.</p>
+${button("Choose a new password")}
+<p style="color:#64748b">If you didn't ask for this, ignore this email; your password stays the same.</p>
+</div>
+</body></html>`;
+
+  return { subject: "تغيير كلمة المرور · Reset your password", html };
+}
+
+async function sendPasswordResetEmail({ email, name, link, minutes }) {
+  const { subject, html } = buildPasswordResetEmail({ name, link, minutes });
+  const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
+  await send({ sender, to: [{ email, name }], subject, htmlContent: html });
+}
+
+module.exports = {
+  notifyNewBooking,
+  buildNewBookingEmail,
+  buildPasswordResetEmail,
+  sendPasswordResetEmail,
+  isEmailConfigured,
+  setSenderForTests,
+};

@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
     "setup-client": "node scripts/setup-client.js",
+    "reset-password": "node scripts/reset-password.js",
     "test": "jest --runInBand"
   },
   "keywords": [],

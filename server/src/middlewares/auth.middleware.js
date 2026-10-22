@@ -23,6 +23,12 @@ exports.protect = async (req, res, next) => {
       return res.status(403).json({ message: "Account is disabled" });
     }
 
+    // Compared in whole seconds (a JWT's iat has no milliseconds), so the token issued
+    // right after the change, in the same second, still works.
+    if (user.passwordChangedAt && decoded.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
+      return res.status(401).json({ message: "Your password was changed, please log in again" });
+    }
+
     req.user = {
       id: user._id,
       role: user.role,

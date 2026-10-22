@@ -1,4 +1,4 @@
-const { buildNewBookingEmail, isEmailConfigured } = require("../src/services/notify.service");
+const { buildNewBookingEmail, buildPasswordResetEmail, isEmailConfigured } = require("../src/services/notify.service");
 
 // No database: only how the email is built.
 const base = {
@@ -52,5 +52,18 @@ describe("new booking email", () => {
     process.env.MAIL_FROM = saved.from;
     if (saved.key === undefined) delete process.env.BREVO_API_KEY;
     if (saved.from === undefined) delete process.env.MAIL_FROM;
+  });
+});
+
+describe("password reset email", () => {
+  test("has the link and the time limit in both languages, and escapes the name", () => {
+    const link = "https://laila.example/reset-password/abc";
+    const { subject, html } = buildPasswordResetEmail({ name: "<b>Lina</b>", link, minutes: 30 });
+    expect(subject).toContain("Reset your password");
+    expect(html).toContain(link);
+    expect(html).toContain("30 دقيقة");
+    expect(html).toContain("30 minutes");
+    expect(html).not.toContain("<b>Lina</b>");
+    expect(html).toContain("&lt;b&gt;Lina&lt;/b&gt;");
   });
 });

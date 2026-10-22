@@ -40,17 +40,26 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Login tokens issued before this moment stop working (see auth.middleware).
+    passwordChangedAt: { type: Date },
+    // "Forgot password": only the SHA-256 of the emailed token is stored, like guest booking links.
+    resetTokenHash: { type: String, select: false },
+    resetTokenExpiresAt: { type: Date, select: false },
   },
   {
     timestamps: true,
   },
 );
 
+userSchema.index({ resetTokenHash: 1 }, { sparse: true });
+
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  // A new password signs out every other device. Not on sign-up (nothing to sign out).
+  if (!this.isNew) this.passwordChangedAt = new Date();
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {

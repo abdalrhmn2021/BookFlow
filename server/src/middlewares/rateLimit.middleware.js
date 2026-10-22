@@ -24,6 +24,19 @@ exports.registerLimiter = limiter({
   message: { message: "Too many accounts created from this IP, please try again later" },
 });
 
+// Each request can send an email, so keep it low.
+exports.forgotPasswordLimiter = limiter({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  message: { message: "Too many reset requests, please try again later" },
+});
+
+exports.resetPasswordLimiter = limiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: { message: "Too many attempts, please try again in 15 minutes" },
+});
+
 exports.publicLimiter = limiter({
   windowMs: 15 * 60 * 1000,
   limit: 300,
