@@ -1,14 +1,22 @@
+const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
 const Tenant = require("../models/Tenant");
+const Service = require("../models/Service");
+const User = require("../models/User");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
 const {
   bookAppointment,
+  rescheduleAppointment,
+  findFreeSlots,
+  httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,
   MIN_REASON_LENGTH,
 } = require("../services/booking.service");
 const { notifyNewBooking } = require("../services/notify.service");
+const { createManageToken } = require("../utils/manageToken");
+const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 
 const WHEN_VALUES = ["upcoming", "past"];
 
@@ -256,6 +264,7 @@ exports.getNewBusinessAppointments = async (req, res) => {
   const appointments = await Appointment.find({
     ...businessFilter(req.user, req.tenantId),
     createdAt: { $gt: from, $lte: now },
+    createdBy: { $ne: req.user.id }, // no alert for a booking you just entered yourself
   })
     .sort({ createdAt: 1 })
     .limit(NEW_BOOKINGS_LIMIT)
@@ -353,4 +362,106 @@ exports.updateAppointmentStatus = async (req, res) => {
   }
 
   res.status(200).json({ message: `Appointment ${status}`, appointment: updated });
+};
+
+// ---------- Bookings entered and moved by the business (dashboard) ----------
+
+// Staff work on their own calendar only; owners on anyone's.
+function staffFor(req, requested) {
+  if (req.user.role !== "staff") return requested;
+  if (requested && String(requested) !== String(req.user.id)) {
+    throw httpError(403, "Staff can only manage their own bookings");
+  }
+  return req.user.id;
+}
+
+// A walk-in or phone booking. Confirmed right away (the business made it), with a manage link
+// the business can send to the customer on WhatsApp.
+exports.createBusinessAppointment = async (req, res) => {
+  const { serviceId, staffId, date, time, notes, name, phone } = req.body || {};
+
+  const cleanName = typeof name === "string" ? name.trim() : "";
+  if (cleanName.length < 2) throw httpError(400, "Name must be at least 2 characters");
+  if (cleanName.length > 60) throw httpError(400, "Name is too long");
+
+  const cleanPhone = normalizePhone(phone);
+  if (cleanPhone && !PHONE_REGEX.test(cleanPhone)) throw httpError(400, "Please provide a valid phone number");
+
+  const tenant = await Tenant.findById(req.tenantId).select("slug");
+  const { token, hash } = createManageToken();
+
+  const { appointment } = await bookAppointment({
+    slug: tenant.slug,
+    serviceId,
+    staffId: staffFor(req, staffId),
+    date,
+    time,
+    notes,
+    guest: { name: cleanName, ...(cleanPhone && { phone: cleanPhone }) },
+    manageTokenHash: hash,
+    status: "confirmed",
+    createdBy: req.user.id,
+  });
+
+  await appointment.populate("staffId", "name");
+  res.status(201).json({ appointment, manageToken: token });
+};
+
+exports.rescheduleBusinessAppointment = async (req, res) => {
+  const { date, time, staffId } = req.body || {};
+
+  const appointment = await Appointment.findOne({ _id: req.params.id, ...businessFilter(req.user, req.tenantId) });
+  if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+  if (!ACTIVE_STATUSES.includes(appointment.status)) {
+    return res.status(409).json({ message: `Can't reschedule an appointment that is ${appointment.status}` });
+  }
+  if (appointment.startTime <= new Date()) {
+    return res.status(400).json({ message: "Can't reschedule an appointment that already started" });
+  }
+
+  const tenant = await Tenant.findById(req.tenantId);
+  const updated = await rescheduleAppointment({
+    appointment,
+    tenant,
+    staffId: staffFor(req, staffId) || appointment.staffId,
+    date,
+    time,
+    by: req.user.id,
+  });
+
+  await updated.populate([
+    { path: "customerId", select: "name phone email" },
+    { path: "staffId", select: "name" },
+  ]);
+  res.status(200).json({ message: "Appointment rescheduled", appointment: updated });
+};
+
+// Free times for the dashboard's booking / reschedule form. `exclude` = the appointment being
+// moved, so its own current slot counts as free.
+exports.getBusinessAvailability = async (req, res) => {
+  const { serviceId, date, exclude } = req.query;
+  const staffId = staffFor(req, req.query.staffId);
+
+  if (!serviceId || !staffId || !date) {
+    return res.status(400).json({ message: "serviceId, staffId and date are required" });
+  }
+  if (!isValidDate(date)) {
+    return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
+  }
+  if (exclude && !mongoose.isValidObjectId(exclude)) {
+    return res.status(400).json({ message: "Invalid exclude" });
+  }
+
+  const tenant = await Tenant.findById(req.tenantId);
+  // A service can be inactive and still have bookings being moved, so it isn't filtered by isActive.
+  const [service, staff] = await Promise.all([
+    Service.findOne({ _id: serviceId, tenantId: tenant._id }),
+    User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true }),
+  ]);
+  if (!service) return res.status(404).json({ message: "Service not found" });
+  if (!staff) return res.status(404).json({ message: "Staff member not found" });
+
+  const { isOpen, slots } = await findFreeSlots({ tenant, service, staff, date, excludeId: exclude });
+  res.status(200).json({ date, isOpen, slots });
 };

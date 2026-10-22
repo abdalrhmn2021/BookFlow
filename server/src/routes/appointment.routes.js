@@ -11,6 +11,9 @@ const {
   updateAppointmentStatus,
   markReminded,
   getNewBusinessAppointments,
+  createBusinessAppointment,
+  rescheduleBusinessAppointment,
+  getBusinessAvailability,
 } = require("../controllers/appointment.controller");
 
 router.post("/", protect, restrictTo("customer"), createAppointment);
@@ -20,7 +23,10 @@ router.patch("/:id/cancel", protect, restrictTo("customer"), cancelMyAppointment
 router.get("/business", protect, requireTenant, restrictTo("owner", "staff"), getBusinessAppointments);
 router.get("/business/stats", protect, requireTenant, restrictTo("owner", "staff"), getBusinessStats);
 router.get("/business/new", protect, requireTenant, restrictTo("owner", "staff"), getNewBusinessAppointments);
+router.get("/business/availability", protect, requireTenant, restrictTo("owner", "staff"), getBusinessAvailability);
+router.post("/business", protect, requireTenant, restrictTo("owner", "staff"), createBusinessAppointment);
 router.patch("/:id/status", protect, requireTenant, restrictTo("owner", "staff"), updateAppointmentStatus);
 router.patch("/:id/reminded", protect, requireTenant, restrictTo("owner", "staff"), markReminded);
+router.patch("/:id/reschedule", protect, requireTenant, restrictTo("owner", "staff"), rescheduleBusinessAppointment);
 
 module.exports = router;

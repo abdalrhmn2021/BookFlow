@@ -5,6 +5,7 @@ const Appointment = require("../models/Appointment");
 const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
 const {
   bookAppointment,
+  findFreeSlots,
   httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,
@@ -12,9 +13,8 @@ const {
 } = require("../services/booking.service");
 const { TOKEN_REGEX, hashToken, createManageToken, maskPhone } = require("../utils/manageToken");
 const { notifyNewBooking } = require("../services/notify.service");
-const { isValidDate, dayNameOf, localToDate, toMinutes, toHHMM, isOverlapping } = require("../utils/time");
-
-const SLOT_STEP = 15;
+const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
+const { isValidDate } = require("../utils/time");
 
 exports.listBusinesses = async (req, res) => {
   const filter = { isActive: true };
@@ -74,42 +74,8 @@ exports.getAvailability = async (req, res) => {
   if (!service) return res.status(404).json({ message: "Service not found" });
   if (!staff) return res.status(404).json({ message: "Staff member not found" });
 
-  const day = tenant.workingHours.find((d) => d.day === dayNameOf(date));
-  if (!day || !day.isOpen) {
-    return res.status(200).json({ date, isOpen: false, slots: [] });
-  }
-
-  const openMin = toMinutes(day.open);
-  const closeMin = toMinutes(day.close);
-
-  const dayOpen = localToDate(date, day.open, tenant.timezone);
-  const dayClose = localToDate(date, day.close, tenant.timezone);
-
-  const booked = await Appointment.find({
-    staffId: staff._id,
-    status: { $in: ACTIVE_STATUSES },
-    startTime: { $lt: dayClose },
-    endTime: { $gt: dayOpen },
-  }).select("startTime endTime");
-
-  const busy = booked.map((a) => ({
-    start: openMin + (a.startTime - dayOpen) / 60000,
-    end: openMin + (a.endTime - dayOpen) / 60000,
-  }));
-
-  const now = new Date();
-  const slots = [];
-
-  for (let start = openMin; start + service.duration <= closeMin; start += SLOT_STEP) {
-    const end = start + service.duration;
-
-    if (localToDate(date, toHHMM(start), tenant.timezone) <= now) continue;
-
-    const clash = busy.some((b) => isOverlapping(start, end, b.start, b.end));
-    if (clash) continue;
-
-    slots.push(toHHMM(start));
-  }
+  const { isOpen, slots } = await findFreeSlots({ tenant, service, staff, date });
+  if (!isOpen) return res.status(200).json({ date, isOpen: false, slots: [] });
 
   res.status(200).json({
     date,
@@ -121,17 +87,6 @@ exports.getAvailability = async (req, res) => {
 };
 
 const MAX_GUEST_UPCOMING = 3;
-
-function normalizePhone(raw) {
-  if (typeof raw !== "string") return "";
-  let phone = raw
-    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-    .replace(/[\s\-().]/g, "");
-  if (phone.startsWith("00")) phone = "+" + phone.slice(2);
-  return phone;
-}
-const PHONE_REGEX = /^\+?\d{7,15}$/;
 
 exports.createGuestAppointment = async (req, res) => {
   const { serviceId, staffId, date, time, notes, name, phone } = req.body || {};
