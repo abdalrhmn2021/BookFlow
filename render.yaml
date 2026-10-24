@@ -25,6 +25,11 @@ services:
       # "true" on the clients' server, empty on the demo platform.
       - key: SHARED_SERVER
         sync: false
-      # Same value on every client site (Vercel). Required when SHARED_SERVER=true.
+      # Same value on every Vercel site of this server (copy it from Render). Required when
+      # SHARED_SERVER=true; on the demo it lets the rate limits see each visitor's real IP.
       - key: SITE_PROXY_SECRET
-        sync: false
+        generateValue: true
+      - key: BREVO_API_KEY
+        sync: false # optional: new-booking emails (see docs/INSTALL.md)
+      - key: MAIL_FROM
+        sync: false # optional: a sender address verified in Brevo

@@ -43,6 +43,9 @@ export default function Navbar() {
                   <Link href={homeFor(user.role)} className={navLink}>
                     {user.role === "customer" ? t.nav.myAppointments : t.nav.dashboard}
                   </Link>
+                  <Link href="/account/password" className={`hidden sm:inline ${navLink}`}>
+                    {t.nav.password}
+                  </Link>
                   <button onClick={handleLogout} className={navLink}>
                     {t.nav.logout}
                   </button>

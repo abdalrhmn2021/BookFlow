@@ -27,6 +27,8 @@ interface AuthContextValue {
   register: (data: RegisterData) => Promise<User>;
   registerBusiness: (data: RegisterBusinessData) => Promise<User>;
   logout: () => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -87,8 +89,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // The server answers with a fresh login cookie, so this device stays logged in.
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await api.patch("/auth/password", { currentPassword, newPassword });
+  };
+
+  // The link from the email: new password, then logged in.
+  const resetPassword = async (token: string, password: string) => {
+    await api.post("/auth/reset-password", { token, password });
+    return loadMe();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, registerBusiness, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, register, registerBusiness, logout, changePassword, resetPassword }}
+    >
       {children}
     </AuthContext.Provider>
   );

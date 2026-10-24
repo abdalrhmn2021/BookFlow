@@ -33,6 +33,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - Only real free slots are offered (working hours, existing bookings, past times all excluded)
 - Choices survive the login redirect - pick first, log in after
 - "My appointments": upcoming & past, cancel with confirmation
+- **Forgot password** by email (one-use link, 30 minutes, only its hash stored) and **change password**; either one signs out every other device
 
 **Business owners & staff**
 - Business sign-up creates the business **and** its owner in one transaction
@@ -40,6 +41,8 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - Daily schedule (timeline) with status workflow: `pending → confirmed → completed / no-show`, or `cancelled`
 - Manage services (soft delete), staff accounts (deactivate / reactivate) and weekly working hours
 - Staff see only **their own** appointments - enforced by the API, not the UI
+- **New-booking alerts**: the dashboard chimes and shows a card within 30 s (plus a system notification in the background), and an Arabic + English email goes to the owner and the booked staff member (Brevo HTTPS API)
+- **Phone & walk-in bookings** from the dashboard (confirmed at once, phone optional, a manage link to send on WhatsApp) and **rescheduling** to another time or staff member, under the same double-booking lock as online bookings
 
 **Platform**
 - Own navy + coral design system (Tailwind v4 theme tokens), Alexandria + IBM Plex Sans Arabic for both scripts
@@ -230,12 +233,17 @@ Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
 | Method | Endpoint | Access |
 |---|---|---|
 | POST | `/api/auth/register` · `/api/auth/login` · `/api/auth/register-business` | public |
+| POST | `/api/auth/forgot-password` · `/api/auth/reset-password` | public |
+| PATCH | `/api/auth/password` | logged in |
 | GET | `/api/auth/me` | logged in |
 | GET | `/api/public/businesses` · `/api/public/businesses/:slug` · `/api/public/businesses/:slug/availability` | public |
 | POST | `/api/appointments` | customer |
 | GET · PATCH | `/api/appointments/me` · `/api/appointments/:id/cancel` | customer |
 | GET · PATCH | `/api/appointments/business` · `/api/appointments/:id/status` | owner, staff |
 | GET | `/api/appointments/business/stats` (dashboard overview) | owner, staff |
+| GET | `/api/appointments/business/new?since=` (new-booking alerts) | owner, staff |
+| POST · PATCH | `/api/appointments/business` (walk-in / phone booking) · `/api/appointments/:id/reschedule` | owner, staff (own) |
+| GET | `/api/appointments/business/availability` (free times, `exclude` for rescheduling) | owner, staff |
 | CRUD | `/api/services` | owner (staff: read) |
 | CRUD | `/api/staff` | owner |
 | GET · PUT | `/api/tenants/me` · `/api/tenants/me/working-hours` | owner (staff: read) |

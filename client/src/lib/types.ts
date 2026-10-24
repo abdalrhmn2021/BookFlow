@@ -134,8 +134,9 @@ export interface StaffMember {
 export interface BusinessAppointment {
   _id: string;
   customerId?: { _id: string; name: string; phone?: string; email: string } | null;
-  guest?: { name: string; phone: string };
+  guest?: { name: string; phone?: string };
   staffId: { _id: string; name: string };
+  serviceId: string;
   serviceName: string;
   price: number;
   duration: number;
@@ -144,6 +145,23 @@ export interface BusinessAppointment {
   status: AppointmentStatus;
   notes?: string;
   reminderSentAt?: string;
+  rescheduled?: { from: string; at: string };
+}
+
+export interface NewBooking {
+  _id: string;
+  serviceName: string;
+  startTime: string;
+  status: AppointmentStatus;
+  guest?: { name: string; phone: string };
+  customerId?: { _id: string; name: string; phone?: string } | null;
+  staffId: { _id: string; name: string };
+  createdAt: string;
+}
+
+export interface NewBookingsResponse {
+  now: string;
+  appointments: NewBooking[];
 }
 
 export interface BusinessStats {

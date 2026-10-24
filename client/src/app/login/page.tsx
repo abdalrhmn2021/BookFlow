@@ -68,7 +68,12 @@ function LoginForm() {
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium">{t.login.password}</span>
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-sm font-medium">{t.login.password}</span>
+            <Link href="/forgot-password" className="text-xs font-medium text-brand-700 hover:underline">
+              {t.password.forgotLink}
+            </Link>
+          </span>
           <input
             type="password"
             required

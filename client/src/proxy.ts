@@ -16,10 +16,9 @@ const SITE_HEADER = "x-bookflow-site";
 const CLIENT_IP_HEADER = "x-bookflow-client-ip";
 
 function visitorIp(request: NextRequest): string | null {
-  // On Vercel both are set by Vercel itself (a browser can't fake them).
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  // Only x-real-ip: Vercel sets it to the visitor's IP and overwrites whatever the browser sent.
+  // x-forwarded-for is not used - off Vercel it can carry any value the browser chose.
+  return request.headers.get("x-real-ip")?.trim() || null;
 }
 
 export function proxy(request: NextRequest) {

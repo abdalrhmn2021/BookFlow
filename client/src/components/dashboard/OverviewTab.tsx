@@ -25,7 +25,15 @@ function timeUntil(iso: string, locale: string): string {
   return rtf.format(Math.round(minutes / (24 * 60)), "day");
 }
 
-export default function OverviewTab({ timezone, onOpenDay }: { timezone: string; onOpenDay: (date: string) => void }) {
+export default function OverviewTab({
+  timezone,
+  onOpenDay,
+  refreshKey = 0,
+}: {
+  timezone: string;
+  onOpenDay: (date: string) => void;
+  refreshKey?: number;
+}) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
   const o = t.dashboard.overview;
@@ -46,7 +54,7 @@ export default function OverviewTab({ timezone, onOpenDay }: { timezone: string;
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [refreshKey]);
 
   if (error) return <p className={errorBox}>{tError(error)}</p>;
   if (!stats) return <p className="text-sm text-navy-500">{o.loading}</p>;

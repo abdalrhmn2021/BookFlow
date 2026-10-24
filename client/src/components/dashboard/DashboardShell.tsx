@@ -114,7 +114,14 @@ export default function DashboardShell({
             </button>
           </div>
 
-          <div className="mt-3 flex items-center gap-1 border-t border-white/10 px-3 py-3">
+          <Link
+            href="/account/password"
+            className="mx-3 mt-3 block rounded-lg px-3 py-2 text-sm text-navy-300 transition hover:bg-white/5 hover:text-white"
+          >
+            {t.nav.password}
+          </Link>
+
+          <div className="mt-1 flex items-center gap-1 border-t border-white/10 px-3 py-3">
             <button
               onClick={switchLang}
               className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm text-navy-300 transition hover:bg-white/5 hover:text-white"
@@ -174,10 +181,15 @@ export default function DashboardShell({
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2 lg:hidden">
             <p className="font-display font-semibold">{tenant.name}</p>
-            <button onClick={copyLink} className="flex items-center gap-1.5 text-sm font-medium text-brand-700">
-              <IconLink className="h-4 w-4" />
-              {copied ? t.dashboard.copied : t.dashboard.copy}
-            </button>
+            <div className="flex items-center gap-4">
+              <Link href="/account/password" className="text-sm text-navy-600 hover:text-navy-900">
+                {t.nav.password}
+              </Link>
+              <button onClick={copyLink} className="flex items-center gap-1.5 text-sm font-medium text-brand-700">
+                <IconLink className="h-4 w-4" />
+                {copied ? t.dashboard.copied : t.dashboard.copy}
+              </button>
+            </div>
           </div>
           {children}
         </div>
