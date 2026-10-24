@@ -30,4 +30,5 @@ connectDB().then(() => {
     console.log(`Server running on port ${PORT}`);
   });
   require("./src/services/reminder.service").startReminderJob();
+  require("./src/services/maintenance.service").startMaintenanceJob();
 });

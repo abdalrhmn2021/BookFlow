@@ -259,7 +259,8 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 - [x] Dashboard overview: next appointment, today's numbers, next 7 days
 - [x] Seller admin panel (`/admin`, role superadmin): every client business, usage, switch off/on, plan, paid-until
 - [ ] Longer-range analytics (monthly revenue, no-show rate)
-- [ ] A `pending` appointment that nobody confirmed can't be closed after its start time
+- [x] A `pending` booking nobody confirmed can be closed after it starts, and is closed automatically a day after it ends
+- [x] Shared server: each business has its own customer accounts (same email = separate account per business)
 
 ## Author
 

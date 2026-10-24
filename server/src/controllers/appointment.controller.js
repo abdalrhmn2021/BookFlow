@@ -18,6 +18,7 @@ const { notifyNewBooking } = require("../services/notify.service");
 const { createManageToken } = require("../utils/manageToken");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { siteAllows } = require("../middlewares/site.middleware");
+const { closeStalePending } = require("../services/maintenance.service");
 const { siteUrl } = require("../utils/siteUrl");
 
 const WHEN_VALUES = ["upcoming", "past"];
@@ -169,7 +170,9 @@ const businessFilter = (user, tenantId) => (user.role === "staff" ? { tenantId, 
 
 // completed / cancelled / no-show are final.
 const ALLOWED_TRANSITIONS = {
-  pending: ["confirmed", "cancelled"],
+  // A booking nobody confirmed can still be closed once it started (completed / no-show);
+  // if nobody does, services/maintenance.service.js cancels it automatically a day later.
+  pending: ["confirmed", "cancelled", "completed", "no-show"],
   confirmed: ["completed", "no-show", "cancelled"],
   completed: [],
   cancelled: [],
@@ -177,6 +180,7 @@ const ALLOWED_TRANSITIONS = {
 };
 
 exports.getBusinessAppointments = async (req, res) => {
+  await closeStalePending({ tenantId: req.tenantId }); // also works when the hourly timer can't (sleeping server)
   const { status } = req.query;
 
   if (status && !Appointment.STATUSES.includes(status)) {
@@ -214,6 +218,7 @@ const OVERVIEW_DAYS = 7;
 
 // Everything the dashboard Overview needs, in one request.
 exports.getBusinessStats = async (req, res) => {
+  await closeStalePending({ tenantId: req.tenantId });
   const tenant = await Tenant.findById(req.tenantId).select("timezone");
   const tz = tenant.timezone;
   const now = new Date();

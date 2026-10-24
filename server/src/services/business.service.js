@@ -26,7 +26,7 @@ async function createBusinessWithOwner({
   phoneCountryCode,
 }) {
   const [emailTaken, slugTaken] = await Promise.all([
-    User.exists({ email: String(email).trim().toLowerCase() }),
+    User.exists({ email: String(email).trim().toLowerCase(), scope: null }),
     Tenant.exists({ slug: String(slug).trim().toLowerCase() }),
   ]);
   if (emailTaken) throw httpError(409, "Email already exists");

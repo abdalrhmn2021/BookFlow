@@ -183,3 +183,50 @@ describe("Shared server - rate limits count each visitor, not the proxy", () => 
     await wrong("198.51.100.8").expect(401);
   });
 });
+
+describe("Shared server - each business has its own customers", () => {
+  const register = (slug, password, name = "Sara") =>
+    request(h.app)
+      .post("/api/auth/register")
+      .set(fromSite(slug, "203.0.113.50"))
+      .send({ name, email: "sara@mail.test", password });
+  const login = (slug, password, ip) =>
+    request(h.app).post("/api/auth/login").set(fromSite(slug, ip)).send({ email: "sara@mail.test", password });
+
+  test("the same email signs up at two salons as two separate accounts", async () => {
+    await h.makeBusiness("salon-a");
+    await h.makeBusiness("salon-b");
+
+    const a = await register("salon-a", "password-at-a").expect(201);
+    await register("salon-a", "again-at-a").expect(409); // once per salon
+    const b = await register("salon-b", "password-at-b", "Sara B").expect(201);
+    expect(a.body.user.id).not.toBe(b.body.user.id);
+
+    const atA = await login("salon-a", "password-at-a", "203.0.113.51").expect(200);
+    expect(atA.body.user.id).toBe(a.body.user.id);
+    const atB = await login("salon-b", "password-at-b", "203.0.113.52").expect(200);
+    expect(atB.body.user.id).toBe(b.body.user.id);
+
+    // Salon B's password doesn't open salon A's account.
+    await login("salon-a", "password-at-b", "203.0.113.53").expect(401);
+  });
+
+  test("an owner's email can still be a customer at another salon", async () => {
+    const A = await h.makeBusiness("salon-a");
+    await h.makeBusiness("salon-b");
+    const res = await request(h.app)
+      .post("/api/auth/register")
+      .set(fromSite("salon-b", "203.0.113.60"))
+      .send({ name: "Owner as customer", email: A.owner.email, password: "customer-pass" })
+      .expect(201);
+    expect(res.body.user.role).toBe("customer");
+
+    // On salon A's site the owner still signs in to their dashboard account.
+    const owner = await request(h.app)
+      .post("/api/auth/login")
+      .set(fromSite("salon-a", "203.0.113.61"))
+      .send({ email: A.owner.email, password: "password123" })
+      .expect(200);
+    expect(owner.body.user.role).toBe("owner");
+  });
+});

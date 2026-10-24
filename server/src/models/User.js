@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email"],
@@ -30,6 +29,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["superadmin", "owner", "staff", "customer"],
       required: true,
+    },
+    // Customers who signed up on one business's site of a SHARED server belong to that
+    // business only (each salon has its own customers). null = a normal account: owners, staff,
+    // admins, and every customer on the platform / a dedicated server.
+    scope: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      default: null,
     },
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -52,6 +59,9 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ resetTokenHash: 1 }, { sparse: true });
+// One account per email in each scope: the same person can be a customer at two salons
+// on a shared server, with two separate accounts.
+userSchema.index({ email: 1, scope: 1 }, { unique: true });
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
@@ -66,4 +76,17 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+
+// Databases created before `scope` have a unique index on email alone, which would refuse a
+// second account with the same email. Dropped once at start-up (config/db.js); harmless after.
+User.dropLegacyEmailIndex = async () => {
+  const indexes = await User.collection.indexes().catch(() => []);
+  if (indexes.some((i) => i.name === "email_1")) {
+    await User.collection.dropIndex("email_1");
+    console.log("[db] replaced the old unique email index with (email, scope)");
+  }
+  await User.createIndexes();
+};
+
+module.exports = User;

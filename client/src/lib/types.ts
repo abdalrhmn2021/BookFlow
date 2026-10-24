@@ -97,7 +97,7 @@ export interface GuestBooking {
   guestPhone: string;
   canCancel: boolean;
   cancelDeadline: string;
-  cancellation: { reason?: string; cancelledAt?: string; byGuest: boolean } | null;
+  cancellation: { reason?: string; cancelledAt?: string; byGuest: boolean; auto?: boolean } | null;
 }
 
 export interface BusinessListItem {
