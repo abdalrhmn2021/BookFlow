@@ -4,6 +4,7 @@
 //   npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@example.com
 //
 // Optional: --phone 0599123456  --password <at least 8 chars>  --timezone Asia/Hebron
+//           --whatsapp (automatic WhatsApp reminders on)  --country-code 970 (for local phone numbers)
 // Anything required that you leave out is asked for in the terminal.
 // No --password = a strong random one is generated and printed (give it to the owner).
 
@@ -74,6 +75,13 @@ function prepare(args) {
     values.timezone = args.timezone;
   }
 
+  if ("whatsapp" in args) values.whatsappReminders = true;
+  if (args["country-code"] !== undefined) {
+    const code = String(args["country-code"]).replace(/^\+/, "").trim();
+    if (!/^\d{1,4}$/.test(code)) throw new Error("--country-code must be 1-4 digits (e.g. 970 or 966)");
+    values.phoneCountryCode = code;
+  }
+
   return values;
 }
 
@@ -101,6 +109,9 @@ function printSummary({ tenant, owner }, values) {
   console.log(`  Business:  ${tenant.name}  (slug: ${tenant.slug}, time zone: ${tenant.timezone})`);
   console.log(`  Owner:     ${owner.name}`);
   console.log(`  Login:     ${owner.email}`);
+  console.log(
+    `  WhatsApp:  automatic reminders ${tenant.whatsappReminders ? "ON" : "off (add --whatsapp to turn on)"}`,
+  );
   console.log(
     `  Password:  ${values.password}${values.passwordGenerated ? "   <- generated, give it to the owner (shown only now)" : ""}`,
   );
@@ -139,7 +150,9 @@ async function main() {
     console.error(
       'Usage: npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@example.com',
     );
-    console.error("Optional: --phone 0599123456 --password <8+ chars> --timezone Asia/Hebron\n");
+    console.error(
+      "Optional: --phone 0599123456 --password <8+ chars> --timezone Asia/Hebron --whatsapp --country-code 970\n",
+    );
     process.exitCode = 1;
     return;
   }

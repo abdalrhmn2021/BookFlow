@@ -68,6 +68,26 @@ const tenantSchema = new mongoose.Schema(
       type: String,
       default: "Asia/Hebron",
     },
+    // Automatic WhatsApp reminder before each appointment. Off by default: every message is
+    // sent from YOUR WhatsApp Business number and Meta charges for it, so it's switched on
+    // per client (e.g. as a paid add-on) - `npm run setup-client -- --whatsapp`.
+    whatsappReminders: {
+      type: Boolean,
+      default: false,
+    },
+    // Your own bookkeeping for a sold copy (admin panel). Nothing switches off by itself:
+    // you decide when to set isActive=false for a client who didn't pay.
+    subscription: {
+      paidUntil: { type: Date, default: null },
+      note: { type: String, trim: true, maxlength: [300, "Note is too long"], default: "" },
+    },
+    // For local numbers like 0599123456. null = WHATSAPP_DEFAULT_COUNTRY_CODE (970).
+    phoneCountryCode: {
+      type: String,
+      trim: true,
+      default: null,
+      match: [/^\d{1,4}$/, "Country code must be 1-4 digits (e.g. 970)"],
+    },
   },
   {
     timestamps: true,
@@ -75,3 +95,4 @@ const tenantSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Tenant", tenantSchema);
+module.exports.workingDaySchema = workingDaySchema;

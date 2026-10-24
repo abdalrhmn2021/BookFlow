@@ -23,7 +23,7 @@ const MIN_REASON_LENGTH = 10;
 // Mirrors the API's allowed transitions; only decides which buttons to show.
 function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
   const started = new Date(a.startTime) <= new Date();
-  if (a.status === "pending") return started ? [] : ["confirmed", "cancelled"];
+  if (a.status === "pending") return started ? ["completed", "no-show"] : ["confirmed", "cancelled"];
   if (a.status === "confirmed") return started ? ["completed", "no-show"] : ["cancelled"];
   return [];
 }
@@ -344,7 +344,10 @@ export default function ScheduleTab({
                                 <span className="ms-auto inline-flex flex-wrap items-center gap-2">
                                   {a.reminderSentAt && (
                                     <span className="text-xs text-emerald-700">
-                                      ✓ {s.reminded(formatMomentIn(a.reminderSentAt, timezone, t.locale).time)}
+                                      ✓{" "}
+                                      {(a.reminderChannel === "whatsapp" ? s.remindedAuto : s.reminded)(
+                                        formatMomentIn(a.reminderSentAt, timezone, t.locale).time,
+                                      )}
                                     </span>
                                   )}
                                   <a

@@ -35,7 +35,12 @@ export interface PublicService {
 export interface PublicStaff {
   id: string;
   name: string;
+  // The services they do; [] = every service.
+  serviceIds?: string[];
 }
+
+export const offersService = (staff: { serviceIds?: string[] }, serviceId: string | null | undefined) =>
+  !serviceId || !staff.serviceIds?.length || staff.serviceIds.includes(serviceId);
 
 export interface PublicBusinessPage {
   business: {
@@ -97,7 +102,7 @@ export interface GuestBooking {
   guestPhone: string;
   canCancel: boolean;
   cancelDeadline: string;
-  cancellation: { reason?: string; cancelledAt?: string; byGuest: boolean } | null;
+  cancellation: { reason?: string; cancelledAt?: string; byGuest: boolean; auto?: boolean } | null;
 }
 
 export interface BusinessListItem {
@@ -129,6 +134,9 @@ export interface StaffMember {
   email: string;
   phone?: string;
   isActive: boolean;
+  workingHours: WorkingDay[] | null; // null = the business's hours
+  services: string[]; // [] = every service
+  daysOff: string[]; // YYYY-MM-DD
 }
 
 export interface BusinessAppointment {
@@ -145,6 +153,7 @@ export interface BusinessAppointment {
   status: AppointmentStatus;
   notes?: string;
   reminderSentAt?: string;
+  reminderChannel?: "manual" | "whatsapp";
   rescheduled?: { from: string; at: string };
 }
 
@@ -170,4 +179,23 @@ export interface BusinessStats {
   week: { date: string; count: number }[];
   toConfirm: number;
   next: BusinessAppointment | null;
+}
+
+export interface AdminBusiness {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  isActive: boolean;
+  whatsappReminders: boolean;
+  timezone: string;
+  createdAt: string;
+  paidUntil: string | null;
+  overdue: boolean;
+  note: string;
+  owners: { name: string; email: string; phone?: string }[];
+  staffCount: number;
+  bookingsLast30Days: number;
+  lastBookingAt: string | null;
+  upcomingBookings: number;
 }

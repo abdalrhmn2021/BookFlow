@@ -174,7 +174,7 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-60 API tests (Jest + Supertest): 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the status state machine, cancellation rules, guest bookings, the dashboard stats and the new-client setup.
+130 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -252,13 +252,15 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 60 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
+- [x] Automated tests (Jest + Supertest) and CI - 130 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
-- [ ] Email reminders 24h before an appointment (background job queue)
-- [ ] Per-staff working hours and "which staff can do which service"
+- [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
+- [x] Per-staff working hours, days off and "which staff can do which service"
 - [x] Dashboard overview: next appointment, today's numbers, next 7 days
+- [x] Seller admin panel (`/admin`, role superadmin): every client business, usage, switch off/on, plan, paid-until
 - [ ] Longer-range analytics (monthly revenue, no-show rate)
-- [ ] A `pending` appointment that nobody confirmed can't be closed after its start time
+- [x] A `pending` booking nobody confirmed can be closed after it starts, and is closed automatically a day after it ends
+- [x] Shared server: each business has its own customer accounts (same email = separate account per business)
 
 ## Author
 
