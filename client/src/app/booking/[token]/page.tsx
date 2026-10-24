@@ -126,11 +126,13 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
         {booking.cancellation && (
           <div className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
             <p>
-              {booking.cancellation.byGuest
-                ? t.manage.cancelledByYou
-                : t.manage.cancelledByBusiness(business?.name ?? "")}
+              {booking.cancellation.auto
+                ? t.manage.autoClosed
+                : booking.cancellation.byGuest
+                  ? t.manage.cancelledByYou
+                  : t.manage.cancelledByBusiness(business?.name ?? "")}
             </p>
-            {booking.cancellation.reason && (
+            {booking.cancellation.reason && !booking.cancellation.auto && (
               <p className="mt-1">
                 {t.manage.reason} {booking.cancellation.reason}
               </p>

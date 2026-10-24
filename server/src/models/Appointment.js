@@ -40,6 +40,14 @@ const appointmentSchema = new mongoose.Schema(
     notes: { type: String, trim: true, maxlength: [500, "Notes are too long"] },
 
     reminderSentAt: { type: Date },
+    // Who sent it: the dashboard's WhatsApp button ("manual") or the automatic job ("whatsapp").
+    reminderChannel: { type: String, enum: ["manual", "whatsapp"] },
+    // Bookkeeping of the automatic reminder job (services/reminder.service.js).
+    autoReminder: {
+      claimedAt: { type: Date }, // a job run is sending it right now
+      attempts: { type: Number, default: 0 },
+      lastError: { type: String, maxlength: 300 },
+    },
 
     // Set when the owner/staff entered the booking from the dashboard.
     createdBy: { type: ObjectId, ref: "User" },
@@ -54,6 +62,7 @@ const appointmentSchema = new mongoose.Schema(
       reason: { type: String, trim: true, maxlength: [300, "Reason is too long"] },
       cancelledBy: { type: ObjectId, ref: "User" },
       byGuest: { type: Boolean },
+      auto: { type: Boolean }, // closed by the system (never confirmed), see maintenance.service.js
       cancelledAt: { type: Date },
     },
   },
@@ -75,6 +84,7 @@ appointmentSchema.index({ tenantId: 1, staffId: 1, startTime: 1 });
 appointmentSchema.index({ tenantId: 1, startTime: 1 });
 appointmentSchema.index({ tenantId: 1, createdAt: 1 }); // dashboard "new bookings" alerts
 appointmentSchema.index({ customerId: 1, startTime: -1 });
+appointmentSchema.index({ status: 1, startTime: 1 }); // reminder job: active bookings starting soon
 appointmentSchema.index(
   { tenantId: 1, "guest.phone": 1, startTime: 1 },
   { partialFilterExpression: { "guest.phone": { $exists: true } } },

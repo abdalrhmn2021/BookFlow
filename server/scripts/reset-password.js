@@ -5,6 +5,8 @@
 //   npm run reset-password -- --email laila@example.com
 //
 // Optional: --password <at least 8 chars>. Without it a strong random one is printed.
+//           --business <slug>: on a shared server, the customer account of that business
+//           (one email can have one per business).
 // Every device logged in to that account is signed out.
 
 require("dotenv").config({ quiet: true });
@@ -29,7 +31,20 @@ async function main() {
 
   await require("../src/config/db")();
   try {
-    const user = await User.findOne({ email });
+    // On a shared server one email can have several accounts (a customer account per salon).
+    require("../src/models/Tenant"); // registers the model for populate()
+    const accounts = await User.find({ email }).populate("scope", "slug");
+    let user = accounts[0];
+    if (accounts.length > 1) {
+      const slug = args.business?.trim().toLowerCase();
+      user = slug ? accounts.find((a) => a.scope?.slug === slug) : accounts.find((a) => !a.scope);
+      if (!user) {
+        const where = accounts.map((a) => (a.scope ? `--business ${a.scope.slug}` : "(main account: no --business)"));
+        console.error(`\n${email} has ${accounts.length} accounts here. Pick one:\n  ${where.join("\n  ")}\n`);
+        process.exitCode = 1;
+        return;
+      }
+    }
     if (!user) {
       console.error(`\nNo account with the email ${email} in this database. Is MONGO_URI the client's?\n`);
       process.exitCode = 1;

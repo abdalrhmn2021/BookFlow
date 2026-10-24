@@ -36,6 +36,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function homeFor(role: Role): string {
   if (role === "owner" || role === "staff") return "/dashboard";
   if (role === "customer") return "/my-appointments";
+  if (role === "superadmin") return "/admin";
   return "/";
 }
 

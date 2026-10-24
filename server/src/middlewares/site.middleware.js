@@ -71,5 +71,17 @@ exports.requireSiteBusiness = (req, res, next, slug) => {
   next();
 };
 
+// The `scope` of customer accounts made on this site: on a shared server, the site's business
+// (each salon keeps its own customers); everywhere else null (one account for everything).
+exports.customerScope = async (req) => {
+  if (!SHARED_SERVER || !req.siteSlug) return null;
+  if (req._customerScope === undefined) {
+    const Tenant = require("../models/Tenant");
+    const tenant = await Tenant.findOne({ slug: req.siteSlug }).select("_id").lean();
+    req._customerScope = tenant?._id ?? null;
+  }
+  return req._customerScope;
+};
+
 exports.OTHER_BUSINESS_MESSAGE = "This account belongs to another business";
 exports.HEADERS = { SECRET_HEADER, SITE_HEADER, CLIENT_IP_HEADER };

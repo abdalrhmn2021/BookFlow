@@ -45,9 +45,19 @@ describe("Status transitions (owner/staff)", () => {
     expect(res.body.appointment.status).toBe("confirmed");
   });
 
-  test("pending -> completed is NOT in the map (409)", async () => {
+  test("pending -> completed only once it started (before: 400)", async () => {
     const appt = await makeAppointment(biz, customer, { startsInMinutes: ONE_DAY });
-    await setStatus(biz.owner, appt, { status: "completed" }).expect(409);
+    await setStatus(biz.owner, appt, { status: "completed" }).expect(400);
+  });
+
+  test("a pending booking nobody confirmed can still be closed after it started", async () => {
+    const done = await makeAppointment(biz, customer, { startsInMinutes: -60 });
+    const missed = await makeAppointment(biz, customer, { startsInMinutes: -180 });
+    await setStatus(biz.owner, done, { status: "completed" }).expect(200);
+    await setStatus(biz.owner, missed, { status: "no-show" }).expect(200);
+    // ...but it can't be confirmed any more once it started.
+    const late = await makeAppointment(biz, customer, { startsInMinutes: -300 });
+    await setStatus(biz.owner, late, { status: "confirmed" }).expect(400);
   });
 
   test("completed is final - can't go back to confirmed (409)", async () => {

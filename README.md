@@ -254,11 +254,13 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 - [x] Automated tests (Jest + Supertest) and CI - 60 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
-- [ ] Email reminders 24h before an appointment (background job queue)
+- [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [ ] Per-staff working hours and "which staff can do which service"
 - [x] Dashboard overview: next appointment, today's numbers, next 7 days
+- [x] Seller admin panel (`/admin`, role superadmin): every client business, usage, switch off/on, plan, paid-until
 - [ ] Longer-range analytics (monthly revenue, no-show rate)
-- [ ] A `pending` appointment that nobody confirmed can't be closed after its start time
+- [x] A `pending` booking nobody confirmed can be closed after it starts, and is closed automatically a day after it ends
+- [x] Shared server: each business has its own customer accounts (same email = separate account per business)
 
 ## Author
 
