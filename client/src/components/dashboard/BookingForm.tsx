@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { addDays, formatLongDate, formatMomentIn, todayIn } from "@/lib/format";
 import { btnPrimary, btnSecondary, errorBox, inputClass } from "@/lib/ui";
 import { toWhatsAppNumber, whatsAppLink } from "@/lib/whatsapp";
-import type { Availability, BusinessAppointment, PublicBusinessPage } from "@/lib/types";
+import { offersService, type Availability, type BusinessAppointment, type PublicBusinessPage } from "@/lib/types";
 
 export type BookingFormMode = { kind: "new"; date: string } | { kind: "move"; appointment: BusinessAppointment };
 
@@ -247,15 +247,21 @@ export default function BookingForm({
                 <select
                   required
                   value={serviceId}
-                  onChange={(e) => pick(setServiceId)(e.target.value)}
+                  onChange={(e) => {
+                    pick(setServiceId)(e.target.value);
+                    const current = page.staff.find((m) => m.id === staffId);
+                    if (!isStaff && current && !offersService(current, e.target.value)) setStaffId("");
+                  }}
                   className={select}
                 >
                   <option value="" disabled />
-                  {page.services.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
+                  {page.services
+                    .filter((x) => !isStaff || offersService(page.staff.find((m) => m.id === staffId) ?? {}, x.id))
+                    .map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
                 </select>
               </label>
             )}
@@ -265,11 +271,13 @@ export default function BookingForm({
                 <span className="text-sm font-medium">{b.staff}</span>
                 <select required value={staffId} onChange={(e) => pick(setStaffId)(e.target.value)} className={select}>
                   <option value="" disabled />
-                  {page.staff.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
+                  {page.staff
+                    .filter((m) => offersService(m, serviceId))
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                 </select>
               </label>
             )}

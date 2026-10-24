@@ -4,6 +4,7 @@ const StaffLock = require("../models/StaffLock");
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
+const { staffDayHours, offersService } = require("../utils/staffSchedule");
 const {
   TIME_REGEX,
   isValidDate,
@@ -58,8 +59,9 @@ const hasConflict = (staffId, startTime, endTime, session, excludeId) =>
     ...(excludeId && { _id: { $ne: excludeId } }),
   }).session(session);
 
-// The checks every new time goes through: real date and time, not in the past, inside working hours.
-function checkTime({ tenant, date, time, duration }) {
+// The checks every new time goes through: real date and time, not in the past, inside the
+// business's working hours AND the staff member's own hours (utils/staffSchedule.js).
+function checkTime({ tenant, staff, date, time, duration }) {
   if (!date || !time) throw httpError(400, "date and time are required");
   if (!isValidDate(date)) throw httpError(400, "date must be a real date in YYYY-MM-DD format");
   if (!TIME_REGEX.test(time)) throw httpError(400, "time must be HH:mm (e.g. 10:30)");
@@ -69,6 +71,11 @@ function checkTime({ tenant, date, time, duration }) {
   if (startTime <= new Date()) throw httpError(400, "You can't book a time in the past");
   if (!fitsInWorkingHours(tenant.workingHours, dayNameOf(date), time, duration)) {
     throw httpError(400, "This time is outside working hours");
+  }
+  const hours = staffDayHours(tenant, staff, date);
+  const start = toMinutes(time);
+  if (!hours.isOpen || start < toMinutes(hours.open) || start + duration > toMinutes(hours.close)) {
+    throw httpError(400, "This staff member isn't working at that time");
   }
   return { startTime, endTime };
 }
@@ -99,8 +106,9 @@ async function bookAppointment({
   ]);
   if (!service) throw httpError(404, "Service not found");
   if (!staff) throw httpError(404, "Staff member not found");
+  if (!offersService(staff, service._id)) throw httpError(400, "This staff member doesn't offer this service");
 
-  const { startTime, endTime } = checkTime({ tenant, date, time, duration: service.duration });
+  const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: service.duration });
 
   const appointment = await withStaffLock(staff._id, async (session) => {
     if (await hasConflict(staff._id, startTime, endTime, session)) return null;
@@ -135,8 +143,11 @@ async function bookAppointment({
 async function rescheduleAppointment({ appointment, tenant, staffId, date, time, by }) {
   const staff = await User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true });
   if (!staff) throw httpError(404, "Staff member not found");
+  if (!offersService(staff, appointment.serviceId)) {
+    throw httpError(400, "This staff member doesn't offer this service");
+  }
 
-  const { startTime, endTime } = checkTime({ tenant, date, time, duration: appointment.duration });
+  const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: appointment.duration });
   if (startTime.getTime() === appointment.startTime.getTime() && staff._id.equals(appointment.staffId)) {
     throw httpError(400, "This is already the appointment's time");
   }
@@ -167,8 +178,9 @@ async function rescheduleAppointment({ appointment, tenant, staffId, date, time,
 // Free start times for one staff member, one service, one day (every SLOT_STEP minutes).
 // excludeId: an appointment to ignore, so rescheduling can reuse or overlap its own old slot.
 async function findFreeSlots({ tenant, service, staff, date, excludeId }) {
-  const day = tenant.workingHours.find((d) => d.day === dayNameOf(date));
-  if (!day || !day.isOpen) return { isOpen: false, slots: [] };
+  if (!offersService(staff, service._id)) throw httpError(400, "This staff member doesn't offer this service");
+  const day = staffDayHours(tenant, staff, date);
+  if (!day.isOpen) return { isOpen: false, slots: [] };
 
   const openMin = toMinutes(day.open);
   const closeMin = toMinutes(day.close);

@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { workingDaySchema } = require("./Tenant");
+const { isValidDate } = require("../utils/time");
 
 const userSchema = new mongoose.Schema(
   {
@@ -39,6 +41,32 @@ const userSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    // ---- Staff only (utils/staffSchedule.js). Not set = same as the business. ----
+    // Their own week: the business's hours are narrowed to these (never widened).
+    workingHours: {
+      type: [workingDaySchema],
+      default: undefined,
+      validate: {
+        validator: (days) =>
+          !days || days.length === 0 || (days.length === 7 && new Set(days.map((d) => d.day)).size === 7),
+        message: "workingHours must contain each of the 7 days exactly once",
+      },
+    },
+    // The services they do. Empty = all of them.
+    services: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Service" }],
+      default: undefined,
+    },
+    // Single days off (holiday, sick day...), as YYYY-MM-DD in the business's time zone.
+    daysOff: {
+      type: [String],
+      default: undefined,
+      validate: [
+        { validator: (dates) => !dates || dates.every(isValidDate), message: "Days off must be dates like 2026-11-05" },
+        { validator: (dates) => !dates || dates.length <= 120, message: "Too many days off (120 max)" },
+      ],
     },
     // Login tokens issued before this moment stop working (see auth.middleware).
     passwordChangedAt: { type: Date },
