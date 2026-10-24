@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
-const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { SINGLE_BUSINESS_SLUG, SHARED_SERVER } = require("../config/mode");
+const { siteAllows, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { createBusinessWithOwner } = require("../services/business.service");
 
@@ -89,6 +90,10 @@ exports.login = async (req, res) => {
       if (!tenant || !tenant.isActive) {
         return res.status(403).json({ message: "This business account is disabled" });
       }
+      // The owner of salon A can't sign in on salon B's site (their dashboard lives on their own site).
+      if (!siteAllows(req, tenant.slug)) {
+        return res.status(403).json({ message: OTHER_BUSINESS_MESSAGE });
+      }
     }
 
     const token = generateToken(user);
@@ -119,7 +124,9 @@ exports.registerBusiness = async (req, res) => {
     });
   }
 
-  if (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG) {
+  // Shared server: clients are added only with `npm run setup-client`, never from the web.
+  // Dedicated server: only its own business, once (the slug is unique).
+  if (SHARED_SERVER || (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG)) {
     return res.status(403).json({ message: "Business registration is disabled" });
   }
 

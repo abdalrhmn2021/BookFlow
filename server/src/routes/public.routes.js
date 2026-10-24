@@ -9,8 +9,12 @@ const {
   getGuestBooking,
   cancelGuestBooking,
 } = require("../controllers/public.controller");
+const { requireSiteBusiness } = require("../middlewares/site.middleware");
 
 router.use(publicLimiter);
+
+// Every /businesses/:slug route: on a one-business site, other businesses don't exist.
+router.param("slug", requireSiteBusiness);
 
 router.get("/businesses", listBusinesses);
 router.get("/businesses/:slug", getBusinessBySlug);

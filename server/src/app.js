@@ -21,6 +21,7 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use(require("./middlewares/site.middleware").identifySite);
 
 app.get("/", (req, res) => {
   res.json({ message: "BookFlow API is running" });

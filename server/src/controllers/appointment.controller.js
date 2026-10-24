@@ -8,11 +8,26 @@ const {
   CUSTOMER_CANCEL_LIMIT_MS,
   MIN_REASON_LENGTH,
 } = require("../services/booking.service");
+const { siteAllows } = require("../middlewares/site.middleware");
 
 const WHEN_VALUES = ["upcoming", "past"];
 
+// A customer account works on every site of the server, but each site shows only its own
+// business's appointments. Returns the filter to add: {} (any business) or { tenantId }.
+// null = this site has no business, so nothing matches.
+async function siteFilter(req) {
+  if (!req.siteLocked) return {};
+  if (!req.siteSlug) return null;
+  const tenant = await Tenant.findOne({ slug: req.siteSlug }).select("_id").lean();
+  return tenant ? { tenantId: tenant._id } : null;
+}
+
 exports.createAppointment = async (req, res) => {
   const { slug, serviceId, staffId, date, time, notes } = req.body || {};
+
+  if (slug && !siteAllows(req, slug)) {
+    return res.status(404).json({ message: "Business not found" });
+  }
 
   const { appointment, tenant } = await bookAppointment({
     slug,
@@ -47,7 +62,10 @@ exports.getMyAppointments = async (req, res) => {
     });
   }
 
-  const filter = { customerId: req.user.id };
+  const scope = await siteFilter(req);
+  if (!scope) return res.status(200).json({ count: 0, appointments: [] });
+
+  const filter = { customerId: req.user.id, ...scope };
 
   if (status) filter.status = status;
 
@@ -78,10 +96,14 @@ exports.cancelMyAppointment = async (req, res) => {
     });
   }
 
-  const appointment = await Appointment.findOne({
-    _id: req.params.id,
-    customerId: req.user.id,
-  });
+  const scope = await siteFilter(req);
+  const appointment =
+    scope &&
+    (await Appointment.findOne({
+      _id: req.params.id,
+      customerId: req.user.id,
+      ...scope,
+    }));
 
   if (!appointment) {
     return res.status(404).json({ message: "Appointment not found" });
