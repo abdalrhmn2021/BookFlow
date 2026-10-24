@@ -257,6 +257,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [ ] Per-staff working hours and "which staff can do which service"
 - [x] Dashboard overview: next appointment, today's numbers, next 7 days
+- [x] Seller admin panel (`/admin`, role superadmin): every client business, usage, switch off/on, plan, paid-until
 - [ ] Longer-range analytics (monthly revenue, no-show rate)
 - [ ] A `pending` appointment that nobody confirmed can't be closed after its start time
 
