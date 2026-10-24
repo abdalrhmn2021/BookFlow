@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
-const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { SINGLE_BUSINESS_SLUG, ALLOW_BUSINESS_SIGNUP } = require("../config/mode");
 const { isDemoEmail } = require("../config/demo");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { siteUrl } = require("../utils/siteUrl");
@@ -115,6 +115,11 @@ exports.login = async (req, res) => {
 };
 
 exports.registerBusiness = async (req, res) => {
+  // Shared server for sold copies: businesses are created only by `npm run setup-client`.
+  if (!ALLOW_BUSINESS_SIGNUP) {
+    return res.status(403).json({ message: "Business registration is disabled" });
+  }
+
   const { businessName, slug, ownerName, email, password, phone } = req.body;
 
   if (![businessName, slug, ownerName, email, password].every(isText)) {

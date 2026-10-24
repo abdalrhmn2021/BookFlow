@@ -197,11 +197,14 @@ CI checks formatting on every push and pull request.
 
 ## Selling a copy to one business (white-label)
 
-The same code runs as a **branded site for one business** - no code changes, only environment variables:
+The same code runs as a **branded site for one business** - no code changes, only environment variables.
+**One shared API + database serves every sold copy** (the app is multi-tenant already); each client only gets
+their own Vercel site. On that shared server `ALLOW_BUSINESS_SIGNUP=false` blocks business sign-up through the API
+and `PUBLIC_DIRECTORY=false` hides the list of businesses, so clients can't see each other.
 
 | Variable (client) | Effect |
 |---|---|
-| `SINGLE_BUSINESS_SLUG` | `/` opens that business's booking page; the directory and "register a business" are hidden (also set on the server, where it limits the API to that business) |
+| `SINGLE_BUSINESS_SLUG` | `/` opens that business's booking page; the directory, "register a business" and other businesses' pages are hidden; owner/staff accounts of other businesses can't log in there (on a *dedicated* server it also limits the API to that business) |
 | `BRAND_NAME` · `BRAND_NAME_AR` | Name in the header, dashboard and browser tab |
 | `BRAND_LOGO_URL` | Logo (a file in `client/public` or a full URL), also the tab icon |
 | `BRAND_COLOR` | One hex color → the full button / highlight / link palette, generated in OKLCH with readable contrast (`client/src/lib/color.ts`) |

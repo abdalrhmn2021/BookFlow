@@ -28,7 +28,7 @@ function isUpcoming(a: MyAppointment): boolean {
 
 function Content() {
   const { t, tError } = useLanguage();
-  const { bookHref, isSingleBusiness } = useBrand();
+  const { bookHref, isSingleBusiness, singleBusinessSlug } = useBrand();
 
   const [appointments, setAppointments] = useState<MyAppointment[] | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -43,7 +43,12 @@ function Content() {
     api
       .get<{ appointments: MyAppointment[] }>("/appointments/me")
       .then((data) => {
-        if (!ignore) setAppointments(data.appointments);
+        // Customer accounts work at every business on the server; a client's own site
+        // shows only the bookings made with that client.
+        const mine = singleBusinessSlug
+          ? data.appointments.filter((a) => a.tenantId.slug === singleBusinessSlug)
+          : data.appointments;
+        if (!ignore) setAppointments(mine);
       })
       .catch((err) => {
         if (!ignore) setLoadError(err);
@@ -51,7 +56,7 @@ function Content() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [singleBusinessSlug]);
 
   const handleCancel = async (id: string) => {
     setCancelError(null);

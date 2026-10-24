@@ -777,6 +777,7 @@ const ar: Dictionary = {
     "Can't reach the server. Is the backend running?": "تعذّر الاتصال بالخادم. تأكد أن الخادم يعمل.",
     "Something went wrong": "حدث خطأ ما، حاول مرة أخرى",
     "Invalid credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "This account belongs to another business": "هذا الحساب تابع لمكان آخر، وليس لهذا الموقع",
     "email and password are required": "البريد الإلكتروني وكلمة المرور مطلوبان",
     "name, email and password are required": "الاسم والبريد الإلكتروني وكلمة المرور مطلوبة",
     "Email already exists": "هذا البريد الإلكتروني مستخدم بالفعل",
