@@ -14,7 +14,17 @@ function httpError(statusCode, message) {
 //
 // It runs in a transaction: if the owner can't be saved (bad email, short password...)
 // the business is rolled back too, so we never end up with a business that has no owner.
-async function createBusinessWithOwner({ businessName, slug, ownerName, email, password, phone, timezone }) {
+async function createBusinessWithOwner({
+  businessName,
+  slug,
+  ownerName,
+  email,
+  password,
+  phone,
+  timezone,
+  whatsappReminders,
+  phoneCountryCode,
+}) {
   const [emailTaken, slugTaken] = await Promise.all([
     User.exists({ email: String(email).trim().toLowerCase() }),
     Tenant.exists({ slug: String(slug).trim().toLowerCase() }),
@@ -27,7 +37,13 @@ async function createBusinessWithOwner({ businessName, slug, ownerName, email, p
     let tenant, owner;
 
     await session.withTransaction(async () => {
-      tenant = new Tenant({ name: businessName, slug, ...(timezone && { timezone }) });
+      tenant = new Tenant({
+        name: businessName,
+        slug,
+        ...(timezone && { timezone }),
+        ...(whatsappReminders && { whatsappReminders: true }),
+        ...(phoneCountryCode && { phoneCountryCode }),
+      });
       await tenant.save({ session });
 
       owner = new User({

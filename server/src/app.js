@@ -33,6 +33,7 @@ app.use("/api/services", require("./routes/service.routes"));
 app.use("/api/staff", require("./routes/staff.routes"));
 app.use("/api/appointments", require("./routes/appointment.routes"));
 app.use("/api/public", require("./routes/public.routes"));
+app.use("/api/jobs", require("./routes/jobs.routes"));
 
 const { notFound, errorHandler } = require("./middlewares/error.middleware");
 app.use(notFound);

@@ -92,6 +92,58 @@ npm run reset-password -- --email laila@example.com
 
 بيطلع لك كلمة مرور جديدة عشوائية تعطيها له، وبيطلع من حسابه على كل الأجهزة.
 
+## أ5) تذكير واتساب تلقائي قبل الموعد (اختياري - ممكن تبيعه كإضافة مدفوعة)
+
+السيرفر بيبعت لكل زبون رسالة واتساب قبل موعده بـ 24 ساعة، **من رقم واتساب بزنس واحد إلك** لكل الصالونات،
+والرسالة فيها اسم الصالون. بيشتغل عن طريق **WhatsApp Cloud API** من Meta.
+
+> **التكلفة:** Meta بتحاسب على كل رسالة تذكير (فئة Utility)، والسعر بيختلف حسب دولة الزبون - شوف صفحة أسعار
+> WhatsApp Business على موقع Meta قبل ما تحدد سعر الإضافة للزبون. هيك التذكير **مطفي افتراضياً** وبتشغّله لكل زبون لحاله.
+
+### مرة وحدة: جهّز حساب Meta
+
+أسماء الأزرار ممكن تختلف شوي، Meta بتغيّر الواجهة كثير:
+
+1. اعمل **Meta Business Account** على business.facebook.com (يفضّل توثّقه - التوثيق بيرفع حد الرسائل اليومي).
+2. على developers.facebook.com: **Create App** ← نوع **Business** ← أضف منتج **WhatsApp**.
+3. أضف **رقم تلفون** للبزنس - رقم **مش مستخدم** على تطبيق واتساب العادي. انسخ **Phone number ID** تبعه.
+4. **توكن دائم:** Business Settings ← **System users** ← أضف System user بصلاحية Admin ← **Generate token**،
+   اختار التطبيق، وعلّم على `whatsapp_business_messaging` و `whatsapp_business_management`.
+   (التوكن المؤقت اللي بيطلع بصفحة التجربة بيخلص بعد 24 ساعة - لا تستخدمه.)
+5. **قالب الرسالة:** WhatsApp Manager ← **Message templates** ← **Create template**:
+   - الفئة: **Utility** - الاسم: `booking_reminder` - اللغة: **Arabic**
+   - النص (لازم **4 متغيرات بنفس الترتيب**: الزبون، النشاط، الخدمة، الموعد):
+
+   ```
+   مرحباً {{1}}، نذكّرك بموعدك في {{2}} لخدمة {{3}} يوم {{4}}.
+   للإلغاء أو تغيير الموعد تواصل معنا. نراك قريباً!
+   ```
+
+   - ابعته للمراجعة واستنى لحد ما يصير **Approved** (عادة دقائق لساعات).
+
+### مرة وحدة: على السيرفر (Render ← Environment)
+
+| المتغير | القيمة |
+|---|---|
+| `WHATSAPP_TOKEN` | التوكن الدائم من خطوة 4 |
+| `WHATSAPP_PHONE_NUMBER_ID` | من خطوة 3 |
+| `WHATSAPP_TEMPLATE` | `booking_reminder` (اسم القالب بالضبط) |
+| `WHATSAPP_TEMPLATE_LANG` | `ar` |
+
+احفظ. بالـ Logs لازم يطلع سطر `[reminder] automatic WhatsApp reminders every 10 min`.
+
+> **على خطة Render المجانية** السيرفر بينام، فالمؤقت الداخلي بيوقف. وقتها استخدم cron خارجي مجاني (مثل cron-job.org)
+> يعمل كل 10 دقائق: `POST https://<سيرفرك>.onrender.com/api/jobs/reminders` مع header اسمه `x-jobs-secret`
+> وقيمته `JOBS_SECRET` من Environment على Render. الطريقتين مع بعض آمنين - ما في زبون بيوصله تذكيرين.
+
+### لكل زبون: شغّل التذكير
+
+- زبون جديد: أضف `--whatsapp` لأمر سكربت التجهيز (ب1). ولو زبائنه من دولة ثانية: `--country-code 966` مثلاً.
+- زبون موجود: من Atlas ← مجموعة `tenants` ← النشاط ← غيّر `whatsappReminders` لـ `true`.
+
+بلوحة التحكم، تحت الحجز اللي انبعتله تذكير، بيطلع "أُرسل تذكير واتساب تلقائي الساعة ...".
+وزر التذكير اليدوي بيضل موجود - وأي حجز ذكّرته يدوياً ما بيوصله تذكير تلقائي.
+
 ---
 
 # الجزء ب - زبون جديد (كل مرة)
@@ -212,6 +264,7 @@ https://laila-salon.vercel.app,https://ahmad-barber.vercel.app
 | اللوجو ما بيظهر | المسار غلط - لازم يبدأ بـ `/` لو الملف في `public`، أو `https://` لو رابط خارجي |
 | "Too many bookings" أو "Too many login attempts" لزبائن مختلفين | `SITE_PROXY_SECRET` ناقص على Vercel أو مختلف عن Render |
 | ما بيوصل إيميل الحجز الجديد | `BREVO_API_KEY` أو `MAIL_FROM` ناقص، أو إيميل المرسل مش مؤكَّد في Brevo - شوف Logs على Render (سطر `[notify]`) |
+| ما بيوصل تذكير واتساب | القالب مش Approved، أو اسمه/لغته مش نفس `WHATSAPP_TEMPLATE`/`WHATSAPP_TEMPLATE_LANG`، أو `whatsappReminders` مطفي للنشاط، أو التوكن مؤقت وخلص - شوف Logs (سطر `[reminder]`) |
 | زر الإيميل أو رابط "نسيت كلمة المرور" بيفتح موقع زبون ثاني | رابط موقع الزبون ناقص من `CLIENT_URL` على السيرفر (ب3) |
 | السكربت: `Email already exists` | الإيميل مستخدم لنشاط أو عميل ثاني على السيرفر - استخدم إيميل ثاني |
 | السكربت: `This business URL is already taken` | الـ slug محجوز لزبون ثاني - اختار غيره |
