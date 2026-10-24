@@ -254,7 +254,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 - [x] Automated tests (Jest + Supertest) and CI - 60 tests: concurrent double booking, tenant isolation, status transitions, guest booking, dashboard stats
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
-- [ ] Email reminders 24h before an appointment (background job queue)
+- [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [ ] Per-staff working hours and "which staff can do which service"
 - [x] Dashboard overview: next appointment, today's numbers, next 7 days
 - [ ] Longer-range analytics (monthly revenue, no-show rate)
