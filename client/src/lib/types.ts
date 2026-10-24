@@ -35,7 +35,12 @@ export interface PublicService {
 export interface PublicStaff {
   id: string;
   name: string;
+  // The services they do; [] = every service.
+  serviceIds?: string[];
 }
+
+export const offersService = (staff: { serviceIds?: string[] }, serviceId: string | null | undefined) =>
+  !serviceId || !staff.serviceIds?.length || staff.serviceIds.includes(serviceId);
 
 export interface PublicBusinessPage {
   business: {
@@ -129,6 +134,9 @@ export interface StaffMember {
   email: string;
   phone?: string;
   isActive: boolean;
+  workingHours: WorkingDay[] | null; // null = the business's hours
+  services: string[]; // [] = every service
+  daysOff: string[]; // YYYY-MM-DD
 }
 
 export interface BusinessAppointment {

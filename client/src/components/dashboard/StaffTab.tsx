@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
 import { btnPrimary, btnSecondary, errorBox, inputClass } from "@/lib/ui";
-import type { StaffMember } from "@/lib/types";
+import { formatLongDate, todayIn } from "@/lib/format";
+import type { StaffMember, TenantInfo } from "@/lib/types";
+import StaffScheduleForm from "./StaffScheduleForm";
 
 interface StaffInput {
   name: string;
@@ -13,7 +15,7 @@ interface StaffInput {
   password?: string;
 }
 
-export default function StaffTab() {
+export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
   const { t, tError } = useLanguage();
   const st = t.dashboard.staff;
 
@@ -94,7 +96,19 @@ export default function StaffTab() {
       ) : (
         <ul className="mt-4 space-y-3">
           {staff.map((s) =>
-            editing === s.id ? (
+            editing === `schedule:${s.id}` ? (
+              <li key={s.id}>
+                <StaffScheduleForm
+                  staff={s}
+                  tenant={tenant}
+                  onSaved={(updated) => {
+                    setStaff((prev) => prev?.map((x) => (x.id === s.id ? updated : x)) ?? null);
+                    setEditing(null);
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              </li>
+            ) : editing === s.id ? (
               <li key={s.id}>
                 <StaffForm initial={s} onSave={(data) => save(data, s.id)} onCancel={() => setEditing(null)} />
               </li>
@@ -121,9 +135,13 @@ export default function StaffTab() {
                         {s.email}
                         {s.phone && ` · ${s.phone}`}
                       </p>
+                      <ScheduleSummary staff={s} tenant={tenant} />
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
+                    <button onClick={() => setEditing(`schedule:${s.id}`)} className={btnSecondary}>
+                      {st.schedule}
+                    </button>
                     <button onClick={() => setEditing(s.id)} className={btnSecondary}>
                       {t.common.edit}
                     </button>
@@ -240,4 +258,17 @@ function StaffForm({
       </div>
     </form>
   );
+}
+
+// "Own hours · 2 services · Day off Thu 5 Nov" under the staff member's name.
+function ScheduleSummary({ staff, tenant }: { staff: StaffMember; tenant: TenantInfo }) {
+  const { t } = useLanguage();
+  const st = t.dashboard.staff;
+  const nextOff = staff.daysOff.find((d) => d >= todayIn(tenant.timezone));
+  const parts = [
+    staff.workingHours ? st.ownHours : st.sameHours,
+    staff.services.length ? st.servicesCount(staff.services.length) : st.allServices,
+    ...(nextOff ? [st.nextDayOff(formatLongDate(nextOff, t.locale))] : []),
+  ];
+  return <p className="mt-0.5 text-xs text-navy-400">{parts.join(" · ")}</p>;
 }
