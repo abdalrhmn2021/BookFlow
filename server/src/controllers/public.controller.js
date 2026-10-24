@@ -2,7 +2,8 @@ const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
-const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { siteAllows } = require("../middlewares/site.middleware");
+const { siteUrl } = require("../utils/siteUrl");
 const {
   bookAppointment,
   findFreeSlots,
@@ -17,8 +18,12 @@ const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { isValidDate } = require("../utils/time");
 
 exports.listBusinesses = async (req, res) => {
+  // A one-business site lists only its own business. A shared server answering a request
+  // that didn't come through one of our sites lists nothing (no client list for strangers).
+  if (req.siteLocked && !req.siteSlug) return res.status(200).json({ businesses: [] });
+
   const filter = { isActive: true };
-  if (SINGLE_BUSINESS_SLUG) filter.slug = SINGLE_BUSINESS_SLUG;
+  if (req.siteLocked) filter.slug = req.siteSlug;
 
   const tenants = await Tenant.find(filter).select("name slug").sort({ name: 1 }).limit(50);
 
@@ -134,7 +139,7 @@ exports.createGuestAppointment = async (req, res) => {
   });
 
   // Not awaited: the guest gets the answer now, the email goes out in the background.
-  notifyNewBooking({ tenant: business, appointment, staff }).catch((err) =>
+  notifyNewBooking({ tenant: business, appointment, staff, site: siteUrl(req) }).catch((err) =>
     console.error("[notify] new booking email failed:", err.message),
   );
 
@@ -189,8 +194,15 @@ function toGuestBookingDTO(a) {
   };
 }
 
-exports.getGuestBooking = async (req, res) => {
+// A manage link opened on another business's site is "not found" there.
+async function findSiteBooking(req) {
   const appointment = await findByToken(req.params.token);
+  if (!siteAllows(req, appointment.tenantId?.slug)) throw httpError(404, "Booking not found");
+  return appointment;
+}
+
+exports.getGuestBooking = async (req, res) => {
+  const appointment = await findSiteBooking(req);
   res.status(200).json({ booking: toGuestBookingDTO(appointment) });
 };
 
@@ -202,7 +214,7 @@ exports.cancelGuestBooking = async (req, res) => {
     throw httpError(400, `Cancellation reason must be at least ${MIN_REASON_LENGTH} characters long`);
   }
 
-  const appointment = await findByToken(req.params.token);
+  const appointment = await findSiteBooking(req);
 
   if (!ACTIVE_STATUSES.includes(appointment.status)) {
     throw httpError(409, `Can't cancel an appointment that is ${appointment.status}`);

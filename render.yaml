@@ -21,8 +21,14 @@ services:
         value: 7d
       - key: CLIENT_URL
         sync: false # your Vercel URL, e.g. https://bookflow.vercel.app
-      - key: PROXY_SECRET
-        generateValue: true # copy this value into PROXY_SECRET on Vercel too
+      # --- Sold copies: ONE shared server for all clients (docs/INSTALL.md) ---
+      # "true" on the clients' server, empty on the demo platform.
+      - key: SHARED_SERVER
+        sync: false
+      # Same value on every Vercel site of this server (copy it from Render). Required when
+      # SHARED_SERVER=true; on the demo it lets the rate limits see each visitor's real IP.
+      - key: SITE_PROXY_SECRET
+        generateValue: true
       - key: BREVO_API_KEY
         sync: false # optional: new-booking emails (see docs/INSTALL.md)
       - key: MAIL_FROM

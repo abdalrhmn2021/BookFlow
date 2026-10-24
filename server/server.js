@@ -14,11 +14,10 @@ if (process.env.JWT_SECRET === "your_jwt_secret_here" || process.env.JWT_SECRET.
   process.exit(1);
 }
 
-if (process.env.NODE_ENV === "production" && !process.env.PROXY_SECRET) {
-  console.warn(
-    "PROXY_SECRET is not set: every visitor coming through the Vercel site shares one rate limit.\n" +
-      "Set the same PROXY_SECRET on Render and on Vercel.",
-  );
+const modeProblems = require("./src/config/mode").checkModeConfig();
+if (modeProblems.length) {
+  console.error(modeProblems.join("\n"));
+  process.exit(1);
 }
 
 const app = require("./src/app");

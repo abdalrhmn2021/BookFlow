@@ -1,4 +1,9 @@
+// The install mode comes ONLY from the test file (set before requiring this helper), never from
+// your server/.env - otherwise a local SHARED_SERVER=true would break every other test.
+const MODE_KEYS = ["SINGLE_BUSINESS_SLUG", "SHARED_SERVER", "SITE_PROXY_SECRET"];
+const setByTest = new Set(MODE_KEYS.filter((key) => key in process.env));
 require("dotenv").config({ quiet: true });
+for (const key of MODE_KEYS) if (!setByTest.has(key)) delete process.env[key];
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret-".padEnd(64, "x");
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";

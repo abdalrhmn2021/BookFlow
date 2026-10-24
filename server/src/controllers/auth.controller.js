@@ -2,7 +2,8 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
-const { SINGLE_BUSINESS_SLUG } = require("../config/mode");
+const { SINGLE_BUSINESS_SLUG, SHARED_SERVER } = require("../config/mode");
+const { siteAllows, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
 const { isDemoEmail } = require("../config/demo");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { siteUrl } = require("../utils/siteUrl");
@@ -93,6 +94,10 @@ exports.login = async (req, res) => {
       if (!tenant || !tenant.isActive) {
         return res.status(403).json({ message: "This business account is disabled" });
       }
+      // The owner of salon A can't sign in on salon B's site (their dashboard lives on their own site).
+      if (!siteAllows(req, tenant.slug)) {
+        return res.status(403).json({ message: OTHER_BUSINESS_MESSAGE });
+      }
     }
 
     const token = generateToken(user);
@@ -123,7 +128,9 @@ exports.registerBusiness = async (req, res) => {
     });
   }
 
-  if (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG) {
+  // Shared server: clients are added only with `npm run setup-client`, never from the web.
+  // Dedicated server: only its own business, once (the slug is unique).
+  if (SHARED_SERVER || (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG)) {
     return res.status(403).json({ message: "Business registration is disabled" });
   }
 
@@ -212,6 +219,13 @@ const RESET_SENT = "If this email has an account, a reset link is on its way";
 
 // Same answer whether or not the email has an account, so the form can't be used to find out
 // who is registered. The email goes out in the background (no timing difference either).
+// Customers can sign in on every site; owners and staff only on their own business's site.
+async function canSignInHere(req, user) {
+  if (!req.siteLocked || (user.role !== "owner" && user.role !== "staff")) return true;
+  const tenant = await Tenant.findById(user.tenantId).select("slug").lean();
+  return Boolean(tenant) && siteAllows(req, tenant.slug);
+}
+
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body || {};
   if (!isText(email)) return res.status(400).json({ message: "email is required" });
@@ -224,7 +238,9 @@ exports.forgotPassword = async (req, res) => {
   const user = isDemoEmail(cleanEmail) ? null : await User.findOne({ email: cleanEmail, isActive: true });
   const site = siteUrl(req);
 
-  if (user && site) {
+  // On a one-business site, don't send salon A's owner a link to salon B's site
+  // (same answer either way, so nobody learns which emails exist).
+  if (user && site && (await canSignInHere(req, user))) {
     const token = crypto.randomBytes(32).toString("base64url");
     await User.updateOne(
       { _id: user._id },

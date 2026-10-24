@@ -49,8 +49,10 @@ const formatWhen = (date, timeZone, locale) =>
     numberingSystem: "latn",
   }).format(date);
 
-function dashboardLink(startTime, timeZone) {
-  const site = (process.env.CLIENT_URL || "").split(",")[0].trim().replace(/\/$/, "");
+// `site` = the site the booking was made on (utils/siteUrl), so on a shared server the owner's
+// link opens THEIR site. Without it: the first CLIENT_URL.
+function dashboardLink(startTime, timeZone, site) {
+  site = site || (process.env.CLIENT_URL || "").split(",")[0].trim().replace(/\/$/, "");
   if (!site) return null;
   const day = new Intl.DateTimeFormat("en-CA", { timeZone }).format(startTime);
   return `${site}/dashboard?tab=schedule&date=${day}`;
@@ -116,7 +118,7 @@ ${button("Open the schedule")}
 }
 
 // Called after a booking is saved. Never throws into the booking: callers fire and forget.
-async function notifyNewBooking({ tenant, appointment, staff }) {
+async function notifyNewBooking({ tenant, appointment, staff, site }) {
   if (!isEmailConfigured()) return { sent: 0, skipped: "email not configured" };
 
   const [owners, customer] = await Promise.all([
@@ -139,7 +141,7 @@ async function notifyNewBooking({ tenant, appointment, staff }) {
     customerName: appointment.guest?.name ?? customer?.name,
     customerPhone: appointment.guest?.phone ?? customer?.phone,
     notes: appointment.notes,
-    link: dashboardLink(appointment.startTime, tenant.timezone),
+    link: dashboardLink(appointment.startTime, tenant.timezone, site),
   });
 
   const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || tenant.name };

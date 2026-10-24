@@ -846,6 +846,8 @@ const ar: Dictionary = {
     "Tenant name is required": "اسم العمل مطلوب",
     "This action requires a business account": "هذا الإجراء يتطلب حساب عمل",
     "This business account is disabled": "حساب هذا العمل معطّل",
+    "This account belongs to another business": "هذا الحساب تابع لنشاط آخر - سجّل الدخول من موقع نشاطك",
+    "Business registration is disabled": "تسجيل نشاط جديد غير متاح",
     "name already exists": "هذا الاسم مستخدم بالفعل",
     "Service name is required": "اسم الخدمة مطلوب",
     "Service name is too long": "اسم الخدمة طويل جداً",

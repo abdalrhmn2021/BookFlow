@@ -1,12 +1,16 @@
+// Set before the app loads: the site middleware reads it once at start-up.
+const PROXY = "p".repeat(64);
+process.env.SITE_PROXY_SECRET = PROXY;
+
 const request = require("supertest");
 const h = require("./helpers");
 const User = require("../src/models/User");
 const { setSenderForTests } = require("../src/services/notify.service");
-const { IP_HEADER, SECRET_HEADER } = require("../src/utils/clientIp");
+const { HEADERS } = require("../src/middlewares/site.middleware");
+const { CLIENT_IP_HEADER: IP_HEADER, SECRET_HEADER } = HEADERS;
 
-// Each request comes from a different visitor (see utils/clientIp), so the failed attempts
-// these tests make on purpose don't add up against the login rate limit.
-const PROXY = "p".repeat(64);
+// Each request comes from a different visitor (see middlewares/site.middleware.js), so the
+// failed attempts these tests make on purpose don't add up against the login rate limit.
 let visitor = 0;
 const call = (method, url) =>
   request(h.app)
@@ -25,14 +29,13 @@ beforeEach(() => {
   process.env.BREVO_API_KEY = "test-key";
   process.env.MAIL_FROM = "accounts@bookflow.test";
   process.env.CLIENT_URL = "https://laila.example";
-  process.env.PROXY_SECRET = PROXY;
 });
 afterEach(h.clear);
 afterAll(async () => {
   setSenderForTests(null);
   delete process.env.BREVO_API_KEY;
   delete process.env.MAIL_FROM;
-  delete process.env.PROXY_SECRET;
+  delete process.env.SITE_PROXY_SECRET;
   await h.disconnect();
 });
 

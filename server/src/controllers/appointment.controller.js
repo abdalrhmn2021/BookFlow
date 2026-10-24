@@ -17,11 +17,27 @@ const {
 const { notifyNewBooking } = require("../services/notify.service");
 const { createManageToken } = require("../utils/manageToken");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
+const { siteAllows } = require("../middlewares/site.middleware");
+const { siteUrl } = require("../utils/siteUrl");
 
 const WHEN_VALUES = ["upcoming", "past"];
 
+// A customer account works on every site of the server, but each site shows only its own
+// business's appointments. Returns the filter to add: {} (any business) or { tenantId }.
+// null = this site has no business, so nothing matches.
+async function siteFilter(req) {
+  if (!req.siteLocked) return {};
+  if (!req.siteSlug) return null;
+  const tenant = await Tenant.findOne({ slug: req.siteSlug }).select("_id").lean();
+  return tenant ? { tenantId: tenant._id } : null;
+}
+
 exports.createAppointment = async (req, res) => {
   const { slug, serviceId, staffId, date, time, notes } = req.body || {};
+
+  if (slug && !siteAllows(req, slug)) {
+    return res.status(404).json({ message: "Business not found" });
+  }
 
   const { appointment, tenant, staff } = await bookAppointment({
     slug,
@@ -39,7 +55,7 @@ exports.createAppointment = async (req, res) => {
     { upsert: true },
   );
 
-  notifyNewBooking({ tenant, appointment, staff }).catch((err) =>
+  notifyNewBooking({ tenant, appointment, staff, site: siteUrl(req) }).catch((err) =>
     console.error("[notify] new booking email failed:", err.message),
   );
 
@@ -60,7 +76,10 @@ exports.getMyAppointments = async (req, res) => {
     });
   }
 
-  const filter = { customerId: req.user.id };
+  const scope = await siteFilter(req);
+  if (!scope) return res.status(200).json({ count: 0, appointments: [] });
+
+  const filter = { customerId: req.user.id, ...scope };
 
   if (status) filter.status = status;
 
@@ -91,10 +110,14 @@ exports.cancelMyAppointment = async (req, res) => {
     });
   }
 
-  const appointment = await Appointment.findOne({
-    _id: req.params.id,
-    customerId: req.user.id,
-  });
+  const scope = await siteFilter(req);
+  const appointment =
+    scope &&
+    (await Appointment.findOne({
+      _id: req.params.id,
+      customerId: req.user.id,
+      ...scope,
+    }));
 
   if (!appointment) {
     return res.status(404).json({ message: "Appointment not found" });
