@@ -130,7 +130,7 @@ BookFlow/
 ├── server/                  Express API
 │   ├── src/
 │   │   ├── controllers/     business logic per resource
-│   │   ├── middlewares/     auth, tenant, rate limit, errors
+│   │   ├── middlewares/     auth, tenant, site (which business this site is), rate limit, errors
 │   │   ├── models/          Mongoose schemas
 │   │   ├── routes/
 │   │   ├── services/        booking (double-booking safe), business + owner creation
@@ -198,7 +198,8 @@ The same code runs as a **branded site for one business** - no code changes, onl
 
 | Variable (client) | Effect |
 |---|---|
-| `SINGLE_BUSINESS_SLUG` | `/` opens that business's booking page; the directory and "register a business" are hidden (also set on the server, where it limits the API to that business) |
+| `SINGLE_BUSINESS_SLUG` | `/` opens that business's booking page; the directory and "register a business" are hidden |
+| `SITE_PROXY_SECRET` | Shared with the server; `client/src/proxy.ts` signs every `/api` request with it, plus the site's slug and the visitor's IP |
 | `BRAND_NAME` · `BRAND_NAME_AR` | Name in the header, dashboard and browser tab |
 | `BRAND_LOGO_URL` | Logo (a file in `client/public` or a full URL), also the tab icon |
 | `BRAND_COLOR` | One hex color → the full button / highlight / link palette, generated in OKLCH with readable contrast (`client/src/lib/color.ts`) |
@@ -209,6 +210,18 @@ A new client's business and owner account are created with one command - no demo
 cd server
 npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@example.com
 ```
+
+### One server for every client
+
+All sold copies run on **one shared server + database** (`SHARED_SERVER=true`); each client only gets
+their own Vercel site. The site's proxy sends the secret, its business slug and the visitor's IP; the
+server trusts the slug only when the secret matches (constant-time compare) and then scopes everything
+to that business - the directory, booking pages, guest "manage my booking" links, customer lists,
+owner/staff login and the dashboard. Business sign-up is closed on a shared server (clients are added
+with `setup-client`), and rate limits count the real visitor instead of the Vercel proxy's IP.
+Dashboard data stays isolated by the logged-in user's `tenantId` exactly as before - the site scope is
+an extra layer on top, not the security boundary. A client who needs fully separate data can still get
+a dedicated server (`SINGLE_BUSINESS_SLUG` on the server).
 
 Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
 

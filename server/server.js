@@ -14,6 +14,12 @@ if (process.env.JWT_SECRET === "your_jwt_secret_here" || process.env.JWT_SECRET.
   process.exit(1);
 }
 
+const modeProblems = require("./src/config/mode").checkModeConfig();
+if (modeProblems.length) {
+  console.error(modeProblems.join("\n"));
+  process.exit(1);
+}
+
 const app = require("./src/app");
 const connectDB = require("./src/config/db");
 
