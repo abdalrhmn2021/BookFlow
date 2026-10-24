@@ -21,3 +21,10 @@ services:
         value: 7d
       - key: CLIENT_URL
         sync: false # your Vercel URL, e.g. https://bookflow.vercel.app
+      # --- Sold copies: ONE shared server for all clients (docs/INSTALL.md) ---
+      # "true" on the clients' server, empty on the demo platform.
+      - key: SHARED_SERVER
+        sync: false
+      # Same value on every client site (Vercel). Required when SHARED_SERVER=true.
+      - key: SITE_PROXY_SECRET
+        sync: false

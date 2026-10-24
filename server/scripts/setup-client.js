@@ -94,6 +94,7 @@ async function askMissing(args) {
 }
 
 function printSummary({ tenant, owner }, values) {
+  const shared = process.env.SHARED_SERVER?.trim().toLowerCase() === "true";
   const configured = process.env.SINGLE_BUSINESS_SLUG?.trim().toLowerCase();
 
   console.log("\nClient set up ✅\n");
@@ -105,15 +106,22 @@ function printSummary({ tenant, owner }, values) {
   );
 
   console.log("\nNext:");
-  console.log(
-    `  1. Set SINGLE_BUSINESS_SLUG=${tenant.slug} on the server (Render) AND the client (Vercel), then redeploy.`,
-  );
+  if (shared || !configured) {
+    // Shared server: nothing to change on the server - only the client's own site.
+    console.log(
+      `  1. New Vercel site for this client: SINGLE_BUSINESS_SLUG=${tenant.slug}, SITE_PROXY_SECRET (same as the server), API_URL, BRAND_*.`,
+    );
+  } else {
+    console.log(
+      `  1. Set SINGLE_BUSINESS_SLUG=${tenant.slug} on the server (Render) AND the client (Vercel), then redeploy.`,
+    );
+  }
   console.log(
     "  2. Log in as the owner and add: services, staff (at least one - customers book a staff member) and working hours.",
   );
   console.log("  3. Open the site and make a test booking.\n");
 
-  if (configured && configured !== tenant.slug) {
+  if (!shared && configured && configured !== tenant.slug) {
     console.log(
       `⚠️  SINGLE_BUSINESS_SLUG in this .env is "${configured}", not "${tenant.slug}". Fix it, or this business won't be shown.\n`,
     );
