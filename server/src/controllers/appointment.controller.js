@@ -306,7 +306,7 @@ exports.markReminded = async (req, res) => {
       status: { $in: ACTIVE_STATUSES },
       startTime: { $gt: new Date() },
     },
-    { $set: { reminderSentAt: new Date() } },
+    { $set: { reminderSentAt: new Date(), reminderChannel: "manual" } },
     { returnDocument: "after" },
   );
 

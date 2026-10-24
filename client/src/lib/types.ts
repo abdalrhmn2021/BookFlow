@@ -145,6 +145,7 @@ export interface BusinessAppointment {
   status: AppointmentStatus;
   notes?: string;
   reminderSentAt?: string;
+  reminderChannel?: "manual" | "whatsapp";
   rescheduled?: { from: string; at: string };
 }
 
@@ -170,4 +171,23 @@ export interface BusinessStats {
   week: { date: string; count: number }[];
   toConfirm: number;
   next: BusinessAppointment | null;
+}
+
+export interface AdminBusiness {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  isActive: boolean;
+  whatsappReminders: boolean;
+  timezone: string;
+  createdAt: string;
+  paidUntil: string | null;
+  overdue: boolean;
+  note: string;
+  owners: { name: string; email: string; phone?: string }[];
+  staffCount: number;
+  bookingsLast30Days: number;
+  lastBookingAt: string | null;
+  upcomingBookings: number;
 }
