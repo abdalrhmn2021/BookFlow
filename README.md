@@ -193,7 +193,15 @@ on GitHub Actions they run on every push against a MongoDB replica set started i
 npm install        # in the repo root (Prettier only)
 npm run format     # format everything
 ```
-CI checks formatting on every push and pull request.
+### Client checks
+```bash
+cd client
+npm run typecheck  # route types (next typegen) + TypeScript
+npm run lint       # ESLint
+npm run build      # the production build Vercel runs
+```
+
+CI (GitHub Actions) runs three jobs on every push and pull request: **format** (Prettier), **client** (the three commands above) and **test** (the server's API tests on a MongoDB replica set).
 
 ## Deployment
 

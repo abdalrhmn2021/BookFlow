@@ -1,8 +1,12 @@
-# Server tests on every push to main and every pull request.
-# MongoDB 8.2 runs in Docker as a single-node replica set (bookings use transactions).
+# Checks on every push to main and every pull request:
+#   format - Prettier, whole repo
+#   client - Next.js: route types, TypeScript, ESLint, production build
+#   test   - server API tests (Jest + Supertest)
+# (The file keeps its old name so the README badge link stays the same.)
+# Server tests: MongoDB 8.2 runs in Docker as a single-node replica set (bookings use transactions).
 # 8.0 does not start on the runners' Linux kernel 6.19+ (SERVER-121912).
 # Failures are reported as PR annotations, so the raw log is rarely needed.
-name: Server tests
+name: CI
 
 on:
   push:
@@ -22,6 +26,34 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run format:check
+
+  client:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      # Next.js build cache: later builds only redo what changed.
+      - uses: actions/cache@v4
+        with:
+          path: client/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}-${{ hashFiles('client/src/**') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}-
+      # typecheck = `next typegen` (PageProps / LayoutProps route types) + `tsc --noEmit`
+      - run: npm run typecheck
+      - run: npm run lint
+      # The same production build Vercel runs - a page that can't build fails here, not on deploy.
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
 
   test:
     runs-on: ubuntu-24.04
