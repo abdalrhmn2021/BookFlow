@@ -101,7 +101,7 @@ function Dashboard() {
           />
         )}
         {tab === "services" && <ServicesTab />}
-        {tab === "staff" && <StaffTab />}
+        {tab === "staff" && <StaffTab tenant={tenant} />}
         {tab === "hours" && <HoursTab tenant={tenant} onSaved={setTenant} />}
       </div>
     </DashboardShell>

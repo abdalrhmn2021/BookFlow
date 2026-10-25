@@ -95,3 +95,4 @@ const tenantSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Tenant", tenantSchema);
+module.exports.workingDaySchema = workingDaySchema;

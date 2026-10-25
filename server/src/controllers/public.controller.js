@@ -38,7 +38,7 @@ exports.getBusinessBySlug = async (req, res) => {
 
   const [services, staff] = await Promise.all([
     Service.find({ tenantId: tenant._id, isActive: true }).select("name description price duration").sort({ name: 1 }),
-    User.find({ tenantId: tenant._id, role: "staff", isActive: true }).select("name").sort({ name: 1 }),
+    User.find({ tenantId: tenant._id, role: "staff", isActive: true }).select("name services").sort({ name: 1 }),
   ]);
 
   res.status(200).json({
@@ -55,7 +55,8 @@ exports.getBusinessBySlug = async (req, res) => {
       price: s.price,
       duration: s.duration,
     })),
-    staff: staff.map((u) => ({ id: u._id, name: u.name })),
+    // serviceIds: what they do - [] = every service (the booking page filters staff by it).
+    staff: staff.map((u) => ({ id: u._id, name: u.name, serviceIds: u.services ?? [] })),
   });
 };
 

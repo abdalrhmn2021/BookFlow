@@ -9,7 +9,7 @@ import Loading from "@/components/Loading";
 import ManageLinkBox from "@/components/ManageLinkBox";
 import { addDays, dayNameOf, formatDayChip, formatDuration, formatLongDate, formatPrice, todayIn } from "@/lib/format";
 import { inputClass } from "@/lib/ui";
-import type { Availability, GuestBookingResult, PublicBusinessPage } from "@/lib/types";
+import { offersService, type Availability, type GuestBookingResult, type PublicBusinessPage } from "@/lib/types";
 
 const DAYS_AHEAD = 14;
 
@@ -253,7 +253,9 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   }
 
   const service = services.find((s) => s.id === serviceId);
-  const member = staff.find((s) => s.id === staffId);
+  // Only the staff who do this service (a staff member with no list does them all).
+  const staffForService = staff.filter((m) => offersService(m, serviceId));
+  const member = staffForService.find((s) => s.id === staffId);
 
   const today = todayIn(business.timezone);
   const days = Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i));
@@ -283,7 +285,12 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
               {services.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => choose(setServiceId, s.id)}
+                  onClick={() => {
+                    choose(setServiceId, s.id);
+                    // The staff member picked before may not do this service.
+                    const current = staff.find((m) => m.id === staffId);
+                    if (current && !offersService(current, s.id)) setStaffId(null);
+                  }}
                   className={`rounded-lg border p-4 text-start transition ${
                     s.id === serviceId
                       ? "border-brand-500 bg-brand-50 ring-2 ring-brand-100"
@@ -306,11 +313,11 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 
         {service && (
           <Step n={2} title={t.book.step2}>
-            {staff.length === 0 ? (
+            {staffForService.length === 0 ? (
               <Empty>{t.book.noStaff}</Empty>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {staff.map((m) => (
+                {staffForService.map((m) => (
                   <Chip key={m.id} selected={m.id === staffId} onClick={() => choose(setStaffId, m.id)}>
                     {m.name}
                   </Chip>
