@@ -3,6 +3,8 @@ const Service = require("../models/Service");
 
 const CREATE_FIELDS = ["name", "email", "password", "phone"];
 const UPDATE_FIELDS = ["name", "phone", "isActive"];
+// The owner editing their own row: no deactivating yourself, but "I take bookings too".
+const SELF_UPDATE_FIELDS = ["name", "phone", "bookable"];
 
 const pick = (body, allowed) => Object.fromEntries(Object.entries(body || {}).filter(([key]) => allowed.includes(key)));
 
@@ -13,6 +15,8 @@ const toStaffDTO = (u) => ({
   phone: u.phone,
   role: u.role,
   isActive: u.isActive,
+  // Owner only: takes bookings like a staff member.
+  ...(u.role === "owner" && { bookable: Boolean(u.bookable) }),
   createdAt: u.createdAt,
   // null = works the business's hours; [] = does every service.
   workingHours: u.workingHours?.length ? u.workingHours : null,
@@ -21,6 +25,11 @@ const toStaffDTO = (u) => ({
 });
 
 const staffFilter = (req, extra = {}) => ({ tenantId: req.tenantId, role: "staff", ...extra });
+
+// A staff member, or the logged-in owner themself (for "I take bookings too" and their own hours).
+const isSelf = (req) => String(req.params.id) === String(req.user.id);
+const memberFilter = (req) =>
+  isSelf(req) ? { _id: req.user.id, tenantId: req.tenantId, role: "owner" } : staffFilter(req, { _id: req.params.id });
 
 exports.createStaff = async (req, res) => {
   const data = pick(req.body, CREATE_FIELDS);
@@ -38,13 +47,22 @@ exports.createStaff = async (req, res) => {
   res.status(201).json({ staff: toStaffDTO(staff) });
 };
 
+// The owner's own row comes first, then the staff (newest first).
 exports.getStaff = async (req, res) => {
-  const staff = await User.find(staffFilter(req)).sort({ createdAt: -1 });
-  res.status(200).json({ count: staff.length, staff: staff.map(toStaffDTO) });
+  const [self, staff] = await Promise.all([
+    User.findOne({ _id: req.user.id, tenantId: req.tenantId, role: "owner" }),
+    User.find(staffFilter(req)).sort({ createdAt: -1 }),
+  ]);
+  const list = [...(self ? [self] : []), ...staff];
+  res.status(200).json({ count: list.length, staff: list.map(toStaffDTO) });
 };
 
 exports.updateStaff = async (req, res) => {
-  const staff = await User.findOneAndUpdate(staffFilter(req, { _id: req.params.id }), pick(req.body, UPDATE_FIELDS), {
+  const fields = pick(req.body, isSelf(req) ? SELF_UPDATE_FIELDS : UPDATE_FIELDS);
+  if ("bookable" in fields && typeof fields.bookable !== "boolean") {
+    return res.status(400).json({ message: "bookable must be true or false" });
+  }
+  const staff = await User.findOneAndUpdate(memberFilter(req), fields, {
     returnDocument: "after",
     runValidators: true,
   });
@@ -66,7 +84,7 @@ exports.deactivateStaff = async (req, res) => {
 // Every field is optional; null/[] resets it to "same as the business" / "every service" / "no days off".
 exports.updateStaffSchedule = async (req, res) => {
   const { workingHours, services, daysOff } = req.body || {};
-  const staff = await User.findOne(staffFilter(req, { _id: req.params.id }));
+  const staff = await User.findOne(memberFilter(req));
   if (!staff) return res.status(404).json({ message: "Staff member not found" });
 
   if (workingHours !== undefined) {

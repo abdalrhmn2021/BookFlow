@@ -5,6 +5,7 @@
 //
 // Optional: --phone 0599123456  --password <at least 8 chars>  --timezone Asia/Hebron
 //           --whatsapp (automatic WhatsApp reminders on)  --country-code 970 (for local phone numbers)
+//           --owner-books (the owner takes bookings too - a shop run by one person)
 // Anything required that you leave out is asked for in the terminal.
 // No --password = a strong random one is generated and printed (give it to the owner).
 
@@ -76,6 +77,7 @@ function prepare(args) {
   }
 
   if ("whatsapp" in args) values.whatsappReminders = true;
+  if ("owner-books" in args) values.ownerBookable = true;
   if (args["country-code"] !== undefined) {
     const code = String(args["country-code"]).replace(/^\+/, "").trim();
     if (!/^\d{1,4}$/.test(code)) throw new Error("--country-code must be 1-4 digits (e.g. 970 or 966)");
@@ -113,6 +115,9 @@ function printSummary({ tenant, owner }, values) {
     `  WhatsApp:  automatic reminders ${tenant.whatsappReminders ? "ON" : "off (add --whatsapp to turn on)"}`,
   );
   console.log(
+    `  Bookings:  ${owner.bookable ? "the owner takes bookings too" : "staff only (add --owner-books if the owner works too)"}`,
+  );
+  console.log(
     `  Password:  ${values.password}${values.passwordGenerated ? "   <- generated, give it to the owner (shown only now)" : ""}`,
   );
 
@@ -128,7 +133,9 @@ function printSummary({ tenant, owner }, values) {
     );
   }
   console.log(
-    "  2. Log in as the owner and add: services, staff (at least one - customers book a staff member) and working hours.",
+    owner.bookable
+      ? "  2. Log in as the owner and add: services, working hours, and any staff."
+      : '  2. Log in as the owner and add: services, staff (at least one - or turn on "I take bookings too") and working hours.',
   );
   console.log("  3. Open the site and make a test booking.\n");
 
@@ -151,7 +158,7 @@ async function main() {
       'Usage: npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" --email laila@example.com',
     );
     console.error(
-      "Optional: --phone 0599123456 --password <8+ chars> --timezone Asia/Hebron --whatsapp --country-code 970\n",
+      "Optional: --phone 0599123456 --password <8+ chars> --timezone Asia/Hebron --whatsapp --country-code 970 --owner-books\n",
     );
     process.exitCode = 1;
     return;

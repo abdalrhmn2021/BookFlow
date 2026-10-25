@@ -40,6 +40,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - **Overview** page: the next appointment, today's count / to-confirm / expected income, and the next 7 days as a bar chart - all from one API call
 - Daily schedule (timeline) with status workflow: `pending → confirmed → completed / no-show`, or `cancelled`
 - Manage services (soft delete), staff accounts (deactivate / reactivate) and weekly working hours
+- **The owner can take bookings too** ("I take bookings too" on their own card): a barber who runs the shop alone needs no second account - customers book the owner like any staff member, with the same double-booking lock, own hours, services and days off
 - **Per-staff schedules**: each staff member's own week (narrowed to the business's hours, never widened), single days off, and the services they do - the booking page only offers staff who do the chosen service, and only their own free times
 - Staff see only **their own** appointments - enforced by the API, not the UI
 - **Automatic WhatsApp reminder** before each appointment (Meta WhatsApp Cloud API, approved template), plus a one-tap manual WhatsApp button; a booking is never reminded twice, even with two job runs at once
@@ -181,7 +182,7 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-130 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
+141 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -263,7 +264,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 130 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
+- [x] Automated tests (Jest + Supertest) and CI - 141 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [x] Per-staff working hours, days off and "which staff can do which service"

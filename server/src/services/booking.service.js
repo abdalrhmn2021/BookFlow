@@ -4,6 +4,7 @@ const StaffLock = require("../models/StaffLock");
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
+const { bookableFilter } = require("../utils/bookable");
 const { staffDayHours, offersService } = require("../utils/staffSchedule");
 const {
   TIME_REGEX,
@@ -102,7 +103,7 @@ async function bookAppointment({
 
   const [service, staff] = await Promise.all([
     Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
-    User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true }),
+    User.findOne(bookableFilter(tenant._id, { _id: staffId })),
   ]);
   if (!service) throw httpError(404, "Service not found");
   if (!staff) throw httpError(404, "Staff member not found");
@@ -141,7 +142,7 @@ async function bookAppointment({
 // Moves an upcoming appointment to a new time (and optionally another staff member).
 // Same rules as a new booking; the appointment's own old slot doesn't count as a clash.
 async function rescheduleAppointment({ appointment, tenant, staffId, date, time, by }) {
-  const staff = await User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true });
+  const staff = await User.findOne(bookableFilter(tenant._id, { _id: staffId }));
   if (!staff) throw httpError(404, "Staff member not found");
   if (!offersService(staff, appointment.serviceId)) {
     throw httpError(400, "This staff member doesn't offer this service");

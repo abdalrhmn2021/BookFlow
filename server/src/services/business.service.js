@@ -24,6 +24,7 @@ async function createBusinessWithOwner({
   timezone,
   whatsappReminders,
   phoneCountryCode,
+  ownerBookable,
 }) {
   const [emailTaken, slugTaken] = await Promise.all([
     User.exists({ email: String(email).trim().toLowerCase(), scope: null }),
@@ -53,6 +54,7 @@ async function createBusinessWithOwner({
         phone,
         role: "owner",
         tenantId: tenant._id,
+        ...(ownerBookable && { bookable: true }),
       });
       await owner.save({ session });
     });
