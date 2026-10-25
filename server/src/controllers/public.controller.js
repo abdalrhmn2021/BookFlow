@@ -1,6 +1,7 @@
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
+const { bookableFilter } = require("../utils/bookable");
 const Appointment = require("../models/Appointment");
 const { siteAllows } = require("../middlewares/site.middleware");
 const { siteUrl } = require("../utils/siteUrl");
@@ -38,7 +39,7 @@ exports.getBusinessBySlug = async (req, res) => {
 
   const [services, staff] = await Promise.all([
     Service.find({ tenantId: tenant._id, isActive: true }).select("name description price duration").sort({ name: 1 }),
-    User.find({ tenantId: tenant._id, role: "staff", isActive: true }).select("name services").sort({ name: 1 }),
+    User.find(bookableFilter(tenant._id)).select("name services").sort({ name: 1 }),
   ]);
 
   res.status(200).json({
@@ -75,7 +76,7 @@ exports.getAvailability = async (req, res) => {
 
   const [service, staff] = await Promise.all([
     Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
-    User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true }),
+    User.findOne(bookableFilter(tenant._id, { _id: staffId })),
   ]);
   if (!service) return res.status(404).json({ message: "Service not found" });
   if (!staff) return res.status(404).json({ message: "Staff member not found" });

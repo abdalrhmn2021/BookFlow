@@ -133,7 +133,9 @@ export interface StaffMember {
   name: string;
   email: string;
   phone?: string;
+  role: "owner" | "staff";
   isActive: boolean;
+  bookable?: boolean; // the owner's own row only: "I take bookings too"
   workingHours: WorkingDay[] | null; // null = the business's hours
   services: string[]; // [] = every service
   daysOff: string[]; // YYYY-MM-DD

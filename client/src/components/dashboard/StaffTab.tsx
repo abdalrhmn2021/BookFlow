@@ -69,8 +69,25 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
     }
   };
 
+  // The owner's own row: "I take bookings too" on / off.
+  const toggleBookable = async (s: StaffMember) => {
+    setRowError(null);
+    setBusyId(s.id);
+    try {
+      const { staff: updated } = await api.patch<{ staff: StaffMember }>(`/staff/${s.id}`, { bookable: !s.bookable });
+      setStaff((prev) => prev?.map((x) => (x.id === s.id ? updated : x)) ?? null);
+    } catch (err) {
+      setRowError({ id: s.id, err });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loadError) return <p className={errorBox}>{tError(loadError)}</p>;
   if (!staff) return <p className="text-sm text-navy-500">{t.common.loading}</p>;
+
+  // Customers need at least one active staff member, or the owner taking bookings.
+  const nobodyBookable = editing !== "new" && !staff.some((s) => (s.role === "owner" ? s.bookable : s.isActive));
 
   return (
     <div>
@@ -89,74 +106,150 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
         </div>
       )}
 
-      {staff.length === 0 && editing !== "new" ? (
-        <p className="mt-6 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-8 text-center text-sm text-navy-500">
-          {st.empty}
-        </p>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {staff.map((s) =>
-            editing === `schedule:${s.id}` ? (
-              <li key={s.id}>
-                <StaffScheduleForm
-                  staff={s}
-                  tenant={tenant}
-                  onSaved={(updated) => {
-                    setStaff((prev) => prev?.map((x) => (x.id === s.id ? updated : x)) ?? null);
-                    setEditing(null);
-                  }}
-                  onCancel={() => setEditing(null)}
-                />
-              </li>
-            ) : editing === s.id ? (
-              <li key={s.id}>
-                <StaffForm initial={s} onSave={(data) => save(data, s.id)} onCancel={() => setEditing(null)} />
-              </li>
-            ) : (
-              <li
-                key={s.id}
-                className={`rounded-xl border border-navy-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-700">
-                      {s.name.charAt(0).toUpperCase()}
-                    </span>
-                    <div>
-                      <p className="font-semibold">
-                        {s.name}
-                        {!s.isActive && (
-                          <span className="ms-2 rounded-full bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-500">
-                            {st.inactive}
-                          </span>
-                        )}
-                      </p>
-                      <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
-                        {s.email}
-                        {s.phone && ` · ${s.phone}`}
-                      </p>
-                      <ScheduleSummary staff={s} tenant={tenant} />
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button onClick={() => setEditing(`schedule:${s.id}`)} className={btnSecondary}>
-                      {st.schedule}
-                    </button>
-                    <button onClick={() => setEditing(s.id)} className={btnSecondary}>
-                      {t.common.edit}
-                    </button>
-                    <button onClick={() => toggleActive(s)} disabled={busyId === s.id} className={btnSecondary}>
-                      {s.isActive ? st.deactivate : st.reactivate}
-                    </button>
+      <ul className="mt-4 space-y-3">
+        {staff.map((s) =>
+          editing === `schedule:${s.id}` ? (
+            <li key={s.id}>
+              <StaffScheduleForm
+                staff={s}
+                tenant={tenant}
+                onSaved={(updated) => {
+                  setStaff((prev) => prev?.map((x) => (x.id === s.id ? updated : x)) ?? null);
+                  setEditing(null);
+                }}
+                onCancel={() => setEditing(null)}
+              />
+            </li>
+          ) : editing === s.id ? (
+            <li key={s.id}>
+              <StaffForm initial={s} onSave={(data) => save(data, s.id)} onCancel={() => setEditing(null)} />
+            </li>
+          ) : s.role === "owner" ? (
+            <OwnerRow
+              key={s.id}
+              owner={s}
+              tenant={tenant}
+              busy={busyId === s.id}
+              error={rowError?.id === s.id ? rowError.err : null}
+              onToggle={() => toggleBookable(s)}
+              onSchedule={() => setEditing(`schedule:${s.id}`)}
+              onEdit={() => setEditing(s.id)}
+            />
+          ) : (
+            <li
+              key={s.id}
+              className={`rounded-xl border border-navy-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-700">
+                    {s.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div>
+                    <p className="font-semibold">
+                      {s.name}
+                      {!s.isActive && (
+                        <span className="ms-2 rounded-full bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-500">
+                          {st.inactive}
+                        </span>
+                      )}
+                    </p>
+                    <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
+                      {s.email}
+                      {s.phone && ` · ${s.phone}`}
+                    </p>
+                    <ScheduleSummary staff={s} tenant={tenant} />
                   </div>
                 </div>
-                {rowError?.id === s.id && <p className={`mt-2 ${errorBox}`}>{tError(rowError.err)}</p>}
-              </li>
-            ),
-          )}
-        </ul>
+                <div className="flex shrink-0 gap-2">
+                  <button onClick={() => setEditing(`schedule:${s.id}`)} className={btnSecondary}>
+                    {st.schedule}
+                  </button>
+                  <button onClick={() => setEditing(s.id)} className={btnSecondary}>
+                    {t.common.edit}
+                  </button>
+                  <button onClick={() => toggleActive(s)} disabled={busyId === s.id} className={btnSecondary}>
+                    {s.isActive ? st.deactivate : st.reactivate}
+                  </button>
+                </div>
+              </div>
+              {rowError?.id === s.id && <p className={`mt-2 ${errorBox}`}>{tError(rowError.err)}</p>}
+            </li>
+          ),
+        )}
+      </ul>
+
+      {!nobodyBookable ? null : (
+        <p className="mt-3 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-8 text-center text-sm text-navy-500">
+          {st.empty}
+        </p>
       )}
     </div>
+  );
+}
+
+// The owner's own card: not deactivatable, and bookable only after "I take bookings too".
+function OwnerRow({
+  owner,
+  tenant,
+  busy,
+  error,
+  onToggle,
+  onSchedule,
+  onEdit,
+}: {
+  owner: StaffMember;
+  tenant: TenantInfo;
+  busy: boolean;
+  error: unknown;
+  onToggle: () => void;
+  onSchedule: () => void;
+  onEdit: () => void;
+}) {
+  const { t, tError } = useLanguage();
+  const st = t.dashboard.staff;
+
+  return (
+    <li className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 font-bold text-white">
+            {owner.name.charAt(0).toUpperCase()}
+          </span>
+          <div>
+            <p className="font-semibold">
+              {owner.name}
+              <span className="ms-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+                {st.you}
+              </span>
+            </p>
+            <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
+              {owner.email}
+              {owner.phone && ` · ${owner.phone}`}
+            </p>
+            {owner.bookable ? (
+              <ScheduleSummary staff={owner} tenant={tenant} />
+            ) : (
+              <p className="mt-0.5 text-xs text-navy-400">{st.ownerOff}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {owner.bookable && (
+            <button onClick={onSchedule} className={btnSecondary}>
+              {st.schedule}
+            </button>
+          )}
+          <button onClick={onEdit} className={btnSecondary}>
+            {t.common.edit}
+          </button>
+          <button onClick={onToggle} disabled={busy} className={owner.bookable ? btnSecondary : btnPrimary}>
+            {owner.bookable ? st.stopBookings : st.takeBookings}
+          </button>
+        </div>
+      </div>
+      {Boolean(error) && <p className={`mt-2 ${errorBox}`}>{tError(error)}</p>}
+    </li>
   );
 }
 

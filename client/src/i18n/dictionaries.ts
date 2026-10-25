@@ -258,7 +258,12 @@ const en = {
     },
     staff: {
       add: "+ Add staff member",
-      empty: "No staff yet. Customers can't book until you add at least one.",
+      empty:
+        'Nobody can be booked yet. Add a staff member - or, if you work yourself, switch on "I take bookings too" above.',
+      you: "You · owner",
+      takeBookings: "I take bookings too",
+      stopBookings: "Stop taking bookings",
+      ownerOff: "Not bookable - switch it on if you serve customers yourself.",
       hint: "Each staff member logs in with this email and password to see their own schedule.",
       name: "Name",
       email: "Email",
@@ -685,7 +690,12 @@ const ar: Dictionary = {
     },
     staff: {
       add: "+ إضافة موظف",
-      empty: "لا يوجد موظفون بعد. لا يمكن للزبائن الحجز قبل إضافة موظف واحد على الأقل.",
+      empty:
+        'لا يوجد أحد يمكن الحجز عنده بعد. أضف موظفاً - أو إذا كنت تعمل بنفسك، فعّل "أستقبل حجوزات أيضاً" في الأعلى.',
+      you: "أنت · صاحب العمل",
+      takeBookings: "أستقبل حجوزات أيضاً",
+      stopBookings: "إيقاف استقبال الحجوزات",
+      ownerOff: "لا يمكن الحجز عندك - فعّلها إذا كنت تخدم الزبائن بنفسك.",
       hint: "كل موظف يسجّل الدخول بهذا البريد وكلمة المرور ليرى مواعيده.",
       name: "الاسم",
       email: "البريد الإلكتروني",

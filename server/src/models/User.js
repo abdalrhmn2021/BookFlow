@@ -49,6 +49,9 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Owner only: "I take bookings too" (a barber who runs the shop alone). Then customers can
+    // book them like a staff member, with their own hours / services / days off below.
+    bookable: { type: Boolean },
 
     // ---- Staff only (utils/staffSchedule.js). Not set = same as the business. ----
     // Their own week: the business's hours are narrowed to these (never widened).

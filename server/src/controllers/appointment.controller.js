@@ -3,6 +3,7 @@ const Appointment = require("../models/Appointment");
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
+const { bookableFilter } = require("../utils/bookable");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
 const {
@@ -485,7 +486,7 @@ exports.getBusinessAvailability = async (req, res) => {
   // A service can be inactive and still have bookings being moved, so it isn't filtered by isActive.
   const [service, staff] = await Promise.all([
     Service.findOne({ _id: serviceId, tenantId: tenant._id }),
-    User.findOne({ _id: staffId, tenantId: tenant._id, role: "staff", isActive: true }),
+    User.findOne(bookableFilter(tenant._id, { _id: staffId })),
   ]);
   if (!service) return res.status(404).json({ message: "Service not found" });
   if (!staff) return res.status(404).json({ message: "Staff member not found" });
