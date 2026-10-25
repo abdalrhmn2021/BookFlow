@@ -31,6 +31,11 @@ async function findAccount(req, email, password) {
   return null;
 }
 
+// The browser gets its login in the httpOnly cookie only. The token is also in the JSON answer
+// in development, for server/api-tests.http (VS Code REST Client) - never in production, where
+// a copy readable by page scripts would undo the point of the httpOnly cookie.
+const devToken = (token) => (process.env.NODE_ENV === "production" ? {} : { token });
+
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
@@ -45,8 +50,12 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "name, email and password are required" });
     }
 
-    // On a shared server the account belongs to this site's business only.
+    // On a shared server the account belongs to this site's business only - so it can only be
+    // made on that site. Straight on the server (no site) there is no business to give it to.
     const scope = await customerScope(req);
+    if (SHARED_SERVER && !scope) {
+      return res.status(403).json({ message: "Please sign up on the business's own booking site" });
+    }
     const existingUser = await User.findOne({ email: email.trim().toLowerCase(), scope });
     if (existingUser) {
       return res.status(409).json({ message: "Email already exists" });
@@ -71,7 +80,7 @@ exports.register = async (req, res) => {
         email: user.email,
         role: user.role,
       },
-      token,
+      ...devToken(token),
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -128,7 +137,7 @@ exports.login = async (req, res) => {
         role: user.role,
         tenantId: user.tenantId,
       },
-      token,
+      ...devToken(token),
     });
   } catch (error) {
     console.error("[auth] error:", error);
@@ -170,7 +179,7 @@ exports.registerBusiness = async (req, res) => {
       role: owner.role,
       tenantId: tenant._id,
     },
-    token,
+    ...devToken(token),
   });
 };
 

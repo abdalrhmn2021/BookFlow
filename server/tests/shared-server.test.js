@@ -230,3 +230,45 @@ describe("Shared server - each business has its own customers", () => {
     expect(owner.body.user.role).toBe("owner");
   });
 });
+
+describe("Shared server - a customer account stays at its own salon", () => {
+  const signUp = (slug, email = "sara@mail.test") =>
+    request(h.app)
+      .post("/api/auth/register")
+      .set(fromSite(slug, "203.0.113.70"))
+      .send({ name: "Sara", email, password: "password123" });
+
+  test("salon A's customer can't use the account on salon B's site or straight on the server", async () => {
+    const A = await h.makeBusiness("salon-a");
+    const B = await h.makeBusiness("salon-b");
+    const date = h.nextOpenDate();
+    const { body } = await signUp("salon-a").expect(201);
+    const sara = { _id: body.user.id, role: "customer" };
+    const book = (biz, site) =>
+      request(h.app)
+        .post("/api/appointments")
+        .set({ ...(site && fromSite(site)), ...auth(sara) })
+        .send({ slug: biz.tenant.slug, ...slot(biz, "10:00", date) });
+
+    await book(A, "salon-a").expect(201); // at home: fine
+
+    // Same token on salon B's site, or with no site at all: refused before anything happens.
+    const onB = await book(B, "salon-b").expect(403);
+    expect(onB.body.message).toBe("This account belongs to another business");
+    await book(B, null).expect(403);
+    await request(h.app).get("/api/auth/me").set(auth(sara)).expect(403);
+    await request(h.app)
+      .get("/api/appointments/me")
+      .set({ ...fromSite("salon-b"), ...auth(sara) })
+      .expect(403);
+  });
+
+  test("signing up straight on the server (no client site) is closed", async () => {
+    await h.makeBusiness("salon-a");
+    const res = await request(h.app)
+      .post("/api/auth/register")
+      .send({ name: "Stranger", email: "x@mail.test", password: "password123" })
+      .expect(403);
+    expect(res.body.message).toBe("Please sign up on the business's own booking site");
+  });
+});
