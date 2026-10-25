@@ -15,6 +15,7 @@ const {
   toMinutes,
   toHHMM,
   isOverlapping,
+  nextDate,
 } = require("../utils/time");
 
 // Statuses that occupy a staff member's time slot.
@@ -63,6 +64,15 @@ const hasConflict = (staffId, startTime, endTime, session, excludeId) =>
 // The checks every new time goes through: real date and time, not in the past, inside the
 // business's working hours AND the staff member's own hours (utils/staffSchedule.js).
 function checkTime({ tenant, staff, date, time, duration }) {
+  const times = checkBusinessTime({ tenant, date, time, duration });
+  if (!worksAt(tenant, staff, date, time, duration)) {
+    throw httpError(400, "This staff member isn't working at that time");
+  }
+  return times;
+}
+
+// The part that is the same for everyone at the business (date, past, business hours).
+function checkBusinessTime({ tenant, date, time, duration }) {
   if (!date || !time) throw httpError(400, "date and time are required");
   if (!isValidDate(date)) throw httpError(400, "date must be a real date in YYYY-MM-DD format");
   if (!TIME_REGEX.test(time)) throw httpError(400, "time must be HH:mm (e.g. 10:30)");
@@ -73,12 +83,67 @@ function checkTime({ tenant, staff, date, time, duration }) {
   if (!fitsInWorkingHours(tenant.workingHours, dayNameOf(date), time, duration)) {
     throw httpError(400, "This time is outside working hours");
   }
+  return { startTime, endTime };
+}
+
+// Inside this person's own hours that day (and not a day off)?
+function worksAt(tenant, staff, date, time, duration) {
   const hours = staffDayHours(tenant, staff, date);
   const start = toMinutes(time);
-  if (!hours.isOpen || start < toMinutes(hours.open) || start + duration > toMinutes(hours.close)) {
-    throw httpError(400, "This staff member isn't working at that time");
+  return hours.isOpen && start >= toMinutes(hours.open) && start + duration <= toMinutes(hours.close);
+}
+
+// "Any staff member" on the booking page: staffId = ANY_STAFF.
+const ANY_STAFF = "any";
+const NOBODY_FREE = "Nobody is free at that time, please pick another time";
+
+// Everyone at this business who can be booked for this service (staff + an owner taking bookings).
+async function peopleForService(tenant, service) {
+  const people = await User.find(bookableFilter(tenant._id)).sort({ name: 1 });
+  return people.filter((p) => offersService(p, service._id));
+}
+
+// Saves the appointment for this person under their lock, or returns null if they're taken.
+function insertWithLock(staff, startTime, endTime, fields) {
+  return withStaffLock(staff._id, async (session) => {
+    if (await hasConflict(staff._id, startTime, endTime, session)) return null;
+    const [created] = await Appointment.create([{ ...fields, staffId: staff._id, startTime, endTime }], { session });
+    return created;
+  });
+}
+
+// "Any staff member": try the people who do the service, the least busy that day first, each
+// under their own lock - so two customers booking "anyone" at the same moment get two
+// different people (or one gets 409 when nobody is left), never the same person twice.
+async function bookAnyone({ tenant, service, date, time, fields }) {
+  const { startTime, endTime } = checkBusinessTime({ tenant, date, time, duration: service.duration });
+
+  const people = (await peopleForService(tenant, service)).filter((p) =>
+    worksAt(tenant, p, date, time, service.duration),
+  );
+  if (!people.length) throw httpError(409, NOBODY_FREE);
+
+  const dayStart = localToDate(date, "00:00", tenant.timezone);
+  const dayEnd = localToDate(nextDate(date), "00:00", tenant.timezone);
+  const counts = await Appointment.aggregate([
+    {
+      $match: {
+        staffId: { $in: people.map((p) => p._id) },
+        status: { $in: ACTIVE_STATUSES },
+        startTime: { $gte: dayStart, $lt: dayEnd },
+      },
+    },
+    { $group: { _id: "$staffId", n: { $sum: 1 } } },
+  ]);
+  const load = new Map(counts.map((c) => [String(c._id), c.n]));
+  // Stable sort: equal load keeps the alphabetical order from peopleForService.
+  people.sort((a, b) => (load.get(String(a._id)) ?? 0) - (load.get(String(b._id)) ?? 0));
+
+  for (const staff of people) {
+    const appointment = await insertWithLock(staff, startTime, endTime, fields);
+    if (appointment) return { appointment, staff };
   }
-  return { startTime, endTime };
+  throw httpError(409, NOBODY_FREE);
 }
 
 async function bookAppointment({
@@ -101,39 +166,32 @@ async function bookAppointment({
   const tenant = await Tenant.findOne({ slug: String(slug).toLowerCase(), isActive: true });
   if (!tenant) throw httpError(404, "Business not found");
 
-  const [service, staff] = await Promise.all([
-    Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
-    User.findOne(bookableFilter(tenant._id, { _id: staffId })),
-  ]);
+  const service = await Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true });
   if (!service) throw httpError(404, "Service not found");
+
+  const fields = {
+    tenantId: tenant._id,
+    ...(customerId ? { customerId } : { guest, manageTokenHash }),
+    serviceId: service._id,
+    serviceName: service.name,
+    price: service.price,
+    duration: service.duration,
+    notes,
+    status,
+    createdBy,
+  };
+
+  if (staffId === ANY_STAFF) {
+    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields });
+    return { appointment, tenant, service, staff };
+  }
+
+  const staff = await User.findOne(bookableFilter(tenant._id, { _id: staffId }));
   if (!staff) throw httpError(404, "Staff member not found");
   if (!offersService(staff, service._id)) throw httpError(400, "This staff member doesn't offer this service");
 
   const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: service.duration });
-
-  const appointment = await withStaffLock(staff._id, async (session) => {
-    if (await hasConflict(staff._id, startTime, endTime, session)) return null;
-    const [created] = await Appointment.create(
-      [
-        {
-          tenantId: tenant._id,
-          ...(customerId ? { customerId } : { guest, manageTokenHash }),
-          staffId: staff._id,
-          serviceId: service._id,
-          serviceName: service.name,
-          price: service.price,
-          duration: service.duration,
-          startTime,
-          endTime,
-          notes,
-          status,
-          createdBy,
-        },
-      ],
-      { session },
-    );
-    return created;
-  });
+  const appointment = await insertWithLock(staff, startTime, endTime, fields);
 
   if (!appointment) throw httpError(409, "This staff member is already booked at that time");
   return { appointment, tenant, service, staff };
@@ -212,10 +270,22 @@ async function findFreeSlots({ tenant, service, staff, date, excludeId }) {
   return { isOpen: true, slots };
 }
 
+// "Any staff member": every time at which at least one person who does the service is free.
+async function findFreeSlotsAny({ tenant, service, date }) {
+  const people = await peopleForService(tenant, service);
+  const results = await Promise.all(people.map((staff) => findFreeSlots({ tenant, service, staff, date })));
+  return {
+    isOpen: results.some((r) => r.isOpen),
+    slots: [...new Set(results.flatMap((r) => r.slots))].sort(), // "HH:mm" sorts as text
+  };
+}
+
 module.exports = {
   bookAppointment,
   rescheduleAppointment,
   findFreeSlots,
+  findFreeSlotsAny,
+  ANY_STAFF,
   httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,
