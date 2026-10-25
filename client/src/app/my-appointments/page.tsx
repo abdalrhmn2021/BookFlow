@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
+import { btnSecondary, errorBox, inputClass } from "@/lib/ui";
 import { formatDuration, formatMomentIn, formatPrice } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import { IconCalendar, IconClock, IconNote } from "@/components/icons";
@@ -204,7 +206,71 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
       </div>
       {children}
+      <DeleteAccount />
     </div>
+  );
+}
+
+// At the bottom of the page: delete the account (with the password, as a second step).
+function DeleteAccount() {
+  const { logout } = useAuth();
+  const { t, tError } = useLanguage();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const remove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await api.delete("/auth/me", { password });
+      await logout();
+      router.replace("/");
+    } catch (err) {
+      setError(tError(err));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="mt-16 border-t border-navy-100 pt-6">
+      <h2 className="text-sm font-semibold text-navy-700">{t.legal.deleteTitle}</h2>
+      <p className="mt-1 text-sm text-navy-500">{t.legal.deleteHint}</p>
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="mt-3 text-sm font-medium text-red-700 hover:underline">
+          {t.legal.deleteStart}
+        </button>
+      ) : (
+        <form onSubmit={remove} className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="text-sm font-medium">{t.legal.deletePassword}</span>
+            <input
+              type="password"
+              required
+              dir="ltr"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+          >
+            {busy ? t.legal.deleting : t.legal.deleteConfirm}
+          </button>
+          <button type="button" onClick={() => setOpen(false)} disabled={busy} className={btnSecondary}>
+            {t.common.cancel}
+          </button>
+          {error && <p className={`w-full ${errorBox}`}>{error}</p>}
+        </form>
+      )}
+    </section>
   );
 }
 

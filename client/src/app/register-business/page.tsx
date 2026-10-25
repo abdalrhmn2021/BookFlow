@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import LegalNotice from "@/components/LegalNotice";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -150,6 +151,7 @@ export default function RegisterBusinessPage() {
         <button type="submit" disabled={submitting || !slugValid} className={`w-full ${btnPrimary}`}>
           {submitting ? r.submitting : r.submit}
         </button>
+        <LegalNotice text={t.legal.agreeSignup} />
       </form>
 
       <p className="mt-6 text-center text-sm text-navy-600">

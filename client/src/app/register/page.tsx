@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import LegalNotice from "@/components/LegalNotice";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
@@ -109,6 +110,7 @@ function RegisterForm() {
         >
           {submitting ? t.register.submitting : t.register.submit}
         </button>
+        <LegalNotice text={t.legal.agreeSignup} />
       </form>
 
       <p className="mt-6 text-center text-sm text-navy-600">

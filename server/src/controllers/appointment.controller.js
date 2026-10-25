@@ -35,7 +35,7 @@ async function siteFilter(req) {
 }
 
 exports.createAppointment = async (req, res) => {
-  const { slug, serviceId, staffId, date, time, notes } = req.body || {};
+  const { slug, serviceId, staffId, date, time, notes, whatsappConsent } = req.body || {};
 
   if (slug && !siteAllows(req, slug)) {
     return res.status(404).json({ message: "Business not found" });
@@ -49,6 +49,7 @@ exports.createAppointment = async (req, res) => {
     time,
     notes,
     customerId: req.user.id,
+    whatsappConsent: whatsappConsent === true,
   });
 
   await CustomerTenant.updateOne(
@@ -408,7 +409,7 @@ function staffFor(req, requested) {
 // A walk-in or phone booking. Confirmed right away (the business made it), with a manage link
 // the business can send to the customer on WhatsApp.
 exports.createBusinessAppointment = async (req, res) => {
-  const { serviceId, staffId, date, time, notes, name, phone } = req.body || {};
+  const { serviceId, staffId, date, time, notes, name, phone, whatsappConsent } = req.body || {};
 
   const cleanName = typeof name === "string" ? name.trim() : "";
   if (cleanName.length < 2) throw httpError(400, "Name must be at least 2 characters");
@@ -431,6 +432,8 @@ exports.createBusinessAppointment = async (req, res) => {
     manageTokenHash: hash,
     status: "confirmed",
     createdBy: req.user.id,
+    // A phone / walk-in customer can agree out loud; the business ticks it for them.
+    whatsappConsent: whatsappConsent === true,
   });
 
   await appointment.populate("staffId", "name");

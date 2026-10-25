@@ -57,6 +57,7 @@ function booking(biz, hoursFromJobRun, extra = {}) {
     startTime: start,
     endTime: new Date(start.getTime() + 30 * 60 * 1000),
     guest: { name: "Sara", phone: "0599123456" },
+    whatsappConsent: true, // the customer ticked "remind me on WhatsApp"
     ...extra,
   });
 }
@@ -90,6 +91,7 @@ describe("Automatic WhatsApp reminders", () => {
     await booking(biz, 20, { status: "cancelled" });
     await booking(biz, 20, { reminderSentAt: new Date(), reminderChannel: "manual" });
     await booking(off, 20);
+    await booking(biz, 20, { whatsappConsent: false }); // didn't tick "remind me on WhatsApp"
 
     const r = await sendDueReminders({ now: later() });
     expect(r.sent).toBe(0);

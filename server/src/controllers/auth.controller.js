@@ -9,6 +9,12 @@ const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { siteUrl } = require("../utils/siteUrl");
 const { createBusinessWithOwner } = require("../services/business.service");
 const { isEmailConfigured, sendPasswordResetEmail } = require("../services/notify.service");
+const Appointment = require("../models/Appointment");
+const CustomerTenant = require("../models/CustomerTenant");
+const { ACTIVE_STATUSES } = require("../services/booking.service");
+const { REMOVED_NAME } = require("../services/maintenance.service");
+
+const ACCOUNT_DELETED_REASON = "The customer deleted their account";
 
 // Credentials must be real strings: an object like { "$gt": "" } would become a
 // MongoDB operator inside findOne (NoSQL injection).
@@ -212,6 +218,43 @@ exports.logout = (req, res) => {
 };
 
 const DEMO_PASSWORD_LOCKED = "Demo accounts can't change their password";
+
+// DELETE /api/auth/me { password } - a customer deletes their own account.
+// Upcoming bookings are cancelled (the business sees why), and every booking keeps its time,
+// service and price but loses the link to the person (name shown as "—"), so the business's
+// history and income numbers stay right while nothing personal is left. Owners, staff and the
+// admin can't delete themselves here: their account is the business's dashboard.
+exports.deleteMyAccount = async (req, res) => {
+  const { password } = req.body || {};
+  if (!isText(password)) return res.status(400).json({ message: "Please enter your password to confirm" });
+
+  const user = await User.findById(req.user.id).select("+password");
+  if (user.role !== "customer") {
+    return res.status(403).json({ message: "Only customer accounts can be deleted here" });
+  }
+  if (isDemoEmail(user.email)) return res.status(403).json({ message: "Demo accounts can't be deleted" });
+  if (!(await user.comparePassword(password))) {
+    return res.status(400).json({ message: "Current password is incorrect" });
+  }
+
+  const now = new Date();
+  await Appointment.updateMany(
+    { customerId: user._id, status: { $in: ACTIVE_STATUSES }, startTime: { $gt: now } },
+    { $set: { status: "cancelled", cancellation: { reason: ACCOUNT_DELETED_REASON, cancelledAt: now } } },
+  );
+  await Appointment.updateMany(
+    { customerId: user._id },
+    {
+      $set: { guest: { name: REMOVED_NAME }, personalDataRemovedAt: now },
+      $unset: { customerId: 1, notes: 1 },
+    },
+  );
+  await CustomerTenant.deleteMany({ userId: user._id });
+  await User.deleteOne({ _id: user._id });
+
+  clearAuthCookie(res);
+  res.status(200).json({ message: "Your account was deleted" });
+};
 
 // Logged in: current password + new one. Other devices are signed out (passwordChangedAt),
 // this one gets a fresh cookie so it stays logged in.

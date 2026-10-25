@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { btnPrimary, btnSecondary, errorBox } from "@/lib/ui";
 import type { AdminBusiness } from "@/lib/types";
 
@@ -127,6 +127,29 @@ function BusinessCard({
     }
   };
 
+  // The business's data as a JSON file (services, staff, customers, bookings) - e.g. at contract end.
+  // A plain fetch, not lib/api: the answer is a file to save, not JSON for the page.
+  const [exporting, setExporting] = useState(false);
+  const exportData = async () => {
+    setError("");
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/admin/businesses/${b.id}/export`, { credentials: "same-origin" });
+      if (!res.ok)
+        throw new ApiError(res.status, (await res.json().catch(() => ({}))).message ?? "Something went wrong");
+      const url = URL.createObjectURL(await res.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${b.slug}-export-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(tError(err));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const toggleActive = () => {
     if (b.isActive && !window.confirm(a.confirmOff(b.name))) return;
     patch({ isActive: !b.isActive });
@@ -171,6 +194,9 @@ function BusinessCard({
           <Link href={`/book/${b.slug}`} className={btnSecondary}>
             {a.openSite}
           </Link>
+          <button onClick={exportData} disabled={exporting} className={btnSecondary}>
+            {exporting ? t.legal.exporting : t.legal.exportData}
+          </button>
           <button onClick={toggleActive} disabled={busy} className={btnSecondary}>
             {b.isActive ? a.switchOff : a.switchOn}
           </button>

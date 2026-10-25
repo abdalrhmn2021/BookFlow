@@ -49,6 +49,7 @@ export default function BookingForm({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [whatsappConsent, setWhatsappConsent] = useState(false);
 
   const [slots, setSlots] = useState<{ key: string; data?: Availability; error?: unknown } | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -160,6 +161,8 @@ export default function BookingForm({
           name: name.trim(),
           phone: phone.trim() || undefined,
           notes: notes.trim() || undefined,
+          // Only with a phone number, and only if the customer said yes (Meta's opt-in rule).
+          whatsappConsent: Boolean(phone.trim()) && whatsappConsent,
         });
         const serviceName = page?.services.find((x) => x.id === serviceId)?.name ?? "";
         const link = `${window.location.origin}/booking/${result.manageToken}`;
@@ -370,6 +373,17 @@ export default function BookingForm({
                     className={inputClass}
                   />
                 </label>
+                {phone.trim() && (
+                  <label className="flex items-start gap-2 text-sm text-navy-700">
+                    <input
+                      type="checkbox"
+                      checked={whatsappConsent}
+                      onChange={(e) => setWhatsappConsent(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500"
+                    />
+                    <span>{t.legal.whatsappConsentWalkIn}</span>
+                  </label>
+                )}
               </>
             )}
 

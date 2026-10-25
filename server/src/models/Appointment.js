@@ -39,6 +39,11 @@ const appointmentSchema = new mongoose.Schema(
     status: { type: String, enum: STATUSES, default: "pending" },
     notes: { type: String, trim: true, maxlength: [500, "Notes are too long"] },
 
+    // The customer agreed to get a WhatsApp reminder for this booking (a checkbox, off by default).
+    // Meta's WhatsApp Business rules need this opt-in before a business messages someone, so the
+    // automatic reminder job only sends when it is true. The dashboard's manual button is the
+    // business writing from its own WhatsApp and doesn't depend on it.
+    whatsappConsent: { type: Boolean, default: false },
     reminderSentAt: { type: Date },
     // Who sent it: the dashboard's WhatsApp button ("manual") or the automatic job ("whatsapp").
     reminderChannel: { type: String, enum: ["manual", "whatsapp"] },
@@ -57,6 +62,11 @@ const appointmentSchema = new mongoose.Schema(
       at: { type: Date },
       by: { type: ObjectId, ref: "User" },
     },
+
+    // Set when the customer's personal details were removed from this booking (their account
+    // was deleted, or the booking is older than the retention period - maintenance.service.js).
+    // The booking itself stays, so the business's history and income numbers stay right.
+    personalDataRemovedAt: { type: Date },
 
     cancellation: {
       reason: { type: String, trim: true, maxlength: [300, "Reason is too long"] },

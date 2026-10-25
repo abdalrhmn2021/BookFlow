@@ -6,6 +6,7 @@ import { BrandProvider } from "@/context/BrandContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { DEFAULT_LANG, dictionaries, isLang, LANG_COOKIE } from "@/i18n/dictionaries";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { getBrand, getBrandStyle, getSiteUrl } from "@/lib/brand";
 import "./globals.css";
 
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <AuthProvider>
               <Navbar />
               <main className="flex-1">{children}</main>
+              <Footer />
             </AuthProvider>
           </BrandProvider>
         </LanguageProvider>

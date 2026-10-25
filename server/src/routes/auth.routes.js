@@ -9,6 +9,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
+  deleteMyAccount,
 } = require("../controllers/auth.controller");
 const { protect } = require("../middlewares/auth.middleware");
 const {
@@ -29,5 +30,7 @@ router.post("/reset-password", resetPasswordLimiter, resetPassword);
 router.patch("/password", protect, loginLimiter, changePassword);
 
 router.get("/me", protect, getMe);
+// Same limiter as login: it checks a password.
+router.delete("/me", protect, loginLimiter, deleteMyAccount);
 
 module.exports = router;
