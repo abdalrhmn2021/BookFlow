@@ -33,3 +33,14 @@ services:
         sync: false # optional: new-booking emails (see docs/INSTALL.md)
       - key: MAIL_FROM
         sync: false # optional: a sender address verified in Brevo
+      # --- Automatic WhatsApp reminders (optional, docs/INSTALL.md) ---
+      - key: WHATSAPP_TOKEN
+        sync: false # Meta system-user token with whatsapp_business_messaging
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_TEMPLATE
+        value: booking_reminder
+      - key: WHATSAPP_TEMPLATE_LANG
+        value: ar
+      - key: JOBS_SECRET
+        generateValue: true # for an outside cron calling POST /api/jobs/reminders

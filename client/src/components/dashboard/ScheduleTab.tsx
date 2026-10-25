@@ -344,7 +344,10 @@ export default function ScheduleTab({
                                 <span className="ms-auto inline-flex flex-wrap items-center gap-2">
                                   {a.reminderSentAt && (
                                     <span className="text-xs text-emerald-700">
-                                      ✓ {s.reminded(formatMomentIn(a.reminderSentAt, timezone, t.locale).time)}
+                                      ✓{" "}
+                                      {(a.reminderChannel === "whatsapp" ? s.remindedAuto : s.reminded)(
+                                        formatMomentIn(a.reminderSentAt, timezone, t.locale).time,
+                                      )}
                                     </span>
                                   )}
                                   <a

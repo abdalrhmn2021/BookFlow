@@ -145,6 +145,7 @@ export interface BusinessAppointment {
   status: AppointmentStatus;
   notes?: string;
   reminderSentAt?: string;
+  reminderChannel?: "manual" | "whatsapp";
   rescheduled?: { from: string; at: string };
 }
 
