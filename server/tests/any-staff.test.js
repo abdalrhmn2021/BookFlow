@@ -30,6 +30,13 @@ async function customerBook(biz, staffId, date, time, service = biz.service) {
     .send({ slug: biz.tenant.slug, serviceId: service._id, staffId, date, time });
 }
 
+// customerBook is async (it creates the customer first), so the status is checked here.
+const expectStatus = async (pending, status) => {
+  const res = await pending;
+  expect(res.status).toBe(status);
+  return res;
+};
+
 const staffOf = async (res) => String((await Appointment.findById(res.body.appointment._id)).staffId);
 
 describe("Free times for any staff member", () => {
@@ -78,7 +85,7 @@ describe("Booking any staff member", () => {
     const date = h.nextOpenDate();
     await customerBook(biz, biz.staff[0]._id, date, "10:00");
 
-    const res = await customerBook(biz, "any", date, "10:00").expect(201);
+    const res = await expectStatus(customerBook(biz, "any", date, "10:00"), 201);
     expect(await staffOf(res)).toBe(String(biz.staff[1]._id));
     expect(res.body.staffName).toBe(biz.staff[1].name);
   });
@@ -88,7 +95,7 @@ describe("Booking any staff member", () => {
     const date = h.nextOpenDate();
     await customerBook(biz, biz.staff[0]._id, date, "09:00");
 
-    const res = await customerBook(biz, "any", date, "15:00").expect(201);
+    const res = await expectStatus(customerBook(biz, "any", date, "15:00"), 201);
     expect(await staffOf(res)).toBe(String(biz.staff[1]._id));
   });
 
@@ -102,10 +109,10 @@ describe("Booking any staff member", () => {
     await setSchedule(biz, s3, { services: [String(other._id)] });
 
     // Nobody can do a haircut at 10:00 that day.
-    const none = await customerBook(biz, "any", date, "10:00").expect(409);
+    const none = await expectStatus(customerBook(biz, "any", date, "10:00"), 409);
     expect(none.body.message).toBe("Nobody is free at that time, please pick another time");
 
-    const ok = await customerBook(biz, "any", date, "14:00").expect(201);
+    const ok = await expectStatus(customerBook(biz, "any", date, "14:00"), 201);
     expect(await staffOf(ok)).toBe(String(s1._id));
   });
 
@@ -133,10 +140,10 @@ describe("Booking any staff member", () => {
     const biz = await h.makeBusiness("any-h", { staffCount: 2 });
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-    const past = await customerBook(biz, "any", yesterday, "10:00").expect(400);
+    const past = await expectStatus(customerBook(biz, "any", yesterday, "10:00"), 400);
     expect(past.body.message).toBe("You can't book a time in the past");
 
-    const early = await customerBook(biz, "any", h.nextOpenDate(), "07:00").expect(400);
+    const early = await expectStatus(customerBook(biz, "any", h.nextOpenDate(), "07:00"), 400);
     expect(early.body.message).toBe("This time is outside working hours");
   });
 
@@ -160,7 +167,7 @@ describe("Booking any staff member", () => {
     const biz = await h.makeBusiness("any-j", { staffCount: 0 });
     await request(h.app).patch(`/api/staff/${biz.owner._id}`).set(auth(biz.owner)).send({ bookable: true });
 
-    const res = await customerBook(biz, "any", h.nextOpenDate(), "10:00").expect(201);
+    const res = await expectStatus(customerBook(biz, "any", h.nextOpenDate(), "10:00"), 201);
     expect(await staffOf(res)).toBe(String(biz.owner._id));
   });
 });
