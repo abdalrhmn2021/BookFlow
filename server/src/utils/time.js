@@ -51,10 +51,20 @@ const offsetMinutes = (date, timeZone) => {
   return Math.round((asIfUtc - date.getTime()) / 60000);
 };
 
-// Local date + time in `timeZone` -> the real UTC moment (handles DST via offsetMinutes).
+// Local date + time in `timeZone` -> the real UTC moment.
+// The offset is read twice: the first guess can fall on the other side of a daylight-saving
+// change (e.g. 00:30 on the day clocks go back), so it is re-read at the corrected moment.
+// A local time that doesn't exist (skipped when clocks go forward) maps to the moment just
+// after the jump, e.g. 02:30 -> 03:30.
 const localToDate = (dateStr, hhmm, timeZone) => {
-  const guess = new Date(`${dateStr}T${hhmm}:00Z`);
-  return new Date(guess.getTime() - offsetMinutes(guess, timeZone) * 60000);
+  const wall = new Date(`${dateStr}T${hhmm}:00Z`).getTime();
+  const first = wall - offsetMinutes(new Date(wall), timeZone) * 60000;
+  const second = wall - offsetMinutes(new Date(first), timeZone) * 60000;
+  if (second === first) return new Date(first);
+  // The two offsets disagree: keep the one that really shows this wall-clock time, if any.
+  if (first + offsetMinutes(new Date(first), timeZone) * 60000 === wall) return new Date(first);
+  if (second + offsetMinutes(new Date(second), timeZone) * 60000 === wall) return new Date(second);
+  return new Date(Math.max(first, second));
 };
 
 const nextDate = (dateStr) => {

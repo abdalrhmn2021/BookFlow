@@ -18,7 +18,11 @@ exports.listBusinesses = async (req, res) => {
   const [tenants, owners, staff, recent, upcoming] = await Promise.all([
     Tenant.find().sort({ createdAt: -1 }).lean(),
     User.find({ role: "owner" }).select("name email phone tenantId").lean(),
-    User.aggregate([{ $match: { role: "staff", isActive: true } }, { $group: { _id: "$tenantId", n: { $sum: 1 } } }]),
+    // Everyone customers can book: active staff, plus an owner who takes bookings too.
+    User.aggregate([
+      { $match: { isActive: true, $or: [{ role: "staff" }, { role: "owner", bookable: true }] } },
+      { $group: { _id: "$tenantId", n: { $sum: 1 } } },
+    ]),
     Appointment.aggregate([
       { $match: { createdAt: { $gte: since } } },
       { $group: { _id: "$tenantId", n: { $sum: 1 }, last: { $max: "$createdAt" } } },

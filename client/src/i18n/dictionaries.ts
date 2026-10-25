@@ -939,6 +939,7 @@ const ar: Dictionary = {
     "You can't book a time in the past": "لا يمكن الحجز في وقت مضى",
     "Name must be at least 2 characters": "الاسم يجب أن يكون حرفين على الأقل",
     "Name is too long": "الاسم طويل جداً",
+    "Please sign up on the business's own booking site": "سجّل حسابك من موقع الحجز الخاص بالنشاط نفسه",
     "Please provide a valid phone number": "أدخل رقم جوال صحيح",
     "You already have too many upcoming bookings here": "لديك حجوزات قادمة كثيرة هنا بالفعل",
     "Too many bookings from this device, please try again later": "حجوزات كثيرة من هذا الجهاز، حاول لاحقاً",

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
 const StaffLock = require("../models/StaffLock");
+const GuestLock = require("../models/GuestLock");
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
@@ -104,8 +105,26 @@ async function peopleForService(tenant, service) {
 }
 
 // Saves the appointment for this person under their lock, or returns null if they're taken.
-function insertWithLock(staff, startTime, endTime, fields) {
+// guestLimit: { tenantId, phone, max } - the guest's own limit, checked under their phone lock
+// in the same transaction, so parallel bookings from one phone can't all pass the count.
+async function insertWithLock(staff, startTime, endTime, fields, guestLimit) {
+  const guestKey = guestLimit && `${guestLimit.tenantId}:${guestLimit.phone}`;
+  if (guestKey) {
+    await GuestLock.updateOne({ key: guestKey }, { $setOnInsert: { key: guestKey } }, { upsert: true }).catch((err) => {
+      if (err.code !== 11000) throw err;
+    });
+  }
   return withStaffLock(staff._id, async (session) => {
+    if (guestKey) {
+      await GuestLock.updateOne({ key: guestKey }, { $inc: { version: 1 } }, { session });
+      const upcoming = await Appointment.countDocuments({
+        tenantId: guestLimit.tenantId,
+        "guest.phone": guestLimit.phone,
+        status: { $in: ACTIVE_STATUSES },
+        startTime: { $gte: new Date() },
+      }).session(session);
+      if (upcoming >= guestLimit.max) throw httpError(429, "You already have too many upcoming bookings here");
+    }
     if (await hasConflict(staff._id, startTime, endTime, session)) return null;
     const [created] = await Appointment.create([{ ...fields, staffId: staff._id, startTime, endTime }], { session });
     return created;
@@ -115,7 +134,7 @@ function insertWithLock(staff, startTime, endTime, fields) {
 // "Any staff member": try the people who do the service, the least busy that day first, each
 // under their own lock - so two customers booking "anyone" at the same moment get two
 // different people (or one gets 409 when nobody is left), never the same person twice.
-async function bookAnyone({ tenant, service, date, time, fields }) {
+async function bookAnyone({ tenant, service, date, time, fields, guestLimit }) {
   const { startTime, endTime } = checkBusinessTime({ tenant, date, time, duration: service.duration });
 
   const people = (await peopleForService(tenant, service)).filter((p) =>
@@ -140,7 +159,7 @@ async function bookAnyone({ tenant, service, date, time, fields }) {
   people.sort((a, b) => (load.get(String(a._id)) ?? 0) - (load.get(String(b._id)) ?? 0));
 
   for (const staff of people) {
-    const appointment = await insertWithLock(staff, startTime, endTime, fields);
+    const appointment = await insertWithLock(staff, startTime, endTime, fields, guestLimit);
     if (appointment) return { appointment, staff };
   }
   throw httpError(409, NOBODY_FREE);
@@ -158,6 +177,7 @@ async function bookAppointment({
   manageTokenHash,
   status = "pending",
   createdBy,
+  maxGuestUpcoming, // public guest bookings only: max upcoming bookings per phone at this business
 }) {
   if (!slug || !serviceId || !staffId || !date || !time) {
     throw httpError(400, "slug, serviceId, staffId, date and time are required");
@@ -180,9 +200,11 @@ async function bookAppointment({
     status,
     createdBy,
   };
+  const guestLimit =
+    maxGuestUpcoming && guest?.phone ? { tenantId: tenant._id, phone: guest.phone, max: maxGuestUpcoming } : null;
 
   if (staffId === ANY_STAFF) {
-    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields });
+    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields, guestLimit });
     return { appointment, tenant, service, staff };
   }
 
@@ -191,7 +213,7 @@ async function bookAppointment({
   if (!offersService(staff, service._id)) throw httpError(400, "This staff member doesn't offer this service");
 
   const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: service.duration });
-  const appointment = await insertWithLock(staff, startTime, endTime, fields);
+  const appointment = await insertWithLock(staff, startTime, endTime, fields, guestLimit);
 
   if (!appointment) throw httpError(409, "This staff member is already booked at that time");
   return { appointment, tenant, service, staff };
@@ -223,7 +245,8 @@ async function rescheduleAppointment({ appointment, tenant, staffId, date, time,
           staffId: staff._id,
           rescheduled: { from: appointment.startTime, at: new Date(), by },
         },
-        $unset: { reminderSentAt: 1 }, // the reminder was for the old time
+        // The reminder was for the old time: the new one gets its own, with fresh retries.
+        $unset: { reminderSentAt: 1, reminderChannel: 1, autoReminder: 1 },
       },
       { returnDocument: "after", runValidators: true, session },
     );

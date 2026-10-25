@@ -126,19 +126,6 @@ exports.createGuestAppointment = async (req, res) => {
     throw httpError(400, "Please provide a valid phone number");
   }
 
-  const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true }).select("_id");
-  if (!tenant) throw httpError(404, "Business not found");
-
-  const upcoming = await Appointment.countDocuments({
-    tenantId: tenant._id,
-    "guest.phone": cleanPhone,
-    status: { $in: ACTIVE_STATUSES },
-    startTime: { $gte: new Date() },
-  });
-  if (upcoming >= MAX_GUEST_UPCOMING) {
-    throw httpError(429, "You already have too many upcoming bookings here");
-  }
-
   const { token: manageToken, hash: manageTokenHash } = createManageToken();
 
   const {
@@ -154,6 +141,8 @@ exports.createGuestAppointment = async (req, res) => {
     notes,
     guest: { name: cleanName, phone: cleanPhone },
     manageTokenHash,
+    // Checked inside the booking transaction, under a per-phone lock (booking.service).
+    maxGuestUpcoming: MAX_GUEST_UPCOMING,
   });
 
   // Not awaited: the guest gets the answer now, the email goes out in the background.
