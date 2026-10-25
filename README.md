@@ -28,6 +28,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 
 **Customers**
 - Browse businesses and book in 5 steps: service → staff → day → free time → confirm
+- **"Any staff member"**: see every time at which someone who does the service is free; the server picks a free person at booking time (least busy that day first), each under their own double-booking lock
 - **Book as a guest** - just a name and a phone number, no account needed (phone normalized, Arabic digits accepted, max 3 upcoming bookings per phone per business, own rate limit)
 - **Private "manage my booking" link for guests** - a random 192-bit token in the URL (`/booking/<token>`); only its SHA-256 hash is stored. The guest can copy it or send it to themselves on WhatsApp, then see or cancel the booking (same 2-hour + reason rules as customers). Phone shown masked, page is `noindex`, link endpoints are rate limited
 - Only real free slots are offered (working hours, existing bookings, past times all excluded)
@@ -182,7 +183,7 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-141 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
+151 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -244,7 +245,7 @@ Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
 | POST | `/api/auth/forgot-password` · `/api/auth/reset-password` | public |
 | PATCH | `/api/auth/password` | logged in |
 | GET | `/api/auth/me` | logged in |
-| GET | `/api/public/businesses` · `/api/public/businesses/:slug` · `/api/public/businesses/:slug/availability` | public |
+| GET | `/api/public/businesses` · `/api/public/businesses/:slug` · `/api/public/businesses/:slug/availability` (`staffId=any` = anyone free) | public |
 | POST | `/api/appointments` | customer |
 | GET · PATCH | `/api/appointments/me` · `/api/appointments/:id/cancel` | customer |
 | GET · PATCH | `/api/appointments/business` · `/api/appointments/:id/status` | owner, staff |
@@ -264,7 +265,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 141 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
+- [x] Automated tests (Jest + Supertest) and CI - 151 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [x] Per-staff working hours, days off and "which staff can do which service"

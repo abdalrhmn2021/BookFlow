@@ -12,6 +12,8 @@ import { inputClass } from "@/lib/ui";
 import { offersService, type Availability, type GuestBookingResult, type PublicBusinessPage } from "@/lib/types";
 
 const DAYS_AHEAD = 14;
+// "Any staff member": the server merges everyone's free times and picks who is free at booking.
+const ANY_STAFF = "any";
 
 interface Draft {
   serviceId: string;
@@ -49,7 +51,7 @@ function readDraft(slug: string, data: PublicBusinessPage): Draft | null {
     const today = todayIn(data.business.timezone);
     const valid =
       data.services.some((s) => s.id === draft.serviceId) &&
-      data.staff.some((s) => s.id === draft.staffId) &&
+      (draft.staffId === ANY_STAFF || data.staff.some((s) => s.id === draft.staffId)) &&
       draft.date >= today &&
       draft.date <= addDays(today, DAYS_AHEAD - 1);
     return valid ? draft : null;
@@ -160,9 +162,12 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
     setSubmitting(true);
     const body = { serviceId, staffId, date, time, notes: notes.trim() || undefined };
     let manageToken: string | undefined;
+    // With "any staff member", only the server's answer says who it is.
+    let staffName = page.staff.find((s) => s.id === staffId)?.name ?? "";
     try {
       if (user) {
-        await api.post("/appointments", { ...body, slug: page.business.slug });
+        const result = await api.post<{ staffName?: string }>("/appointments", { ...body, slug: page.business.slug });
+        if (result.staffName) staffName = result.staffName;
       } else {
         const details = { name: guest.name.trim(), phone: guest.phone.trim() };
         const result = await api.post<GuestBookingResult>(
@@ -170,11 +175,12 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           { ...body, ...details },
         );
         manageToken = result.manageToken;
+        if (result.appointment.staffName) staffName = result.appointment.staffName;
         saveGuest(details);
       }
       setBooked({
         serviceName: page.services.find((s) => s.id === serviceId)?.name ?? "",
-        staffName: page.staff.find((s) => s.id === staffId)?.name ?? "",
+        staffName,
         date,
         time,
         guestPhone: user ? undefined : guest.phone.trim(),
@@ -255,7 +261,12 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   const service = services.find((s) => s.id === serviceId);
   // Only the staff who do this service (a staff member with no list does them all).
   const staffForService = staff.filter((m) => offersService(m, serviceId));
-  const member = staffForService.find((s) => s.id === staffId);
+  // "Any staff member" is offered when more than one person does the service.
+  const offerAny = staffForService.length > 1;
+  const member =
+    staffId === ANY_STAFF && offerAny
+      ? { id: ANY_STAFF, name: t.book.anyStaff }
+      : staffForService.find((s) => s.id === staffId);
 
   const today = todayIn(business.timezone);
   const days = Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i));
@@ -317,6 +328,11 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
               <Empty>{t.book.noStaff}</Empty>
             ) : (
               <div className="flex flex-wrap gap-2">
+                {offerAny && (
+                  <Chip selected={staffId === ANY_STAFF} onClick={() => choose(setStaffId, ANY_STAFF)}>
+                    {t.book.anyStaff}
+                  </Chip>
+                )}
                 {staffForService.map((m) => (
                   <Chip key={m.id} selected={m.id === staffId} onClick={() => choose(setStaffId, m.id)}>
                     {m.name}
@@ -363,7 +379,13 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
             ) : slotsNow?.error ? (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{tError(slotsNow.error)}</p>
             ) : slots.length === 0 ? (
-              <Empty>{slotsNow?.data?.isOpen === false ? t.book.closedDay : t.book.noSlots(member.name)}</Empty>
+              <Empty>
+                {slotsNow?.data?.isOpen === false
+                  ? t.book.closedDay
+                  : member.id === ANY_STAFF
+                    ? t.book.noSlotsAny
+                    : t.book.noSlots(member.name)}
+              </Empty>
             ) : (
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                 {slots.map((t) => (

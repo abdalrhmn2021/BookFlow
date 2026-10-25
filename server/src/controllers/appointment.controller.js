@@ -61,7 +61,8 @@ exports.createAppointment = async (req, res) => {
     console.error("[notify] new booking email failed:", err.message),
   );
 
-  res.status(201).json({ appointment });
+  // staffName: with "any staff member" the customer only learns here who they got.
+  res.status(201).json({ appointment, staffName: staff.name });
 };
 
 exports.getMyAppointments = async (req, res) => {

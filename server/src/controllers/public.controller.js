@@ -8,6 +8,8 @@ const { siteUrl } = require("../utils/siteUrl");
 const {
   bookAppointment,
   findFreeSlots,
+  findFreeSlotsAny,
+  ANY_STAFF,
   httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,
@@ -73,6 +75,20 @@ exports.getAvailability = async (req, res) => {
 
   const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true });
   if (!tenant) return res.status(404).json({ message: "Business not found" });
+
+  // "Any staff member": the free times of everyone who does this service, merged.
+  if (staffId === ANY_STAFF) {
+    const service = await Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true });
+    if (!service) return res.status(404).json({ message: "Service not found" });
+    const { isOpen, slots } = await findFreeSlotsAny({ tenant, service, date });
+    return res.status(200).json({
+      date,
+      isOpen,
+      service: { id: service._id, name: service.name, duration: service.duration },
+      staff: { id: ANY_STAFF, name: null },
+      slots,
+    });
+  }
 
   const [service, staff] = await Promise.all([
     Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
