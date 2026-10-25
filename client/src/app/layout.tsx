@@ -6,7 +6,7 @@ import { BrandProvider } from "@/context/BrandContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { DEFAULT_LANG, dictionaries, isLang, LANG_COOKIE } from "@/i18n/dictionaries";
 import Navbar from "@/components/Navbar";
-import { getBrand, getBrandStyle } from "@/lib/brand";
+import { getBrand, getBrandStyle, getSiteUrl } from "@/lib/brand";
 import "./globals.css";
 
 const heading = Alexandria({
@@ -29,10 +29,23 @@ async function currentLang() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const brand = getBrand();
-  const name = brand.name[await currentLang()];
+  const lang = await currentLang();
+  const name = brand.name[lang];
+  const description = brand.singleBusinessSlug ? dictionaries[lang].meta.bookHere : dictionaries[lang].meta.platform;
   return {
+    metadataBase: getSiteUrl(),
     title: { default: name, template: `%s · ${name}` },
-    description: brand.singleBusinessSlug ? name : "Online booking for salons, clinics, gyms and more",
+    description,
+    // Link previews (Facebook, WhatsApp, X...). Pages like /book/[slug] add their own title and text.
+    openGraph: {
+      type: "website",
+      siteName: name,
+      title: name,
+      description,
+      locale: lang === "ar" ? "ar_AR" : "en_US",
+      images: [{ url: brand.shareImageUrl, width: 1200, height: 630, alt: name }],
+    },
+    twitter: { card: "summary_large_image" },
     // The tab icon: the client's logo, or the default BookFlow icon (public/favicon.ico).
     // It is set here and not as app/favicon.ico, because a file in app/ would always win.
     icons: { icon: brand.logoUrl ?? "/favicon.ico" },

@@ -6,6 +6,9 @@ import { brandScale, HEX_REGEX } from "@/lib/color";
 export interface Brand {
   name: { en: string; ar: string };
   logoUrl: string | null;
+  // The picture shown when a link is shared (Facebook, WhatsApp...): 1200x630.
+  // BRAND_SHARE_IMAGE_URL, or a generic "book online" image without any brand name on it.
+  shareImageUrl: string;
   // Set when this install runs one business only (same value as the server's SINGLE_BUSINESS_SLUG).
   singleBusinessSlug: string | null;
 }
@@ -17,8 +20,23 @@ export function getBrand(): Brand {
   return {
     name: { en, ar: clean(process.env.BRAND_NAME_AR) ?? en },
     logoUrl: clean(process.env.BRAND_LOGO_URL),
+    shareImageUrl: clean(process.env.BRAND_SHARE_IMAGE_URL) ?? "/og-default.png",
     singleBusinessSlug: clean(process.env.SINGLE_BUSINESS_SLUG)?.toLowerCase() ?? null,
   };
+}
+
+// The site's public address, for absolute links in shared previews (metadataBase).
+// SITE_URL when set; on Vercel the production domain (a client's own domain once added); else local.
+export function getSiteUrl(): URL {
+  const explicit = clean(process.env.SITE_URL);
+  const vercel = clean(process.env.VERCEL_PROJECT_PRODUCTION_URL) ?? clean(process.env.VERCEL_URL);
+  try {
+    if (explicit) return new URL(explicit);
+    if (vercel) return new URL(`https://${vercel}`);
+  } catch {
+    console.warn(`[brand] SITE_URL "${explicit}" is not a valid URL - using the default.`);
+  }
+  return new URL("http://localhost:3000");
 }
 
 // CSS variables that override the default coral palette (see globals.css).

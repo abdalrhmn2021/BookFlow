@@ -18,6 +18,15 @@ export interface ReminderParts {
 // `en` defines the shape; `ar` is typed as Dictionary, so a missing translation is a type error.
 const en = {
   dir: "ltr" as "ltr" | "rtl",
+  // Link previews and search results (generateMetadata). Plain text, no markup.
+  meta: {
+    platform: "Online booking for salons, clinics, gyms and more.",
+    bookHere: "Book your appointment online - pick the service, the staff member and a time that suits you.",
+    bookAt: (business: string, services: string) =>
+      `Book your appointment at ${business} online${services ? `: ${services}` : ""}. Pick the service, the staff member and a time that suits you.`,
+    andMore: "and more",
+    notFound: "Business not found",
+  },
   locale: "en-US",
 
   common: {
@@ -452,6 +461,14 @@ export type Dictionary = typeof en;
 
 const ar: Dictionary = {
   dir: "rtl",
+  meta: {
+    platform: "حجز المواعيد أونلاين للصالونات والعيادات والنوادي وغيرها.",
+    bookHere: "احجز موعدك أونلاين - اختر الخدمة والموظف والوقت المناسب لك.",
+    bookAt: (business, services) =>
+      `احجز موعدك في ${business} أونلاين${services ? `: ${services}` : ""}. اختر الخدمة والموظف والوقت المناسب لك.`,
+    andMore: "والمزيد",
+    notFound: "النشاط غير موجود",
+  },
   locale: "ar-u-nu-latn",
 
   common: {

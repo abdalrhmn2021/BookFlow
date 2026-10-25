@@ -1,10 +1,5 @@
 import type { NextConfig } from "next";
-
-const API_ORIGIN = (
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ??
-  "http://localhost:5000"
-).replace(/\/$/, "");
+import { API_ORIGIN } from "./src/lib/apiOrigin";
 
 // One-business copy: the same slug as the server's SINGLE_BUSINESS_SLUG.
 const SINGLE_BUSINESS_SLUG = process.env.SINGLE_BUSINESS_SLUG?.trim().toLowerCase() || null;
