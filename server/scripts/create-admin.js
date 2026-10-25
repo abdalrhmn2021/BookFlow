@@ -31,7 +31,7 @@ async function main() {
 
   await require("../src/config/db")();
   try {
-    if (await User.exists({ email })) {
+    if (await User.exists({ email, scope: null })) {
       console.error(`\n${email} already has an account here. Use another email (or npm run reset-password).\n`);
       process.exitCode = 1;
       return;

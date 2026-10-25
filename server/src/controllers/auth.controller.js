@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG, SHARED_SERVER } = require("../config/mode");
-const { siteAllows, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
+const { siteAllows, customerScope, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
 const { isDemoEmail } = require("../config/demo");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { siteUrl } = require("../utils/siteUrl");
@@ -13,6 +13,23 @@ const { isEmailConfigured, sendPasswordResetEmail } = require("../services/notif
 // Credentials must be real strings: an object like { "$gt": "" } would become a
 // MongoDB operator inside findOne (NoSQL injection).
 const isText = (value) => typeof value === "string" && value.length > 0;
+
+// Accounts this email may sign in to here, this site's own first.
+async function accountsFor(req, email, extra = {}) {
+  const scope = await customerScope(req);
+  const scopes = scope ? [scope, null] : [null];
+  const users = await User.find({ email: String(email).trim().toLowerCase(), scope: { $in: scopes }, ...extra }).select(
+    "+password",
+  );
+  return users.sort((a, b) => Number(Boolean(b.scope)) - Number(Boolean(a.scope)));
+}
+
+async function findAccount(req, email, password) {
+  for (const user of await accountsFor(req, email)) {
+    if (await user.comparePassword(password)) return user;
+  }
+  return null;
+}
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -28,7 +45,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "name, email and password are required" });
     }
 
-    const existingUser = await User.findOne({ email });
+    // On a shared server the account belongs to this site's business only.
+    const scope = await customerScope(req);
+    const existingUser = await User.findOne({ email: email.trim().toLowerCase(), scope });
     if (existingUser) {
       return res.status(409).json({ message: "Email already exists" });
     }
@@ -39,6 +58,7 @@ exports.register = async (req, res) => {
       password,
       phone,
       role: "customer",
+      scope,
     });
 
     const token = generateToken(user);
@@ -74,14 +94,11 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "email and password are required" });
     }
 
-    const user = await User.findOne({ email }).select("+password");
-
+    // The same email can have two accounts on a shared server: a customer account of THIS
+    // site's business, and a normal one (owner, staff, admin, or an older customer account).
+    // The site's own account is tried first; the password decides which one it is.
+    const user = await findAccount(req, email, password);
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -235,7 +252,7 @@ exports.forgotPassword = async (req, res) => {
   }
 
   const cleanEmail = email.trim().toLowerCase();
-  const user = isDemoEmail(cleanEmail) ? null : await User.findOne({ email: cleanEmail, isActive: true });
+  const user = isDemoEmail(cleanEmail) ? null : (await accountsFor(req, cleanEmail, { isActive: true }))[0];
   const site = siteUrl(req);
 
   // On a one-business site, don't send salon A's owner a link to salon B's site

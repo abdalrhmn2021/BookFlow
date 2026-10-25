@@ -62,6 +62,7 @@ const appointmentSchema = new mongoose.Schema(
       reason: { type: String, trim: true, maxlength: [300, "Reason is too long"] },
       cancelledBy: { type: ObjectId, ref: "User" },
       byGuest: { type: Boolean },
+      auto: { type: Boolean }, // closed by the system (never confirmed), see maintenance.service.js
       cancelledAt: { type: Date },
     },
   },

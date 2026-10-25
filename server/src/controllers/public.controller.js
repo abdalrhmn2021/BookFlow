@@ -189,6 +189,7 @@ function toGuestBookingDTO(a) {
             reason: a.cancellation.reason,
             cancelledAt: a.cancellation.cancelledAt,
             byGuest: Boolean(a.cancellation.byGuest),
+            auto: Boolean(a.cancellation.auto),
           }
         : null,
   };
