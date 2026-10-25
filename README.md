@@ -40,7 +40,10 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - **Overview** page: the next appointment, today's count / to-confirm / expected income, and the next 7 days as a bar chart - all from one API call
 - Daily schedule (timeline) with status workflow: `pending → confirmed → completed / no-show`, or `cancelled`
 - Manage services (soft delete), staff accounts (deactivate / reactivate) and weekly working hours
+- **Per-staff schedules**: each staff member's own week (narrowed to the business's hours, never widened), single days off, and the services they do - the booking page only offers staff who do the chosen service, and only their own free times
 - Staff see only **their own** appointments - enforced by the API, not the UI
+- **Automatic WhatsApp reminder** before each appointment (Meta WhatsApp Cloud API, approved template), plus a one-tap manual WhatsApp button; a booking is never reminded twice, even with two job runs at once
+- **Stale bookings close themselves**: a `pending` booking nobody confirmed can be closed after it starts, and is closed automatically a day after it ends
 - **New-booking alerts**: the dashboard chimes and shows a card within 30 s (plus a system notification in the background), and an Arabic + English email goes to the owner and the booked staff member (Brevo HTTPS API)
 - **Phone & walk-in bookings** from the dashboard (confirmed at once, phone optional, a manage link to send on WhatsApp) and **rescheduling** to another time or staff member, under the same double-booking lock as online bookings
 
@@ -49,6 +52,8 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - Full Arabic / English with RTL layout, no flash on load (language stored in a cookie, read on the server)
 - Backend error messages translated on the client
 - One-click demo accounts + a seed script with realistic sample data
+- **Seller admin panel** (`/admin`, superadmin only): every client business with its usage, switch a business off / on, its plan and paid-until date
+- On a shared server each business has **its own customer accounts** (the same email at two salons = two separate accounts)
 
 ## Tech stack
 
@@ -136,9 +141,11 @@ BookFlow/
 │   │   ├── middlewares/     auth, tenant, site (which business this site is), rate limit, errors
 │   │   ├── models/          Mongoose schemas
 │   │   ├── routes/
-│   │   ├── services/        booking (double-booking safe), business + owner creation
-│   │   └── utils/time.js    time-zone & overlap helpers
-│   ├── scripts/             seed.js (demo data), setup-client.js (a sold copy's business + owner)
+│   │   ├── services/        booking (double-booking safe), business + owner creation,
+│   │   │                    reminder + whatsapp (automatic reminders), maintenance (stale bookings), notify (emails)
+│   │   └── utils/           time-zone & overlap helpers, staff schedules, phone numbers, tokens
+│   ├── scripts/             seed.js (demo data), setup-client.js (a sold copy's business + owner),
+│   │                        create-admin.js (the seller's admin account)
 │   ├── tests/               Jest + Supertest API tests (in-memory MongoDB replica set)
 │   └── api-tests.http       every endpoint, runnable in VS Code REST Client
 ├── docs/INSTALL.md          install guide for each sold copy (Arabic)
@@ -245,8 +252,12 @@ Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
 | POST · PATCH | `/api/appointments/business` (walk-in / phone booking) · `/api/appointments/:id/reschedule` | owner, staff (own) |
 | GET | `/api/appointments/business/availability` (free times, `exclude` for rescheduling) | owner, staff |
 | CRUD | `/api/services` | owner (staff: read) |
+| PATCH | `/api/appointments/:id/reminded` (manual WhatsApp reminder sent) | owner, staff (own) |
 | CRUD | `/api/staff` | owner |
+| PUT | `/api/staff/:id/schedule` (own hours, days off, services) | owner |
 | GET · PUT | `/api/tenants/me` · `/api/tenants/me/working-hours` | owner (staff: read) |
+| GET · PATCH | `/api/admin/businesses` · `/api/admin/businesses/:id` | superadmin |
+| POST | `/api/jobs/reminders` (for an outside cron, `x-jobs-secret` header) | server secret |
 
 Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
