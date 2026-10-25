@@ -176,6 +176,7 @@ npm run create-admin -- --email you@example.com --name "اسمك"
 | رابط الحجز (slug) - إنجليزي صغير وأرقام وشرطات | `laila-salon` | السكربت + `SINGLE_BUSINESS_SLUG` |
 | اللوجو (PNG مربع أو SVG، خلفية شفافة أفضل) | `logo.png` | `BRAND_LOGO_URL` |
 | اللون الأساسي (hex) | `#7c3aed` | `BRAND_COLOR` |
+| صورة للمشاركة 1200×630 (اختياري) - مثلاً تصميم فيه اللوجو | `share.png` | `BRAND_SHARE_IMAGE_URL` |
 | اسم صاحب النشاط وإيميله ورقمه | ليلى - laila@example.com | سكربت التجهيز |
 | الخدمات (اسم، سعر، مدة) والموظفين وساعات الدوام | قص شعر - 50 ₪ - 30 دقيقة | يدخلها صاحب النشاط من لوحة التحكم |
 | المنطقة الزمنية لو مش فلسطين | `Asia/Riyadh` | `--timezone` |
@@ -222,6 +223,8 @@ npm run setup-client -- --name "Laila Salon" --slug laila-salon --owner "Laila" 
 | `BRAND_NAME_AR` | `صالون ليلى` | |
 | `BRAND_COLOR` | `#7c3aed` | |
 | `BRAND_LOGO_URL` | `/clients/laila-salon/logo.png` | انظر تحت |
+| `BRAND_SHARE_IMAGE_URL` | `/clients/laila-salon/share.png` | اختياري: الصورة اللي بتظهر لما ينشر رابط الموقع على فيسبوك وواتساب، 1200×630. فاضي = صورة عامة "احجز موعدك أونلاين" بدون أي اسم |
+| `SITE_URL` | `https://laila-salon.com` | اختياري: فقط لو للزبون دومين خاص مش مضاف في Vercel. فاضي = دومين Vercel |
 
 **اللوجو** - طريقتين:
 - حطه في الـ repo: `client/public/clients/laila-salon/logo.png` واعمل commit، والقيمة تصير `/clients/laila-salon/logo.png`.

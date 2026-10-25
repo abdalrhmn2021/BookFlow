@@ -53,6 +53,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - Own navy + coral design system (Tailwind v4 theme tokens), Alexandria + IBM Plex Sans Arabic for both scripts
 - Full Arabic / English with RTL layout, no flash on load (language stored in a cookie, read on the server)
 - Backend error messages translated on the client
+- **Link previews**: a shared `/book/<slug>` link shows the business's name and first services on Facebook, WhatsApp and X (server-side `generateMetadata`, cached 5 minutes; a sleeping API falls back to the site's generic preview instead of failing)
 - One-click demo accounts + a seed script with realistic sample data
 - **Seller admin panel** (`/admin`, superadmin only): every client business with its usage, switch a business off / on, its plan and paid-until date
 - On a shared server each business has **its own customer accounts** (the same email at two salons = two separate accounts)
@@ -215,6 +216,7 @@ The same code runs as a **branded site for one business** - no code changes, onl
 | `BRAND_NAME` · `BRAND_NAME_AR` | Name in the header, dashboard and browser tab |
 | `BRAND_LOGO_URL` | Logo (a file in `client/public` or a full URL), also the tab icon |
 | `BRAND_COLOR` | One hex color → the full button / highlight / link palette, generated in OKLCH with readable contrast (`client/src/lib/color.ts`) |
+| `BRAND_SHARE_IMAGE_URL` · `SITE_URL` | Optional: the 1200×630 link-preview picture (default: a generic "book online" image with no brand name) and the public address for shared links (default: the Vercel production domain) |
 
 A new client's business and owner account are created with one command - no demo data:
 
