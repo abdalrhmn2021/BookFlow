@@ -11,7 +11,7 @@ const {
   resetPassword,
   deleteMyAccount,
 } = require("../controllers/auth.controller");
-const { protect } = require("../middlewares/auth.middleware");
+const { protect, restrictTo } = require("../middlewares/auth.middleware");
 const {
   loginLimiter,
   registerLimiter,
@@ -30,7 +30,8 @@ router.post("/reset-password", resetPasswordLimiter, resetPassword);
 router.patch("/password", protect, loginLimiter, changePassword);
 
 router.get("/me", protect, getMe);
-// Same limiter as login: it checks a password.
-router.delete("/me", protect, loginLimiter, deleteMyAccount);
+// Customers only (owners / staff are refused before the limiter, so they don't use up the
+// attempts); then the same limiter as login, because it checks a password.
+router.delete("/me", protect, restrictTo("customer"), loginLimiter, deleteMyAccount);
 
 module.exports = router;
