@@ -34,11 +34,13 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - Only real free slots are offered (working hours, existing bookings, past times all excluded)
 - Choices survive the login redirect - pick first, log in after
 - "My appointments": upcoming & past, cancel with confirmation
+- **AI booking assistant** (Google Gemini, optional per business): a chat on the booking page that answers about services, prices, hours and **real free times** - Gemini calls a `find_free_times` tool backed by the same slot finder as the booking form, so it never invents a time. It can't book or cancel; it points to the form. Replies in the customer's language, nothing stored, rate limited
 - **Forgot password** by email (one-use link, 30 minutes, only its hash stored) and **change password**; either one signs out every other device
 
 **Business owners & staff**
 - Business sign-up creates the business **and** its owner in one transaction
 - **Overview** page: the next appointment, today's count / to-confirm / expected income, and the next 7 days as a bar chart - all from one API call
+- **Upcoming bookings in the schedule**: a strip of the next 14 days with a count on each day that has bookings, and an empty day lists the next bookings - a booking made for next week never looks "missing"
 - Daily schedule (timeline) with status workflow: `pending → confirmed → completed / no-show`, or `cancelled`
 - Manage services (soft delete), staff accounts (deactivate / reactivate) and weekly working hours
 - **The owner can take bookings too** ("I take bookings too" on their own card): a barber who runs the shop alone needs no second account - customers book the owner like any staff member, with the same double-booking lock, own hours, services and days off
@@ -56,7 +58,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - **Privacy & terms**: `/privacy` and `/terms` in Arabic and English (business name, operator and retention period from `.env`), linked in the footer and under the booking / sign-up buttons; a **WhatsApp opt-in** checkbox (off by default) - the automatic reminder only goes to customers who ticked it; customers can **delete their account**; guests' name, phone and notes are **removed after 12 months** (the booking stays for the numbers); the admin can **export a business's data** as JSON
 - **Link previews**: a shared `/book/<slug>` link shows the business's name and first services on Facebook, WhatsApp and X (server-side `generateMetadata`, cached 5 minutes; a sleeping API falls back to the site's generic preview instead of failing)
 - One-click demo accounts + a seed script with realistic sample data
-- **Seller admin panel** (`/admin`, superadmin only): every client business with its usage, switch a business off / on, its plan and paid-until date
+- **Seller admin panel** (`/admin`, superadmin only): every client business with its usage, switch a business off / on, its plan and paid-until date, and switch WhatsApp reminders / the AI assistant on per business
 - On a shared server each business has **its own customer accounts** (the same email at two salons = two separate accounts)
 
 ## Tech stack
@@ -67,6 +69,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 | Backend | Node.js, Express 5, Mongoose 9 |
 | Database | MongoDB (replica set - required for transactions) |
 | Auth & security | JWT in an httpOnly cookie, bcrypt, helmet, express-rate-limit, CORS allow-list |
+| Integrations (optional) | Google Gemini (function calling), Meta WhatsApp Cloud API, Brevo email API |
 
 ## Architecture
 
@@ -76,6 +79,9 @@ flowchart LR
   O[Owner / Staff] --> FE
   FE -->|REST + JWT| API[Express API]
   API --> DB[(MongoDB<br/>replica set)]
+  API -.-> AI[Google Gemini<br/>booking assistant]
+  API -.-> WA[WhatsApp Cloud API<br/>reminders]
+  API -.-> MAIL[Brevo<br/>emails]
 ```
 
 The repo is a monorepo: `client/` (Next.js) and `server/` (Express) are deployed separately.
@@ -185,7 +191,7 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-178 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
+198 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, upcoming bookings, WhatsApp reminders (never twice), the AI assistant (with a fake Gemini), password reset, privacy rules, the admin panel and the new-client setup.
 Locally they run on a throwaway in-memory MongoDB (or on `MONGO_URI_TEST` if you set it - never on `MONGO_URI`);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -262,6 +268,8 @@ Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
 | GET · PATCH | `/api/appointments/business` · `/api/appointments/:id/status` | owner, staff |
 | GET | `/api/appointments/business/stats` (dashboard overview) | owner, staff |
 | GET | `/api/appointments/business/new?since=` (new-booking alerts) | owner, staff |
+| GET | `/api/appointments/business/upcoming` (next bookings + count per day) | owner, staff |
+| POST | `/api/public/businesses/:slug/assistant` (AI assistant chat) | public, when switched on |
 | POST · PATCH | `/api/appointments/business` (walk-in / phone booking) · `/api/appointments/:id/reschedule` | owner, staff (own) |
 | GET | `/api/appointments/business/availability` (free times, `exclude` for rescheduling) | owner, staff |
 | CRUD | `/api/services` | owner (staff: read) |
@@ -276,7 +284,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 178 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
+- [x] Automated tests (Jest + Supertest) and CI - 198 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [x] Per-staff working hours, days off and "which staff can do which service"
@@ -285,6 +293,8 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 - [ ] Longer-range analytics (monthly revenue, no-show rate)
 - [x] A `pending` booking nobody confirmed can be closed after it starts, and is closed automatically a day after it ends
 - [x] Shared server: each business has its own customer accounts (same email = separate account per business)
+- [x] AI booking assistant on the booking page (Gemini function calling over the real schedule)
+- [x] Upcoming bookings in the dashboard schedule (next 14 days at a glance)
 
 ## Author
 
