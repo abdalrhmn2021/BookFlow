@@ -7,9 +7,10 @@ import type { Lang } from "@/i18n/dictionaries";
 //   unconfirmed bookings closed a day after they end: server/src/services/maintenance.service.js
 //   guest details removed after DATA_RETENTION_MONTHS: same file
 //   WhatsApp reminders only with the customer's tick: server/src/services/reminder.service.js
+//   chat assistant: messages go to Google Gemini, nothing stored: server/src/services/assistant.service.js
 // Not legal advice: have a lawyer look at them before relying on them for a client.
 
-export const LEGAL_UPDATED = "2026-10-25";
+export const LEGAL_UPDATED = "2026-10-26";
 
 export interface LegalParams {
   site: string; // the business on a one-business site, else the platform name
@@ -74,6 +75,7 @@ const en: LegalTexts = {
           : "The business you book with, and its staff (staff see only their own appointments).",
         ...(p.operator ? [`${p.operator}, who runs the system, when needed to operate or support it.`] : []),
         "The services that host and run the system, only to do that: Vercel (the website), Render (the server), MongoDB Atlas (the database), Brevo (emails to the business) and Meta / WhatsApp (reminders, if you agreed). Some of them store data outside your country.",
+        "If the booking page has the chat assistant, what you type in the chat is sent to Google (Gemini) to write the answer. We don't save the chat, but don't type private details there - booking needs only the form.",
       ],
     },
     {
@@ -206,6 +208,7 @@ const ar: LegalTexts = {
           : "النشاط الذي تحجز لديه وموظفوه (كل موظف يرى مواعيده فقط).",
         ...(p.operator ? [`${p.operator}، مشغّل النظام، عند الحاجة لتشغيله أو تقديم الدعم.`] : []),
         "الخدمات التي تستضيف النظام وتشغّله، لهذا الغرض فقط: Vercel (الموقع)، Render (الخادم)، MongoDB Atlas (قاعدة البيانات)، Brevo (رسائل البريد للنشاط)، وميتا / واتساب (التذكيرات إن وافقت). بعضها يخزّن البيانات خارج بلدك.",
+        "إذا كانت صفحة الحجز فيها المساعد الذكي، فما تكتبه في المحادثة يُرسَل إلى Google (Gemini) لكتابة الرد. لا نحفظ المحادثة، لكن لا تكتب فيها معلومات خاصة - الحجز يحتاج النموذج فقط.",
       ],
     },
     {

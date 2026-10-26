@@ -53,6 +53,14 @@ exports.guestBookingLimiter = rateLimit({
   message: { message: "Too many bookings from this device, please try again later" },
 });
 
+// Every message is a Gemini call on the seller's key.
+exports.assistantLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  message: { message: "Too many messages, please try again in a few minutes" },
+});
+
 exports.manageBookingLimiter = rateLimit({
   ...base,
   windowMs: 15 * 60 * 1000,

@@ -48,6 +48,7 @@ export interface PublicBusinessPage {
     slug: string;
     timezone: string;
     workingHours: WorkingDay[];
+    assistant: boolean;
   };
   services: PublicService[];
   staff: PublicStaff[];
@@ -190,6 +191,7 @@ export interface AdminBusiness {
   plan: string;
   isActive: boolean;
   whatsappReminders: boolean;
+  aiAssistant: boolean;
   timezone: string;
   createdAt: string;
   paidUntil: string | null;

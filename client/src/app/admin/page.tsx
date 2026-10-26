@@ -203,7 +203,7 @@ function BusinessCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 border-t border-navy-100 pt-4 sm:grid-cols-[auto_auto_auto_1fr]">
+      <div className="mt-4 grid gap-3 border-t border-navy-100 pt-4 sm:grid-cols-[auto_auto_auto_auto_1fr]">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -213,6 +213,16 @@ function BusinessCard({
             className="h-4 w-4 accent-brand-600"
           />
           {a.whatsapp}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={b.aiAssistant}
+            disabled={busy}
+            onChange={(e) => patch({ aiAssistant: e.target.checked })}
+            className="h-4 w-4 accent-brand-600"
+          />
+          {a.assistant}
         </label>
         <label className="text-sm">
           <span className="block text-xs text-navy-500">{a.plan}</span>

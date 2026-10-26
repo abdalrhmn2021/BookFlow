@@ -75,6 +75,12 @@ const tenantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // The booking page's chat assistant (services/assistant.service.js). Off by default:
+    // every answer is a paid Gemini call on your key - switch it on per business in /admin.
+    aiAssistant: {
+      type: Boolean,
+      default: false,
+    },
     // Your own bookkeeping for a sold copy (admin panel). Nothing switches off by itself:
     // you decide when to set isActive=false for a client who didn't pay.
     subscription: {
