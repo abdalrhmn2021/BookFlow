@@ -6,11 +6,11 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import StatusBadge from "@/components/StatusBadge";
 import BookingForm, { type BookingFormMode } from "@/components/dashboard/BookingForm";
 import { api, ApiError } from "@/lib/api";
-import { addDays, formatLongDate, formatMomentIn, formatPrice, todayIn } from "@/lib/format";
+import { addDays, formatDayChip, formatLongDate, formatMomentIn, formatPrice, todayIn } from "@/lib/format";
 import { IconChevron, IconNote, IconPhone, IconWhatsApp } from "@/components/icons";
 import { btnPrimary, btnSecondary, emptyBox, errorBox } from "@/lib/ui";
 import { toWhatsAppNumber, whatsAppLink } from "@/lib/whatsapp";
-import type { AppointmentStatus, BusinessAppointment } from "@/lib/types";
+import type { AppointmentStatus, BusinessAppointment, UpcomingBookings } from "@/lib/types";
 
 const phoneOf = (a: BusinessAppointment) => a.guest?.phone ?? a.customerId?.phone;
 const nameOf = (a: BusinessAppointment) => a.guest?.name ?? a.customerId?.name;
@@ -29,6 +29,11 @@ function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
 }
 
 const FILTERS: (AppointmentStatus | "all")[] = ["all", "pending", "confirmed", "completed", "cancelled", "no-show"];
+
+// The strip of days under the header: today and the next two weeks.
+const STRIP_DAYS = 14;
+// How many of the next bookings to show when the chosen day is empty.
+const UPCOMING_SHOWN = 5;
 
 export default function ScheduleTab({
   timezone,
@@ -57,6 +62,8 @@ export default function ScheduleTab({
   const [cancelReason, setCancelReason] = useState("");
   const [actionError, setActionError] = useState<{ id: string; err: unknown } | null>(null);
   const [form, setForm] = useState<BookingFormMode | null>(null);
+  const [upcoming, setUpcoming] = useState<UpcomingBookings | null>(null);
+  const [upcomingTick, setUpcomingTick] = useState(0);
 
   useEffect(() => {
     const requestKey = `${date}|${filter}|${reloadTick}|${refreshKey}`;
@@ -77,6 +84,20 @@ export default function ScheduleTab({
     };
   }, [date, filter, reloadTick, refreshKey]);
 
+  // Which days ahead have bookings (for the strip) and the next few (for an empty day).
+  useEffect(() => {
+    let ignore = false;
+    api
+      .get<UpcomingBookings>("/appointments/business/upcoming")
+      .then((data) => {
+        if (!ignore) setUpcoming(data);
+      })
+      .catch(() => {}); // only a helper: the day's list still works without it
+    return () => {
+      ignore = true;
+    };
+  }, [reloadTick, refreshKey, upcomingTick]);
+
   const current = result?.key === key ? result : null;
 
   const changeStatus = async (id: string, status: AppointmentStatus) => {
@@ -92,6 +113,7 @@ export default function ScheduleTab({
       );
       setConfirmCancelId(null);
       setCancelReason("");
+      setUpcomingTick((n) => n + 1);
     } catch (err) {
       setActionError({ id, err });
       if (err instanceof ApiError && err.status === 409) setReloadTick((n) => n + 1);
@@ -114,6 +136,10 @@ export default function ScheduleTab({
 
   const today = todayIn(timezone);
   const list = current?.list ?? [];
+  const localDateOf = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(iso));
+  const countOn = new Map((upcoming?.days ?? []).map((d) => [d.date, d.count]));
+  const strip = Array.from({ length: STRIP_DAYS }, (_, i) => addDays(today, i));
+  const nextOnes = (upcoming?.appointments ?? []).slice(0, UPCOMING_SHOWN);
 
   const reminderText = (a: BusinessAppointment) => {
     const apptDate = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(a.startTime));
@@ -189,7 +215,40 @@ export default function ScheduleTab({
         </div>
       </div>
 
-      <div className="mt-5 flex gap-1 overflow-x-auto rounded-xl bg-navy-100/60 p-1">
+      <div role="group" aria-label={s.upcomingDays} className="-mx-1 mt-5 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        {strip.map((d) => {
+          const chip = formatDayChip(d, t.locale);
+          const count = countOn.get(d) ?? 0;
+          const selected = d === date;
+          return (
+            <button
+              key={d}
+              onClick={() => setDate(d)}
+              aria-pressed={selected}
+              aria-label={`${formatLongDate(d, t.locale)}${count ? ` - ${s.count(count)}` : ""}`}
+              className={`relative flex w-12 shrink-0 flex-col items-center rounded-xl border px-1 py-1.5 text-xs transition ${
+                selected
+                  ? "border-navy-900 bg-navy-900 text-white"
+                  : "border-navy-100 bg-white text-navy-600 hover:border-navy-300"
+              }`}
+            >
+              <span>{chip.weekday}</span>
+              <span className="tabular text-base font-semibold">{chip.day}</span>
+              {count > 0 && (
+                <span
+                  className={`tabular mt-0.5 min-w-5 rounded-full px-1 text-[11px] font-semibold ${
+                    selected ? "bg-white text-navy-900" : "bg-brand-500 text-white"
+                  }`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex gap-1 overflow-x-auto rounded-xl bg-navy-100/60 p-1">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -210,7 +269,53 @@ export default function ScheduleTab({
         ) : current.error ? (
           <p className={errorBox}>{tError(current.error)}</p>
         ) : list.length === 0 ? (
-          <p className={emptyBox}>{s.empty}</p>
+          <>
+            <p className={emptyBox}>{s.empty}</p>
+            {filter === "all" && upcoming && (
+              <section className="mt-6">
+                <h3 className="font-display text-base font-semibold">{s.upcomingTitle}</h3>
+                {nextOnes.length === 0 ? (
+                  <p className="mt-2 text-sm text-navy-500">{s.upcomingNone}</p>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm text-navy-500">{s.upcomingHint}</p>
+                    <ul className="mt-3 space-y-2">
+                      {nextOnes.map((a) => {
+                        const when = formatMomentIn(a.startTime, timezone, t.locale);
+                        return (
+                          <li key={a._id}>
+                            <button
+                              onClick={() => setDate(localDateOf(a.startTime))}
+                              className="flex w-full items-center gap-3 rounded-xl border border-navy-100 bg-white p-3 text-start transition hover:border-navy-300"
+                            >
+                              <span className="w-24 shrink-0 text-sm">
+                                <span className="block text-navy-500">{when.date}</span>
+                                <span dir="ltr" className="tabular font-semibold text-navy-900">
+                                  {when.time}
+                                </span>
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate font-medium">{nameOf(a) ?? s.noCustomer}</span>
+                                <span className="block truncate text-sm text-navy-600">
+                                  {a.serviceName}
+                                  {user?.role === "owner" && ` ${s.with} ${a.staffId.name}`}
+                                </span>
+                              </span>
+                              <StatusBadge status={a.status} />
+                              <IconChevron className="h-4 w-4 shrink-0 text-navy-400 rtl:rotate-180" />
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {upcoming.total > nextOnes.length && (
+                      <p className="mt-2 text-sm text-navy-500">{s.upcomingMore(upcoming.total - nextOnes.length)}</p>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+          </>
         ) : (
           <>
             <p className="mb-4 text-sm text-navy-500">{s.count(list.length)}</p>

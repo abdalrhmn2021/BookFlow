@@ -223,6 +223,11 @@ const en = {
       dayToday: "today",
       dayTomorrow: "tomorrow",
       dayOn: (date: string) => `on ${date}`,
+      upcomingDays: "Days with bookings",
+      upcomingTitle: "Next bookings",
+      upcomingHint: "Nothing on this day - here are the next ones:",
+      upcomingNone: "No bookings coming up yet.",
+      upcomingMore: (n: number) => (n === 1 ? "+1 more coming up" : `+${n} more coming up`),
       reminderMessage: (p: ReminderParts) =>
         `Hi ${p.name} 👋\nA reminder of your appointment at ${p.business} ${p.day} at ${p.time}` +
         ` (${p.service} with ${p.staff}).\nTo cancel or change it, just reply to this message. See you soon!`,
@@ -682,6 +687,11 @@ const ar: Dictionary = {
       dayToday: "اليوم",
       dayTomorrow: "غداً",
       dayOn: (date) => `يوم ${date}`,
+      upcomingDays: "الأيام التي فيها حجوزات",
+      upcomingTitle: "الحجوزات القادمة",
+      upcomingHint: "لا شيء في هذا اليوم - هذه أقرب الحجوزات:",
+      upcomingNone: "لا توجد حجوزات قادمة بعد.",
+      upcomingMore: (n) => (n === 1 ? "+ حجز آخر قادم" : n === 2 ? "+ حجزان آخران قادمان" : `+ ${n} حجوزات أخرى قادمة`),
       reminderMessage: (p) =>
         `مرحباً ${p.name} 👋\nنذكّرك بموعدك في ${p.business} ${p.day} الساعة ${p.time}` +
         ` (${p.service} مع ${p.staff}).\nللإلغاء أو التعديل، ردّ على هذه الرسالة. بانتظارك!`,
