@@ -26,7 +26,9 @@ let replSet;
 const CONNECT_OPTIONS = { dbName: TEST_DB_NAME, runtimeAdapters: { os: require("os") } };
 
 async function connect() {
-  const uri = process.env.MONGO_URI_TEST || process.env.MONGO_URI;
+  // Only MONGO_URI_TEST, never MONGO_URI: that one may point at a live cluster (yours or the
+  // shared clients' one). Not set = a throwaway in-memory MongoDB.
+  const uri = process.env.MONGO_URI_TEST;
 
   if (uri) {
     if (uri.startsWith("mongodb+srv://")) {
