@@ -320,7 +320,6 @@ const en = {
     },
     hours: {
       subtitle: "Customers can only book inside these hours.",
-      open: "Open",
       closed: "Closed",
       from: "From",
       to: "To",
@@ -422,7 +421,6 @@ const en = {
   },
 
   manage: {
-    loading: "Loading your booking...",
     notFoundTitle: "Booking not found",
     notFoundText: "This link is wrong or doesn't work anymore. Make sure you copied all of it.",
     title: "Your booking",
@@ -779,7 +777,6 @@ const ar: Dictionary = {
     },
     hours: {
       subtitle: "يمكن للزبائن الحجز ضمن هذه الساعات فقط.",
-      open: "مفتوح",
       closed: "مغلق",
       from: "من",
       to: "إلى",
@@ -879,7 +876,6 @@ const ar: Dictionary = {
   },
 
   manage: {
-    loading: "جاري تحميل حجزك...",
     notFoundTitle: "الحجز غير موجود",
     notFoundText: "الرابط غير صحيح أو لم يعد يعمل. تأكد أنك نسخته كاملاً.",
     title: "حجزك",
