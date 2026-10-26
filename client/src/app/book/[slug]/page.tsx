@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
 import ManageLinkBox from "@/components/ManageLinkBox";
+import LegalNotice from "@/components/LegalNotice";
 import { addDays, dayNameOf, formatDayChip, formatDuration, formatLongDate, formatPrice, todayIn } from "@/lib/format";
 import { inputClass } from "@/lib/ui";
 import { offersService, type Availability, type GuestBookingResult, type PublicBusinessPage } from "@/lib/types";
@@ -73,6 +74,8 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   const [date, setDate] = useState<string | null>(null);
   const [pickedTime, setPickedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  // Off until the customer ticks it: WhatsApp reminders need their opt-in (Meta's rules).
+  const [whatsappConsent, setWhatsappConsent] = useState(false);
   const [guest, setGuest] = useState<GuestDetails>(() =>
     typeof window === "undefined" ? { name: "", phone: "" } : readGuest(),
   );
@@ -160,7 +163,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
     if (!page || !serviceId || !staffId || !date || !time) return;
     setBookError("");
     setSubmitting(true);
-    const body = { serviceId, staffId, date, time, notes: notes.trim() || undefined };
+    const body = { serviceId, staffId, date, time, notes: notes.trim() || undefined, whatsappConsent };
     let manageToken: string | undefined;
     // With "any staff member", only the server's answer says who it is.
     let staffName = page.staff.find((s) => s.id === staffId)?.name ?? "";
@@ -482,6 +485,16 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                     />
                   </label>
 
+                  <label className="flex items-start gap-2 text-sm text-navy-700">
+                    <input
+                      type="checkbox"
+                      checked={whatsappConsent}
+                      onChange={(e) => setWhatsappConsent(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500"
+                    />
+                    <span>{t.legal.whatsappConsent}</span>
+                  </label>
+
                   {bookError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
                   <button
                     type="submit"
@@ -490,6 +503,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   >
                     {submitting ? t.book.booking : t.book.bookFor(formatPrice(service.price))}
                   </button>
+                  <LegalNotice text={t.legal.agreeBooking} />
 
                   {!user && (
                     <p className="text-center text-sm text-navy-500">

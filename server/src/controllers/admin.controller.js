@@ -2,6 +2,8 @@ const Tenant = require("../models/Tenant");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
 const { ACTIVE_STATUSES } = require("../services/booking.service");
+const Service = require("../models/Service");
+const CustomerTenant = require("../models/CustomerTenant");
 
 // Your panel as the seller (role "superadmin", created with `npm run create-admin`):
 // every client business on this server, how much it's used, and the switches you need.
@@ -114,4 +116,43 @@ exports.updateBusiness = async (req, res) => {
   );
   if (!tenant) return res.status(404).json({ message: "Business not found" });
   res.status(200).json({ message: "Saved", id: tenant._id });
+};
+
+// GET /api/admin/businesses/:id/export - everything that belongs to one business, as a JSON file:
+// the business, its services, staff, customers and bookings. For handing a client their data when
+// the contract ends (or when they ask). Passwords, reset tokens and booking-link hashes are left out.
+exports.exportBusiness = async (req, res) => {
+  const tenant = await Tenant.findById(req.params.id).lean();
+  if (!tenant) return res.status(404).json({ message: "Business not found" });
+
+  const linked = await CustomerTenant.find({ tenantId: tenant._id }).select("userId").lean();
+  const [services, people, customers, appointments] = await Promise.all([
+    Service.find({ tenantId: tenant._id }).lean(),
+    User.find({ tenantId: tenant._id })
+      .select("name email phone role isActive bookable workingHours services daysOff createdAt")
+      .lean(),
+    User.find({ role: "customer", $or: [{ _id: { $in: linked.map((l) => l.userId) } }, { scope: tenant._id }] })
+      .select("name email phone createdAt")
+      .lean(),
+    Appointment.find({ tenantId: tenant._id }).select("-manageTokenHash -autoReminder").sort({ startTime: 1 }).lean(),
+  ]);
+
+  const day = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Disposition", `attachment; filename="${tenant.slug}-export-${day}.json"`);
+  res.status(200).json({
+    exportedAt: new Date(),
+    business: {
+      id: tenant._id,
+      name: tenant.name,
+      slug: tenant.slug,
+      timezone: tenant.timezone,
+      workingHours: tenant.workingHours,
+      plan: tenant.plan,
+      createdAt: tenant.createdAt,
+    },
+    services,
+    staff: people,
+    customers,
+    appointments,
+  });
 };

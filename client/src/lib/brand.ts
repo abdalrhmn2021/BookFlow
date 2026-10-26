@@ -25,6 +25,19 @@ export function getBrand(): Brand {
   };
 }
 
+// For the privacy and terms pages: who runs the system and how long guest details are kept.
+//   OPERATOR_NAME            who runs the booking system (shown on the privacy page)
+//   OPERATOR_EMAIL           where people write about their data
+//   DATA_RETENTION_MONTHS    keep it equal to the server's (default 12)
+export function getLegalSettings() {
+  const months = Number(clean(process.env.DATA_RETENTION_MONTHS));
+  return {
+    operator: clean(process.env.OPERATOR_NAME),
+    email: clean(process.env.OPERATOR_EMAIL),
+    retentionMonths: Number.isFinite(months) && months >= 1 ? Math.floor(months) : 12,
+  };
+}
+
 // The site's public address, for absolute links in shared previews (metadataBase).
 // SITE_URL when set; on Vercel the production domain (a client's own domain once added); else local.
 export function getSiteUrl(): URL {

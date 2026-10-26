@@ -45,6 +45,9 @@ async function connect() {
   if (mongoose.connection.name !== TEST_DB_NAME) {
     throw new Error(`Refusing to run tests on database "${mongoose.connection.name}"`);
   }
+  // A test database made before customer accounts got a `scope` still has the old unique index on
+  // email alone - same clean-up as the real server does at start-up (config/db.js).
+  await User.dropLegacyEmailIndex();
   await Promise.all(Object.values(mongoose.models).map((m) => m.init()));
 }
 

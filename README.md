@@ -53,6 +53,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - Own navy + coral design system (Tailwind v4 theme tokens), Alexandria + IBM Plex Sans Arabic for both scripts
 - Full Arabic / English with RTL layout, no flash on load (language stored in a cookie, read on the server)
 - Backend error messages translated on the client
+- **Privacy & terms**: `/privacy` and `/terms` in Arabic and English (business name, operator and retention period from `.env`), linked in the footer and under the booking / sign-up buttons; a **WhatsApp opt-in** checkbox (off by default) - the automatic reminder only goes to customers who ticked it; customers can **delete their account**; guests' name, phone and notes are **removed after 12 months** (the booking stays for the numbers); the admin can **export a business's data** as JSON
 - **Link previews**: a shared `/book/<slug>` link shows the business's name and first services on Facebook, WhatsApp and X (server-side `generateMetadata`, cached 5 minutes; a sleeping API falls back to the site's generic preview instead of failing)
 - One-click demo accounts + a seed script with realistic sample data
 - **Seller admin panel** (`/admin`, superadmin only): every client business with its usage, switch a business off / on, its plan and paid-until date
@@ -184,7 +185,7 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-170 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
+178 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
 Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
@@ -275,7 +276,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 170 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
+- [x] Automated tests (Jest + Supertest) and CI - 178 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [x] Per-staff working hours, days off and "which staff can do which service"

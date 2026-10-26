@@ -178,6 +178,7 @@ async function bookAppointment({
   status = "pending",
   createdBy,
   maxGuestUpcoming, // public guest bookings only: max upcoming bookings per phone at this business
+  whatsappConsent = false,
 }) {
   if (!slug || !serviceId || !staffId || !date || !time) {
     throw httpError(400, "slug, serviceId, staffId, date and time are required");
@@ -199,6 +200,7 @@ async function bookAppointment({
     notes,
     status,
     createdBy,
+    whatsappConsent: whatsappConsent === true,
   };
   const guestLimit =
     maxGuestUpcoming && guest?.phone ? { tenantId: tenant._id, phone: guest.phone, max: maxGuestUpcoming } : null;

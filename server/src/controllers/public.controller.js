@@ -112,7 +112,7 @@ exports.getAvailability = async (req, res) => {
 const MAX_GUEST_UPCOMING = 3;
 
 exports.createGuestAppointment = async (req, res) => {
-  const { serviceId, staffId, date, time, notes, name, phone } = req.body || {};
+  const { serviceId, staffId, date, time, notes, name, phone, whatsappConsent } = req.body || {};
 
   const cleanName = typeof name === "string" ? name.trim() : "";
   if (cleanName.length < 2) {
@@ -143,6 +143,7 @@ exports.createGuestAppointment = async (req, res) => {
     manageTokenHash,
     // Checked inside the booking transaction, under a per-phone lock (booking.service).
     maxGuestUpcoming: MAX_GUEST_UPCOMING,
+    whatsappConsent: whatsappConsent === true,
   });
 
   // Not awaited: the guest gets the answer now, the email goes out in the background.

@@ -57,6 +57,7 @@ async function remindOne(candidate, tenant, now) {
       _id: candidate._id,
       status: { $in: ACTIVE_STATUSES },
       reminderSentAt: null,
+      whatsappConsent: true,
       $or: [{ "autoReminder.claimedAt": null }, { "autoReminder.claimedAt": { $lt: new Date(now - CLAIM_TIMEOUT) } }],
     },
     { $set: { "autoReminder.claimedAt": now } },
@@ -109,6 +110,7 @@ async function sendDueReminders({ now = new Date() } = {}) {
     startTime: { $gt: new Date(now.getTime() + MIN_LEAD), $lte: new Date(now.getTime() + hoursBefore() * HOUR) },
     createdAt: { $lte: new Date(now.getTime() - FRESH_BOOKING) },
     reminderSentAt: null,
+    whatsappConsent: true, // only customers who ticked "remind me on WhatsApp" (Meta's opt-in rule)
     "autoReminder.attempts": { $not: { $gte: MAX_ATTEMPTS } },
   })
     .select("_id tenantId")
