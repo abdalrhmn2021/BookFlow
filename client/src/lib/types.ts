@@ -159,6 +159,12 @@ export interface BusinessAppointment {
   rescheduled?: { from: string; at: string };
 }
 
+export interface UpcomingBookings {
+  total: number;
+  days: { date: string; count: number }[];
+  appointments: BusinessAppointment[];
+}
+
 export interface NewBooking {
   _id: string;
   serviceName: string;

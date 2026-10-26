@@ -274,6 +274,43 @@ exports.getBusinessStats = async (req, res) => {
   });
 };
 
+const UPCOMING_DAYS = 60;
+const UPCOMING_LIST_LIMIT = 10;
+
+// The schedule shows one day at a time. This tells it which days ahead have bookings and lists
+// the next few, so a booking made for next week isn't hidden behind today's empty day.
+exports.getUpcomingBusinessAppointments = async (req, res) => {
+  await closeStalePending({ tenantId: req.tenantId });
+  const tenant = await Tenant.findById(req.tenantId).select("timezone");
+  const now = new Date();
+  const filter = {
+    ...businessFilter(req.user, req.tenantId),
+    status: { $in: ACTIVE_STATUSES },
+    startTime: { $gt: now, $lt: new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000) },
+  };
+
+  const [appointments, all] = await Promise.all([
+    Appointment.find(filter)
+      .sort({ startTime: 1 })
+      .limit(UPCOMING_LIST_LIMIT)
+      .select("serviceName startTime endTime status guest customerId staffId")
+      .populate("customerId", "name phone")
+      .populate("staffId", "name"),
+    Appointment.find(filter).select("startTime").lean(),
+  ]);
+
+  // Counted per day in the business's time zone, not the server's.
+  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone });
+  const counts = new Map();
+  for (const a of all) {
+    const date = localDay.format(a.startTime);
+    counts.set(date, (counts.get(date) || 0) + 1);
+  }
+  const days = [...counts].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+
+  res.status(200).json({ total: all.length, days, appointments });
+};
+
 const NEW_BOOKINGS_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 const NEW_BOOKINGS_LIMIT = 20;
 
