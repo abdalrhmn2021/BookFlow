@@ -350,6 +350,7 @@ const en = {
     switchOff: "Switch off",
     switchOn: "Switch on",
     whatsapp: "WhatsApp reminders",
+    assistant: "AI booking assistant",
     plan: "Plan",
     paidUntil: "Paid until",
     note: "Note (only you see it)",
@@ -419,6 +420,19 @@ const en = {
     sendToMe: "Send it to me on WhatsApp",
     openLink: "Open",
     manageWhatsApp: (business: string, link: string) => `My booking at ${business} - see or cancel it here:\n${link}`,
+  },
+
+  // The booking page's AI chat (components/BookingAssistant.tsx).
+  assistant: {
+    open: "Ask about booking",
+    title: (business: string) => `${business} assistant`,
+    subtitle: "AI - it can make mistakes. Book with the form on this page.",
+    greeting: (business: string) => `Hi! Ask me about ${business}'s services, prices, opening hours or free times.`,
+    suggestions: ["What services do you offer?", "Any free time tomorrow?", "What are your opening hours?"],
+    placeholder: "Type your question...",
+    send: "Send",
+    close: "Close",
+    thinking: "Typing...",
   },
 
   manage: {
@@ -809,6 +823,7 @@ const ar: Dictionary = {
     switchOff: "إيقاف",
     switchOn: "تفعيل",
     whatsapp: "تذكير واتساب",
+    assistant: "مساعد الحجز الذكي",
     plan: "الباقة",
     paidUntil: "مدفوع حتى",
     note: "ملاحظة (تظهر لك فقط)",
@@ -878,6 +893,18 @@ const ar: Dictionary = {
     manageWhatsApp: (business, link) => `حجزي عند ${business} - لمشاهدته أو إلغائه:\n${link}`,
   },
 
+  assistant: {
+    open: "اسأل عن الحجز",
+    title: (business) => `مساعد ${business}`,
+    subtitle: "ذكاء اصطناعي - قد يخطئ أحياناً. الحجز يتم من النموذج في هذه الصفحة.",
+    greeting: (business) => `أهلاً! اسألني عن خدمات ${business} وأسعارها ومواعيد العمل والأوقات المتاحة.`,
+    suggestions: ["ما الخدمات المتوفرة؟", "هل يوجد وقت متاح غداً؟", "ما مواعيد العمل؟"],
+    placeholder: "اكتب سؤالك...",
+    send: "إرسال",
+    close: "إغلاق",
+    thinking: "يكتب...",
+  },
+
   manage: {
     loading: "جاري تحميل حجزك...",
     notFoundTitle: "الحجز غير موجود",
@@ -936,6 +963,9 @@ const ar: Dictionary = {
   errors: {
     "Can't reach the server. Is the backend running?": "تعذّر الاتصال بالخادم. تأكد أن الخادم يعمل.",
     "Something went wrong": "حدث خطأ ما، حاول مرة أخرى",
+    "The assistant can't answer right now, please try again": "المساعد لا يستطيع الرد الآن، حاول مرة أخرى",
+    "Too many messages, please try again in a few minutes": "رسائل كثيرة، حاول مرة أخرى بعد بضع دقائق",
+    "The assistant isn't available for this business": "المساعد غير متاح لهذا النشاط",
     "Invalid credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
     "email and password are required": "البريد الإلكتروني وكلمة المرور مطلوبان",
     "name, email and password are required": "الاسم والبريد الإلكتروني وكلمة المرور مطلوبة",

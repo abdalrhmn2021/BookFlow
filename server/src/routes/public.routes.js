@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { publicLimiter, guestBookingLimiter, manageBookingLimiter } = require("../middlewares/rateLimit.middleware");
+const {
+  publicLimiter,
+  guestBookingLimiter,
+  manageBookingLimiter,
+  assistantLimiter,
+} = require("../middlewares/rateLimit.middleware");
 const {
   listBusinesses,
   getBusinessBySlug,
@@ -8,6 +13,7 @@ const {
   createGuestAppointment,
   getGuestBooking,
   cancelGuestBooking,
+  askBookingAssistant,
 } = require("../controllers/public.controller");
 const { requireSiteBusiness } = require("../middlewares/site.middleware");
 
@@ -21,6 +27,7 @@ router.get("/businesses/:slug", getBusinessBySlug);
 router.get("/businesses/:slug/availability", getAvailability);
 
 router.post("/businesses/:slug/appointments", guestBookingLimiter, createGuestAppointment);
+router.post("/businesses/:slug/assistant", assistantLimiter, askBookingAssistant);
 
 router.get("/bookings/:token", manageBookingLimiter, getGuestBooking);
 router.patch("/bookings/:token/cancel", manageBookingLimiter, cancelGuestBooking);

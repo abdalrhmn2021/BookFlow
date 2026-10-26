@@ -54,6 +54,7 @@ exports.listBusinesses = async (req, res) => {
         plan: t.plan,
         isActive: t.isActive,
         whatsappReminders: Boolean(t.whatsappReminders),
+        aiAssistant: Boolean(t.aiAssistant),
         timezone: t.timezone,
         createdAt: t.createdAt,
         paidUntil,
@@ -70,9 +71,10 @@ exports.listBusinesses = async (req, res) => {
   });
 };
 
-// PATCH /api/admin/businesses/:id  { isActive?, whatsappReminders?, plan?, paidUntil? (YYYY-MM-DD | null), note? }
+// PATCH /api/admin/businesses/:id
+//   { isActive?, whatsappReminders?, aiAssistant?, plan?, paidUntil? (YYYY-MM-DD | null), note? }
 exports.updateBusiness = async (req, res) => {
-  const { isActive, whatsappReminders, plan, paidUntil, note } = req.body || {};
+  const { isActive, whatsappReminders, aiAssistant, plan, paidUntil, note } = req.body || {};
   const $set = {};
 
   if (isActive !== undefined) {
@@ -84,6 +86,10 @@ exports.updateBusiness = async (req, res) => {
       return res.status(400).json({ message: "whatsappReminders must be true or false" });
     }
     $set.whatsappReminders = whatsappReminders;
+  }
+  if (aiAssistant !== undefined) {
+    if (typeof aiAssistant !== "boolean") return res.status(400).json({ message: "aiAssistant must be true or false" });
+    $set.aiAssistant = aiAssistant;
   }
   if (plan !== undefined) {
     if (!PLANS.includes(plan)) return res.status(400).json({ message: `plan must be one of: ${PLANS.join(", ")}` });

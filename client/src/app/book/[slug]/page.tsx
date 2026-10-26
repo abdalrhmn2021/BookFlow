@@ -10,6 +10,7 @@ import ManageLinkBox from "@/components/ManageLinkBox";
 import LegalNotice from "@/components/LegalNotice";
 import { addDays, dayNameOf, formatDayChip, formatDuration, formatLongDate, formatPrice, todayIn } from "@/lib/format";
 import { inputClass } from "@/lib/ui";
+import BookingAssistant from "@/components/BookingAssistant";
 import { offersService, type Availability, type GuestBookingResult, type PublicBusinessPage } from "@/lib/types";
 
 const DAYS_AHEAD = 14;
@@ -531,6 +532,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           </Step>
         )}
       </div>
+      {business.assistant && <BookingAssistant slug={business.slug} businessName={business.name} />}
     </>
   );
 }

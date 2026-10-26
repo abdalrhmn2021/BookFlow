@@ -19,6 +19,7 @@ const { TOKEN_REGEX, hashToken, createManageToken, maskPhone } = require("../uti
 const { notifyNewBooking } = require("../services/notify.service");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { isValidDate } = require("../utils/time");
+const { isAssistantConfigured, askAssistant } = require("../services/assistant.service");
 
 exports.listBusinesses = async (req, res) => {
   // A one-business site lists only its own business. A shared server answering a request
@@ -50,6 +51,7 @@ exports.getBusinessBySlug = async (req, res) => {
       slug: tenant.slug,
       timezone: tenant.timezone,
       workingHours: tenant.workingHours,
+      assistant: isAssistantConfigured() && Boolean(tenant.aiAssistant),
     },
     services: services.map((s) => ({
       id: s._id,
@@ -107,6 +109,49 @@ exports.getAvailability = async (req, res) => {
     staff: { id: staff._id, name: staff.name },
     slots,
   });
+};
+
+const ASSISTANT_MAX_MESSAGES = 12;
+const ASSISTANT_MAX_LENGTH = 500;
+const ASSISTANT_OFF = "The assistant isn't available for this business";
+
+// POST /api/public/businesses/:slug/assistant  { messages: [{ role: "user" | "assistant", text }] }
+// The whole (short) chat is sent each time: nothing about it is stored on the server.
+exports.askBookingAssistant = async (req, res) => {
+  const { messages } = req.body || {};
+  const valid =
+    Array.isArray(messages) &&
+    messages.length >= 1 &&
+    messages.length <= ASSISTANT_MAX_MESSAGES &&
+    messages.every(
+      (m) =>
+        m &&
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.text === "string" &&
+        m.text.trim() &&
+        m.text.length <= ASSISTANT_MAX_LENGTH,
+    ) &&
+    messages[messages.length - 1].role === "user";
+  if (!valid) {
+    return res.status(400).json({
+      message: `messages must be 1-${ASSISTANT_MAX_MESSAGES} messages of up to ${ASSISTANT_MAX_LENGTH} characters, the last one from the user`,
+    });
+  }
+
+  const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true });
+  if (!tenant) return res.status(404).json({ message: "Business not found" });
+  if (!isAssistantConfigured() || !tenant.aiAssistant) return res.status(404).json({ message: ASSISTANT_OFF });
+
+  try {
+    const reply = await askAssistant({
+      tenant,
+      messages: messages.map((m) => ({ role: m.role, text: m.text.trim() })),
+    });
+    res.status(200).json({ reply });
+  } catch (err) {
+    console.error(`[assistant] ${tenant.slug}:`, err.message);
+    res.status(502).json({ message: "The assistant can't answer right now, please try again" });
+  }
 };
 
 const MAX_GUEST_UPCOMING = 3;
