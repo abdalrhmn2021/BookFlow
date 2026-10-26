@@ -186,7 +186,7 @@ cd server
 npm test
 ```
 178 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
-Locally they run against a separate `bookflow_test` database on your `MONGO_URI` cluster (the app's own database is never touched);
+Locally they run on a throwaway in-memory MongoDB (or on `MONGO_URI_TEST` if you set it - never on `MONGO_URI`);
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
 
 ### Code style
