@@ -56,13 +56,13 @@ describe("new booking email", () => {
 });
 
 describe("password reset email", () => {
-  test("has the link and the time limit in both languages, and escapes the name", () => {
-    const link = "https://laila.example/reset-password/abc";
-    const { subject, html } = buildPasswordResetEmail({ name: "<b>Lina</b>", link, minutes: 30 });
-    expect(subject).toContain("Reset your password");
-    expect(html).toContain(link);
-    expect(html).toContain("30 دقيقة");
-    expect(html).toContain("30 minutes");
+  test("has the code (subject and body) and the time limit in both languages, and escapes the name", () => {
+    const { subject, html } = buildPasswordResetEmail({ name: "<b>Lina</b>", code: "042917", minutes: 15 });
+    expect(subject).toContain("042917");
+    expect(subject).toContain("Password reset code");
+    expect(html).toContain("042917");
+    expect(html).toContain("15 دقيقة");
+    expect(html).toContain("15 minutes");
     expect(html).not.toContain("<b>Lina</b>");
     expect(html).toContain("&lt;b&gt;Lina&lt;/b&gt;");
   });

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { ApiError } from "@/lib/api";
 import Loading from "@/components/Loading";
 import { DEMO_ACCOUNTS, DEMO_ENABLED, DEMO_PASSWORD } from "@/lib/demo";
 
@@ -20,21 +21,33 @@ function LoginForm() {
   const { login } = useAuth();
   const { t, tError } = useLanguage();
   const router = useRouter();
-  const next = safeNext(useSearchParams().get("next"));
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
+  // Back from "forgot password" on an account with two-step login.
+  const resetDone = searchParams.get("reset") === "done";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Two-step login: the server asked for the app's code after a right password.
+  const [needCode, setNeedCode] = useState(false);
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const doLogin = async (loginEmail: string, loginPassword: string) => {
+  const doLogin = async (loginEmail: string, loginPassword: string, loginCode?: string) => {
     setError("");
     setSubmitting(true);
     try {
-      const user = await login(loginEmail, loginPassword);
+      const user = await login(loginEmail, loginPassword, loginCode);
       router.replace(next ?? homeFor(user.role));
     } catch (err) {
-      setError(tError(err));
+      const askedForCode = err instanceof ApiError && err.data.twoFactorRequired === true;
+      if (askedForCode && !needCode) {
+        setNeedCode(true); // first time: just show the code field, no red error
+      } else {
+        setError(tError(err));
+      }
+      if (askedForCode) setCode("");
     } finally {
       setSubmitting(false);
     }
@@ -42,7 +55,7 @@ function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    doLogin(email, password);
+    doLogin(email, password, needCode ? code : undefined);
   };
 
   const inputClass =
@@ -84,6 +97,30 @@ function LoginForm() {
             className={inputClass}
           />
         </label>
+
+        {needCode && (
+          <label className="block">
+            <span className="text-sm font-medium">{t.login.code}</span>
+            <span className="mt-0.5 block text-xs text-navy-500">{t.login.codeHint}</span>
+            <input
+              type="text"
+              required
+              autoFocus
+              dir="ltr"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              className={`${inputClass} text-center font-mono tracking-[0.4em]`}
+            />
+          </label>
+        )}
+
+        {resetDone && !error && (
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{t.login.resetDone}</p>
+        )}
 
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 

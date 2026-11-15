@@ -10,6 +10,7 @@
     "setup-client": "node scripts/setup-client.js",
     "create-admin": "node scripts/create-admin.js",
     "reset-password": "node scripts/reset-password.js",
+    "two-factor": "node scripts/two-factor.js",
     "test": "jest --runInBand"
   },
   "keywords": [],
