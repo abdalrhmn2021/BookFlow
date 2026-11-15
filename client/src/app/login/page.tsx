@@ -23,7 +23,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
-  // Back from a reset-password link on an account with two-step login.
+  // Back from "forgot password" on an account with two-step login.
   const resetDone = searchParams.get("reset") === "done";
 
   const [email, setEmail] = useState("");

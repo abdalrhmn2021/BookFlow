@@ -142,16 +142,21 @@ describe("Two-step login (superadmin)", () => {
     await login("salon-i", { email: A.owner.email, password: "password123" }).expect(200);
   });
 
-  test("the reset-password link changes the password but does NOT log in past the code", async () => {
+  test("the emailed reset code changes the password but does NOT log in past the app's code", async () => {
     await h.makeBusiness("salon-j");
     const { admin } = await makeAdminWithTwoFactor();
-    const token = crypto.randomBytes(32).toString("base64url");
+    const code = "482913";
     await User.updateOne(
       { _id: admin._id },
       {
         $set: {
-          resetTokenHash: crypto.createHash("sha256").update(token).digest("hex"),
+          // Same HMAC as auth.controller (hashResetCode).
+          resetTokenHash: crypto
+            .createHmac("sha256", process.env.JWT_SECRET)
+            .update(`reset:${admin._id}:${code}`)
+            .digest("hex"),
           resetTokenExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          resetAttempts: 0,
         },
       },
     );
@@ -159,7 +164,7 @@ describe("Two-step login (superadmin)", () => {
     const res = await request(h.app)
       .post("/api/auth/reset-password")
       .set(fromSite("salon-j", nextIp()))
-      .send({ token, password: "a-new-admin-pass" })
+      .send({ email: "admin@seller.test", code, password: "a-new-admin-pass" })
       .expect(200);
     expect(res.body).toEqual({ message: "Password changed", twoFactorRequired: true });
     expect(cookieOf(res)).toBeUndefined();

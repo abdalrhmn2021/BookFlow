@@ -152,33 +152,34 @@ async function notifyNewBooking({ tenant, appointment, staff, site }) {
   return { sent: recipients.size };
 }
 
-// Pure: the "reset your password" email.
-function buildPasswordResetEmail({ name, link, minutes }) {
+// Pure: the "reset your password" email, with the 6-digit code.
+function buildPasswordResetEmail({ name, code, minutes }) {
   const e = escapeHtml;
-  const button = (text) =>
-    `<p><a href="${e(link)}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${e(text)}</a></p>`;
+  const codeBox = `<p style="font-size:28px;font-weight:bold;letter-spacing:8px;font-family:monospace;background:#f1f5f9;border-radius:8px;padding:12px 18px;display:inline-block;direction:ltr">${e(code)}</p>`;
 
   const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a">
 <div dir="rtl" style="text-align:right">
 <p>مرحباً ${e(name)}،</p>
-<p>وصلنا طلب لتغيير كلمة المرور لحسابك. الرابط صالح لمدة ${minutes} دقيقة ولمرة واحدة.</p>
-${button("اختر كلمة مرور جديدة")}
+<p>وصلنا طلب لتغيير كلمة المرور لحسابك. اكتب هذا الرمز في صفحة "نسيت كلمة المرور":</p>
+${codeBox}
+<p>الرمز صالح لمدة ${minutes} دقيقة ولمرة واحدة. لا تعطه لأي شخص، ولن نطلبه منك أبداً بالهاتف أو الرسائل.</p>
 <p style="color:#64748b">إذا ما طلبت هذا، تجاهل الرسالة وكلمة المرور الحالية بتضل زي ما هي.</p>
 </div>
 <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
 <div dir="ltr" style="text-align:left">
 <p>Hi ${e(name)},</p>
-<p>We got a request to reset your password. The link works once, for ${minutes} minutes.</p>
-${button("Choose a new password")}
+<p>We got a request to reset your password. Type this code on the "Forgot password" page:</p>
+${codeBox}
+<p>The code works once, for ${minutes} minutes. Don't share it with anyone - we will never ask for it by phone or message.</p>
 <p style="color:#64748b">If you didn't ask for this, ignore this email; your password stays the same.</p>
 </div>
 </body></html>`;
 
-  return { subject: "تغيير كلمة المرور · Reset your password", html };
+  return { subject: `${code} رمز تغيير كلمة المرور · Password reset code`, html };
 }
 
-async function sendPasswordResetEmail({ email, name, link, minutes }) {
-  const { subject, html } = buildPasswordResetEmail({ name, link, minutes });
+async function sendPasswordResetEmail({ email, name, code, minutes }) {
+  const { subject, html } = buildPasswordResetEmail({ name, code, minutes });
   const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
   await send({ sender, to: [{ email, name }], subject, htmlContent: html });
 }

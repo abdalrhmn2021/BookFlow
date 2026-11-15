@@ -6,7 +6,6 @@ const { SINGLE_BUSINESS_SLUG, SHARED_SERVER } = require("../config/mode");
 const { siteAllows, customerScope, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
 const { isDemoEmail } = require("../config/demo");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
-const { siteUrl } = require("../utils/siteUrl");
 const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
 const { isEmailConfigured, sendPasswordResetEmail } = require("../services/notify.service");
@@ -301,16 +300,36 @@ exports.changePassword = async (req, res) => {
   }
 
   user.password = newPassword;
+  // A reset code still waiting in the user's inbox stops working too.
+  user.resetTokenHash = undefined;
+  user.resetTokenExpiresAt = undefined;
+  user.resetAttempts = undefined;
   await user.save(); // validates (8+ chars), hashes, sets passwordChangedAt
 
   setAuthCookie(res, generateToken(user));
   res.status(200).json({ message: "Password changed" });
 };
 
-const RESET_TOKEN_REGEX = /^[A-Za-z0-9_-]{43}$/; // 32 random bytes, base64url
-const RESET_MINUTES = 30;
-const hashResetToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
-const RESET_SENT = "If this email has an account, a reset link is on its way";
+// ---- Forgot password: a 6-digit code by email ----
+// 1. POST /forgot-password { email }                 -> a code is emailed (valid 15 minutes)
+// 2. POST /reset-password  { email, code, password } -> new password, and the user is logged in
+//
+// A 6-digit code has only a million values, so guessing is what we guard against:
+//  - each code allows 5 tries, then it is dead (a new one must be requested);
+//  - a try is "spent" BEFORE the code is compared, atomically, so parallel requests can't sneak
+//    in extra tries;
+//  - new codes are limited per email (rateLimit.middleware: forgotEmailLimiter), so the
+//    attacker can't just ask for fresh codes all day (that would also flood the inbox).
+//  => at most about 15 guesses an hour against a million values.
+// Only an HMAC of the code is stored (keyed with JWT_SECRET and bound to the account), so a
+// copy of the database alone isn't enough to read the codes back.
+const RESET_CODE_REGEX = /^\d{6}$/;
+const RESET_MINUTES = 15;
+const RESET_MAX_ATTEMPTS = 5;
+const hashResetCode = (userId, code) =>
+  crypto.createHmac("sha256", process.env.JWT_SECRET).update(`reset:${userId}:${code}`).digest("hex");
+const RESET_SENT = "If this email has an account, a code is on its way";
+const RESET_INVALID = "This code is wrong or has expired";
 
 // Same answer whether or not the email has an account, so the form can't be used to find out
 // who is registered. The email goes out in the background (no timing difference either).
@@ -331,25 +350,25 @@ exports.forgotPassword = async (req, res) => {
 
   const cleanEmail = email.trim().toLowerCase();
   const user = isDemoEmail(cleanEmail) ? null : (await accountsFor(req, cleanEmail, { isActive: true }))[0];
-  const site = siteUrl(req);
 
-  // On a one-business site, don't send salon A's owner a link to salon B's site
+  // On a one-business site, don't send salon A's owner a code for salon B's site
   // (same answer either way, so nobody learns which emails exist).
-  if (user && site && (await canSignInHere(req, user))) {
-    const token = crypto.randomBytes(32).toString("base64url");
+  if (user && (await canSignInHere(req, user))) {
+    const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
     await User.updateOne(
       { _id: user._id },
       {
         $set: {
-          resetTokenHash: hashResetToken(token),
+          resetTokenHash: hashResetCode(user._id, code),
           resetTokenExpiresAt: new Date(Date.now() + RESET_MINUTES * 60 * 1000),
+          resetAttempts: 0,
         },
       },
     );
     sendPasswordResetEmail({
       email: user.email,
       name: user.name,
-      link: `${site}/reset-password/${token}`,
+      code,
       minutes: RESET_MINUTES,
     }).catch((err) => console.error("[notify] password reset email failed:", err.message));
   }
@@ -357,37 +376,58 @@ exports.forgotPassword = async (req, res) => {
   res.status(200).json({ message: RESET_SENT });
 };
 
-// The link from the email: a new password, and the user is logged in.
+// The code from the email + a new password: the password is changed and the user is logged in.
 exports.resetPassword = async (req, res) => {
-  const { token, password } = req.body || {};
-  if (!isText(token) || !isText(password)) {
-    return res.status(400).json({ message: "token and password are required" });
+  const { email, code, password } = req.body || {};
+  if (!isText(email) || !isText(code) || !isText(password)) {
+    return res.status(400).json({ message: "email, code and password are required" });
   }
 
-  const invalid = () => res.status(400).json({ message: "This reset link is invalid or has expired" });
-  if (!RESET_TOKEN_REGEX.test(token)) return invalid();
+  // Checked before a try is spent, so a too-short password doesn't use up the code.
+  if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters" });
 
-  const user = await User.findOne({
-    resetTokenHash: hashResetToken(token),
-    resetTokenExpiresAt: { $gt: new Date() },
+  const invalid = () => res.status(400).json({ message: RESET_INVALID });
+  const cleanCode = code.replace(/\s/g, "");
+  if (!RESET_CODE_REGEX.test(cleanCode)) return invalid();
+
+  // The account of this email (on this site) that has a code waiting. Normally one.
+  const candidates = await User.find({
+    email: email.trim().toLowerCase(),
+    scope: { $in: [await customerScope(req), null] },
     isActive: true,
-  }).select("+twoFactorSecret");
-  if (!user) return invalid();
+    resetTokenExpiresAt: { $gt: new Date() },
+  }).select("+resetTokenHash +resetTokenExpiresAt +resetAttempts +twoFactorSecret");
 
-  user.password = password;
-  user.resetTokenHash = undefined; // one use only
-  user.resetTokenExpiresAt = undefined;
-  await user.save(); // validates (8+ chars), hashes, sets passwordChangedAt -> old sessions end
+  for (const user of candidates) {
+    // Spend one try first (atomically): no tries left = the code is dead.
+    const { modifiedCount } = await User.updateOne(
+      { _id: user._id, resetTokenHash: user.resetTokenHash, resetAttempts: { $lt: RESET_MAX_ATTEMPTS } },
+      { $inc: { resetAttempts: 1 } },
+    );
+    if (modifiedCount !== 1) continue;
 
-  // With two-step login on, the email link must not be a way around the code: the password is
-  // changed, but the user still logs in normally (password + code).
-  if (user.twoFactorSecret) {
-    return res.status(200).json({ message: "Password changed", twoFactorRequired: true });
+    const given = Buffer.from(hashResetCode(user._id, cleanCode));
+    const expected = Buffer.from(user.resetTokenHash);
+    if (!crypto.timingSafeEqual(given, expected)) continue;
+
+    user.password = password;
+    user.resetTokenHash = undefined; // one use only
+    user.resetTokenExpiresAt = undefined;
+    user.resetAttempts = undefined;
+    await user.save(); // validates (8+ chars), hashes, sets passwordChangedAt -> old sessions end
+
+    // With two-step login on, the emailed code must not be a way around the app's code:
+    // the password is changed, but the user still logs in normally (password + app code).
+    if (user.twoFactorSecret) {
+      return res.status(200).json({ message: "Password changed", twoFactorRequired: true });
+    }
+
+    setAuthCookie(res, generateToken(user));
+    return res.status(200).json({
+      message: "Password changed",
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
+    });
   }
 
-  setAuthCookie(res, generateToken(user));
-  res.status(200).json({
-    message: "Password changed",
-    user: { id: user._id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
-  });
+  return invalid();
 };

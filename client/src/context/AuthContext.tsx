@@ -28,8 +28,9 @@ interface AuthContextValue {
   registerBusiness: (data: RegisterBusinessData) => Promise<User>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  // null = the password was changed, but two-step login is on: log in normally (password + code).
-  resetPassword: (token: string, password: string) => Promise<User | null>;
+  // The 6-digit code from the "forgot password" email.
+  // null = the password was changed, but two-step login is on: log in normally (password + app code).
+  resetPassword: (email: string, code: string, password: string) => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -109,8 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // The link from the email: new password, then logged in.
-  const resetPassword = async (token: string, password: string) => {
-    const res = await api.post<{ twoFactorRequired?: boolean }>("/auth/reset-password", { token, password });
+  const resetPassword = async (email: string, code: string, password: string) => {
+    const res = await api.post<{ twoFactorRequired?: boolean }>("/auth/reset-password", { email, code, password });
     if (res.twoFactorRequired) return null;
     return loadMe();
   };

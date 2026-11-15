@@ -47,7 +47,9 @@ async function waitForEmail() {
   return sent[0];
 }
 
-const tokenFromEmail = (email) => email.htmlContent.match(/reset-password\/([A-Za-z0-9_-]{43})/)[1];
+// The 6-digit code is in the subject (and big in the body).
+const codeFromEmail = (email) => email.subject.match(/\b(\d{6})\b/)[1];
+const reset = (email, code, password) => call("post", "/api/auth/reset-password").send({ email, code, password });
 
 describe("Change password (logged in)", () => {
   test("needs the right current password, then signs out other devices", async () => {
@@ -103,7 +105,7 @@ describe("Change password (logged in)", () => {
   });
 });
 
-describe("Forgot password", () => {
+describe("Forgot password (6-digit code by email)", () => {
   test("the same answer for a known and an unknown email, and only the known one gets an email", async () => {
     const user = await h.makeCustomer("sara");
 
@@ -116,45 +118,108 @@ describe("Forgot password", () => {
 
     const email = await waitForEmail();
     expect(email.to[0].email).toBe(user.email);
-    expect(email.htmlContent).toContain("https://laila.example/reset-password/");
+    const code = codeFromEmail(email);
+    expect(email.htmlContent).toContain(code);
+    expect(email.htmlContent).not.toContain("reset-password/"); // no link any more
 
-    const saved = await User.findById(user._id).select("+resetTokenHash");
-    expect(saved.resetTokenHash).toHaveLength(64); // only the hash is stored
-    expect(email.htmlContent).not.toContain(saved.resetTokenHash);
+    const saved = await User.findById(user._id).select("+resetTokenHash +resetAttempts");
+    expect(saved.resetTokenHash).toHaveLength(64); // only an HMAC is stored, never the code
+    expect(saved.resetTokenHash).not.toContain(code);
+    expect(saved.resetAttempts).toBe(0);
   });
 
-  test("the link sets a new password once, logs the user in, and signs out old sessions", async () => {
+  test("the code sets a new password once, logs the user in, and signs out old sessions", async () => {
     const user = await h.makeCustomer("maya");
     const oldSession = cookieOf(await login(user.email, "password123").expect(200));
     await new Promise((r) => setTimeout(r, 1100));
 
     await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
-    const token = tokenFromEmail(await waitForEmail());
+    const code = codeFromEmail(await waitForEmail());
 
-    const reset = await call("post", "/api/auth/reset-password").send({ token, password: "brandnew789" }).expect(200);
-    expect(reset.body.user.email).toBe(user.email);
-    await call("get", "/api/auth/me").set("Cookie", cookieOf(reset)).expect(200);
+    const res = await reset(` ${user.email.toUpperCase()} `, code, "brandnew789").expect(200);
+    expect(res.body.user.email).toBe(user.email);
+    await call("get", "/api/auth/me").set("Cookie", cookieOf(res)).expect(200);
     await call("get", "/api/auth/me").set("Cookie", oldSession).expect(401);
 
     await login(user.email, "brandnew789").expect(200);
     // Used once -> dead.
-    await call("post", "/api/auth/reset-password").send({ token, password: "another123" }).expect(400);
+    await reset(user.email, code, "another123").expect(400);
   });
 
-  test("an expired or made-up link is rejected", async () => {
+  test("5 wrong codes kill the code - even the right one is refused after that", async () => {
+    const user = await h.makeCustomer("nour");
+    await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const code = codeFromEmail(await waitForEmail());
+    const wrong = code === "000000" ? "111111" : "000000";
+
+    for (let i = 0; i < 5; i++) {
+      const res = await reset(user.email, wrong, "brandnew789").expect(400);
+      expect(res.body.message).toBe("This code is wrong or has expired");
+    }
+    await reset(user.email, code, "brandnew789").expect(400);
+    await login(user.email, "password123").expect(200); // nothing changed
+  });
+
+  test("parallel guesses can't get more than 5 tries", async () => {
+    const user = await h.makeCustomer("hala");
+    await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const code = codeFromEmail(await waitForEmail());
+    const wrong = code === "000000" ? "111111" : "000000";
+
+    await Promise.all(Array.from({ length: 12 }, () => reset(user.email, wrong, "brandnew789")));
+    const saved = await User.findById(user._id).select("+resetAttempts");
+    expect(saved.resetAttempts).toBe(5);
+    await reset(user.email, code, "brandnew789").expect(400);
+  });
+
+  test("a too-short new password doesn't use up a try", async () => {
+    const user = await h.makeCustomer("rami");
+    await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const code = codeFromEmail(await waitForEmail());
+
+    await reset(user.email, code, "short").expect(400);
+    const saved = await User.findById(user._id).select("+resetAttempts");
+    expect(saved.resetAttempts).toBe(0);
+    await reset(user.email, code, "long-enough-1").expect(200);
+  });
+
+  test("an expired, made-up or malformed code is rejected", async () => {
     const user = await h.makeCustomer("khaled");
     await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
-    const token = tokenFromEmail(await waitForEmail());
+    const code = codeFromEmail(await waitForEmail());
 
     await User.updateOne({ _id: user._id }, { resetTokenExpiresAt: new Date(Date.now() - 1000) });
-    await call("post", "/api/auth/reset-password").send({ token, password: "brandnew789" }).expect(400);
+    await reset(user.email, code, "brandnew789").expect(400);
 
+    await reset(user.email, "12345", "brandnew789").expect(400);
+    await reset(user.email, "abcdef", "brandnew789").expect(400);
     await call("post", "/api/auth/reset-password")
-      .send({ token: "x".repeat(43), password: "brandnew789" })
+      .send({ email: user.email, code: { $ne: null }, password: "brandnew789" })
       .expect(400);
-    await call("post", "/api/auth/reset-password")
-      .send({ token: { $ne: null }, password: "brandnew789" })
-      .expect(400);
+    // The right code for another email does nothing.
+    const other = await h.makeCustomer("lina");
+    await reset(other.email, code, "brandnew789").expect(400);
+  });
+
+  test("changing the password while logged in kills a waiting code", async () => {
+    const user = await h.makeCustomer("omar");
+    await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    const code = codeFromEmail(await waitForEmail());
+
+    await call("patch", "/api/auth/password")
+      .set("Authorization", `Bearer ${h.tokenFor(user)}`)
+      .send({ currentPassword: "password123", newPassword: "changed-123" })
+      .expect(200);
+    await reset(user.email, code, "brandnew789").expect(400);
+  });
+
+  test("no more than 3 codes an hour for one email, from any IP", async () => {
+    const user = await h.makeCustomer("dana");
+    for (let i = 0; i < 3; i++) {
+      await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(200);
+    }
+    const res = await call("post", "/api/auth/forgot-password").send({ email: user.email }).expect(429);
+    expect(res.body.message).toBe("Too many codes requested for this email, please try again in an hour");
   });
 
   test("no email for demo accounts, and a clear 503 when email isn't set up", async () => {

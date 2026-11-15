@@ -18,6 +18,7 @@ const {
   accountPasswordLimiter,
   registerLimiter,
   forgotPasswordLimiter,
+  forgotEmailLimiter,
   resetPasswordLimiter,
 } = require("../middlewares/rateLimit.middleware");
 
@@ -26,7 +27,7 @@ router.post("/login", loginLimiter, loginEmailLimiter, login);
 router.post("/register-business", registerLimiter, registerBusiness);
 router.post("/logout", logout);
 
-router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
+router.post("/forgot-password", forgotPasswordLimiter, forgotEmailLimiter, forgotPassword);
 router.post("/reset-password", resetPasswordLimiter, resetPassword);
 // Same limiter as login: guessing the current password is guessing a password.
 router.patch("/password", protect, loginLimiter, accountPasswordLimiter, changePassword);

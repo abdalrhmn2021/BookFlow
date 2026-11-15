@@ -63,6 +63,18 @@ exports.forgotPasswordLimiter = rateLimit({
   message: { message: "Too many reset requests, please try again later" },
 });
 
+// New reset codes per email, from any IP: each new code gives 5 more guesses (and an email in the
+// victim's inbox), so this is what keeps a 6-digit code safe. 3 an hour, every email counted.
+exports.forgotEmailLimiter = rateLimit({
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  skip: (req) => !loginEmail(req),
+  keyGenerator: (req) => `forgot:${loginEmail(req)}`,
+  message: { message: "Too many codes requested for this email, please try again in an hour" },
+});
+
 exports.resetPasswordLimiter = rateLimit({
   ...base,
   windowMs: 15 * 60 * 1000,
