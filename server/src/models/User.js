@@ -84,6 +84,10 @@ const userSchema = new mongoose.Schema(
     // "Forgot password": only the SHA-256 of the emailed token is stored, like guest booking links.
     resetTokenHash: { type: String, select: false },
     resetTokenExpiresAt: { type: Date, select: false },
+    // Two-step login (utils/totp.js), turned on with `npm run two-factor`. Not set = off.
+    // twoFactorLastStep: the last code's 30-second step, so the same code can't be used twice.
+    twoFactorSecret: { type: String, select: false },
+    twoFactorLastStep: { type: Number, select: false },
   },
   {
     timestamps: true,

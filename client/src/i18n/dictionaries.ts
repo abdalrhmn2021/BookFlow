@@ -106,6 +106,9 @@ const en = {
     signup: "Sign up",
     demoTitle: "Just looking? Try a demo account",
     demoAs: { customer: "Customer", owner: "Business owner", staff: "Staff" },
+    code: "Code from your authenticator app",
+    codeHint: "Two-step login is on for this account. Open the app and type the 6-digit code.",
+    resetDone: "Password changed. Log in with the new password and your app's code.",
   },
 
   password: {
@@ -565,6 +568,9 @@ const ar: Dictionary = {
     signup: "أنشئ حساباً",
     demoTitle: "تريد التجربة فقط؟ ادخل بحساب تجريبي",
     demoAs: { customer: "زبون", owner: "صاحب عمل", staff: "موظف" },
+    code: "الرمز من تطبيق المصادقة",
+    codeHint: "التحقق بخطوتين مفعّل لهذا الحساب. افتح التطبيق واكتب الرمز المكوّن من 6 أرقام.",
+    resetDone: "تم تغيير كلمة المرور. سجّل الدخول بكلمة المرور الجديدة ورمز التطبيق.",
   },
 
   password: {
@@ -947,6 +953,10 @@ const ar: Dictionary = {
     "User no longer exists": "هذا المستخدم لم يعد موجوداً",
     "You do not have permission to perform this action": "ليس لديك صلاحية للقيام بهذا الإجراء",
     "Too many login attempts, please try again in 15 minutes": "محاولات دخول كثيرة، حاول مجدداً بعد 15 دقيقة",
+    "Too many failed attempts on this account, please try again in 15 minutes":
+      "محاولات خاطئة كثيرة على هذا الحساب، حاول مجدداً بعد 15 دقيقة",
+    "Two-factor code required": "اكتب رمز التحقق من تطبيق المصادقة",
+    "Invalid two-factor code": "رمز التحقق غير صحيح أو مستخدم من قبل",
     "Too many accounts created from this IP, please try again later":
       "تم إنشاء حسابات كثيرة من هذا الجهاز، حاول لاحقاً",
     "Too many requests, please slow down": "طلبات كثيرة، تمهّل قليلاً",

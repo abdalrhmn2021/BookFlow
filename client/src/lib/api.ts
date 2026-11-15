@@ -3,11 +3,14 @@ const BASE_URL = "/api";
 export class ApiError extends Error {
   status: number;
   errors?: string[];
+  // The whole JSON answer, for errors that carry more than a message (e.g. twoFactorRequired).
+  data: Record<string, unknown>;
 
-  constructor(status: number, message: string, errors?: string[]) {
+  constructor(status: number, message: string, errors?: string[], data: Record<string, unknown> = {}) {
     super(message);
     this.status = status;
     this.errors = errors;
+    this.data = data;
   }
 }
 
@@ -29,7 +32,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new ApiError(res.status, data.message ?? "Something went wrong", data.errors);
+    throw new ApiError(res.status, data.message ?? "Something went wrong", data.errors, data);
   }
   return data as T;
 }

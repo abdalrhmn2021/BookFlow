@@ -23,12 +23,13 @@ interface RegisterBusinessData {
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, code?: string) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
   registerBusiness: (data: RegisterBusinessData) => Promise<User>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<User>;
+  // null = the password was changed, but two-step login is on: log in normally (password + code).
+  resetPassword: (token: string, password: string) => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,9 +41,21 @@ export function homeFor(role: Role): string {
   return "/";
 }
 
+// Where to go after logging in (?next=...). Only a page of THIS site:
+//  - control characters (tab, new line...) and backslashes are refused first, because browsers
+//    silently drop or convert them - "/<tab>/evil.com" would become "//evil.com", another site;
+//  - then the value is parsed as a real URL and must stay on our own origin.
+const NEXT_BASE = "http://this-site.invalid";
+
 export function safeNext(next: string | null): string | null {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;
-  return next;
+  if (!next || !next.startsWith("/") || /[\u0000-\u001F\u007F\\]/.test(next)) return null;
+  try {
+    const url = new URL(next, NEXT_BASE);
+    if (url.origin !== NEXT_BASE) return null;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -67,8 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreSession().finally(() => setLoading(false));
   }, [loadMe]);
 
-  const login = async (email: string, password: string) => {
-    await api.post("/auth/login", { email, password });
+  const login = async (email: string, password: string, code?: string) => {
+    await api.post("/auth/login", { email, password, ...(code && { code }) });
     return loadMe();
   };
 
@@ -97,7 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // The link from the email: new password, then logged in.
   const resetPassword = async (token: string, password: string) => {
-    await api.post("/auth/reset-password", { token, password });
+    const res = await api.post<{ twoFactorRequired?: boolean }>("/auth/reset-password", { token, password });
+    if (res.twoFactorRequired) return null;
     return loadMe();
   };
 

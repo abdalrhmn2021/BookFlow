@@ -149,7 +149,7 @@ BookFlow/
 │   │   │                    reminder + whatsapp (automatic reminders), maintenance (stale bookings), notify (emails)
 │   │   └── utils/           time-zone & overlap helpers, staff schedules, phone numbers, tokens
 │   ├── scripts/             seed.js (demo data), setup-client.js (a sold copy's business + owner),
-│   │                        create-admin.js (the seller's admin account)
+│   │                        create-admin.js (the seller's admin account), two-factor.js (2-step login)
 │   ├── tests/               Jest + Supertest API tests (in-memory MongoDB replica set)
 │   └── api-tests.http       every endpoint, runnable in VS Code REST Client
 ├── docs/INSTALL.md          install guide for each sold copy (Arabic)

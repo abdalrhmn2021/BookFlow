@@ -7,6 +7,7 @@ const { siteAllows, customerScope, OTHER_BUSINESS_MESSAGE } = require("../middle
 const { isDemoEmail } = require("../config/demo");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
 const { siteUrl } = require("../utils/siteUrl");
+const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
 const { isEmailConfigured, sendPasswordResetEmail } = require("../services/notify.service");
 const Appointment = require("../models/Appointment");
@@ -25,7 +26,7 @@ async function accountsFor(req, email, extra = {}) {
   const scope = await customerScope(req);
   const scopes = scope ? [scope, null] : [null];
   const users = await User.find({ email: String(email).trim().toLowerCase(), scope: { $in: scopes }, ...extra }).select(
-    "+password",
+    "+password +twoFactorSecret +twoFactorLastStep",
   );
   return users.sort((a, b) => Number(Boolean(b.scope)) - Number(Boolean(a.scope)));
 }
@@ -40,6 +41,24 @@ async function findAccount(req, email, password) {
 // The browser gets its login in the httpOnly cookie only. The token is also in the JSON answer
 // in development, for server/api-tests.http (VS Code REST Client) - never in production, where
 // a copy readable by page scripts would undo the point of the httpOnly cookie.
+// Two-step login: with it on, the right password alone is not enough - the 6-digit code from the
+// authenticator app must come too. Each code works once (the step is saved atomically, so two
+// requests racing with the same code can't both win).
+const TWO_FACTOR_REQUIRED = "Two-factor code required";
+const TWO_FACTOR_INVALID = "Invalid two-factor code";
+
+async function checkTwoFactor(user, code) {
+  if (!user.twoFactorSecret) return null; // off for this account
+  if (code === undefined || code === null || code === "") return TWO_FACTOR_REQUIRED;
+  const step = verifyCode(user.twoFactorSecret, code, { lastStep: user.twoFactorLastStep ?? -1 });
+  if (step === null) return TWO_FACTOR_INVALID;
+  const { modifiedCount } = await User.updateOne(
+    { _id: user._id, $or: [{ twoFactorLastStep: { $lt: step } }, { twoFactorLastStep: { $exists: false } }] },
+    { $set: { twoFactorLastStep: step } },
+  );
+  return modifiedCount === 1 ? null : TWO_FACTOR_INVALID;
+}
+
 const devToken = (token) => (process.env.NODE_ENV === "production" ? {} : { token });
 
 const generateToken = (user) => {
@@ -103,7 +122,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, code } = req.body;
 
     if (!isText(email) || !isText(password)) {
       return res.status(400).json({ message: "email and password are required" });
@@ -130,6 +149,13 @@ exports.login = async (req, res) => {
       if (!siteAllows(req, tenant.slug)) {
         return res.status(403).json({ message: OTHER_BUSINESS_MESSAGE });
       }
+    }
+
+    // Last, after every other check: a code is only asked for once the password is right.
+    // 401 on purpose, so a wrong code counts against the login limits like a wrong password.
+    const twoFactorProblem = await checkTwoFactor(user, code);
+    if (twoFactorProblem) {
+      return res.status(401).json({ message: twoFactorProblem, twoFactorRequired: true });
     }
 
     const token = generateToken(user);
@@ -345,13 +371,19 @@ exports.resetPassword = async (req, res) => {
     resetTokenHash: hashResetToken(token),
     resetTokenExpiresAt: { $gt: new Date() },
     isActive: true,
-  });
+  }).select("+twoFactorSecret");
   if (!user) return invalid();
 
   user.password = password;
   user.resetTokenHash = undefined; // one use only
   user.resetTokenExpiresAt = undefined;
   await user.save(); // validates (8+ chars), hashes, sets passwordChangedAt -> old sessions end
+
+  // With two-step login on, the email link must not be a way around the code: the password is
+  // changed, but the user still logs in normally (password + code).
+  if (user.twoFactorSecret) {
+    return res.status(200).json({ message: "Password changed", twoFactorRequired: true });
+  }
 
   setAuthCookie(res, generateToken(user));
   res.status(200).json({

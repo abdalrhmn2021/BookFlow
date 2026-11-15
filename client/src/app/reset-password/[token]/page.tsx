@@ -33,7 +33,8 @@ export default function ResetPasswordPage({ params }: PageProps<"/reset-password
     setSubmitting(true);
     try {
       const user = await resetPassword(token, password);
-      router.replace(homeFor(user.role));
+      // null: two-step login is on, so the link doesn't log in - the login page asks for the code.
+      router.replace(user ? homeFor(user.role) : "/login?reset=done");
     } catch (err) {
       setError(tError(err));
       // A used or expired link can't be fixed by retrying: offer a new one.
