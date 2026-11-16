@@ -90,7 +90,10 @@ exports.updateStaffSchedule = async (req, res) => {
   if (workingHours !== undefined) {
     if (workingHours === null || (Array.isArray(workingHours) && workingHours.length === 0)) {
       staff.workingHours = undefined;
-    } else if (Array.isArray(workingHours)) {
+    } else if (
+      Array.isArray(workingHours) &&
+      workingHours.every((d) => d && typeof d === "object" && !Array.isArray(d))
+    ) {
       staff.workingHours = workingHours.map(({ day, isOpen, open, close }) => ({ day, isOpen, open, close }));
     } else {
       return res.status(400).json({ message: "workingHours must be an array of 7 days or null" });

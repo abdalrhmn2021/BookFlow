@@ -17,7 +17,8 @@ exports.getMyTenant = async (req, res) => {
 
 exports.updateWorkingHours = async (req, res) => {
   const { workingHours } = req.body;
-  if (!Array.isArray(workingHours)) {
+  // Every day must be an object ({ day, isOpen, open, close }); a null or a number would crash below.
+  if (!Array.isArray(workingHours) || !workingHours.every((d) => d && typeof d === "object" && !Array.isArray(d))) {
     return res.status(400).json({ message: "workingHours must be an array of 7 days" });
   }
 

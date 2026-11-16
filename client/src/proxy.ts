@@ -21,7 +21,33 @@ function visitorIp(request: NextRequest): string | null {
   return request.headers.get("x-real-ip")?.trim() || null;
 }
 
+// CSRF guard (security review C-04). A browser request that CHANGES something (POST, PUT,
+// PATCH, DELETE) must come from a page on this same site. Another site's page can make the
+// browser send our login cookie with its request - this stops it here, before the server.
+// Today SameSite=Lax and the JSON-only body already block that; this keeps it blocked even if
+// one of them changes. It compares with the site's own domain, so every site (custom domains
+// too) works with no list to keep up to date. No Origin header = not sent by a page (curl, apps).
+// CSRF_CHECK=off turns it off.
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+export function isCrossSite(request: NextRequest): boolean {
+  if (SAFE_METHODS.has(request.method) || process.env.CSRF_CHECK?.trim().toLowerCase() === "off") return false;
+  if (request.headers.get("sec-fetch-site") === "cross-site") return true;
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  const host = (request.headers.get("host") || request.nextUrl.host).toLowerCase();
+  try {
+    return new URL(origin).host.toLowerCase() !== host;
+  } catch {
+    return true; // "null" (sandboxed iframe, file://) or garbage
+  }
+}
+
 export function proxy(request: NextRequest) {
+  if (isCrossSite(request)) {
+    return NextResponse.json({ message: "Forbidden origin" }, { status: 403 });
+  }
+
   const headers = new Headers(request.headers);
 
   // Whatever the browser sent under these names is thrown away - only we set them.
