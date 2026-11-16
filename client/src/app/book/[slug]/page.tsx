@@ -8,11 +8,14 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
 import ManageLinkBox from "@/components/ManageLinkBox";
 import LegalNotice from "@/components/LegalNotice";
+import Turnstile from "@/components/Turnstile";
 import { addDays, dayNameOf, formatDayChip, formatDuration, formatLongDate, formatPrice, todayIn } from "@/lib/format";
 import { inputClass } from "@/lib/ui";
 import { offersService, type Availability, type GuestBookingResult, type PublicBusinessPage } from "@/lib/types";
 
 const DAYS_AHEAD = 14;
+// Set on sites that use Cloudflare Turnstile against fake guest bookings (see components/Turnstile.tsx).
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
 // "Any staff member": the server merges everyone's free times and picks who is free at booking.
 const ANY_STAFF = "any";
 
@@ -64,7 +67,7 @@ function readDraft(slug: string, data: PublicBusinessPage): Draft | null {
 export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   const { slug } = use(params);
   const { user, loading: authLoading } = useAuth();
-  const { t, tError } = useLanguage();
+  const { t, tError, lang } = useLanguage();
 
   const [page, setPage] = useState<PublicBusinessPage | null>(null);
   const [pageError, setPageError] = useState<{ status: number; err: unknown } | null>(null);
@@ -76,6 +79,9 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   const [notes, setNotes] = useState("");
   // Off until the customer ticks it: WhatsApp reminders need their opt-in (Meta's rules).
   const [whatsappConsent, setWhatsappConsent] = useState(false);
+  // Turnstile token for guests (one use) and a counter that makes the widget start over.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaRound, setCaptchaRound] = useState(0);
   const [guest, setGuest] = useState<GuestDetails>(() =>
     typeof window === "undefined" ? { name: "", phone: "" } : readGuest(),
   );
@@ -173,9 +179,13 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
         if (result.staffName) staffName = result.staffName;
       } else {
         const details = { name: guest.name.trim(), phone: guest.phone.trim() };
+        const token = captchaToken;
+        // The token is used up by this try, whatever the answer: the widget gets a fresh one.
+        setCaptchaToken(null);
+        setCaptchaRound((n) => n + 1);
         const result = await api.post<GuestBookingResult>(
           `/public/businesses/${encodeURIComponent(page.business.slug)}/appointments`,
-          { ...body, ...details },
+          { ...body, ...details, ...(token && { captchaToken: token }) },
         );
         manageToken = result.manageToken;
         if (result.appointment.staffName) staffName = result.appointment.staffName;
@@ -495,10 +505,19 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                     <span>{t.legal.whatsappConsent}</span>
                   </label>
 
+                  {!user && TURNSTILE_SITE_KEY && (
+                    <Turnstile
+                      key={captchaRound}
+                      siteKey={TURNSTILE_SITE_KEY}
+                      language={lang}
+                      onToken={setCaptchaToken}
+                    />
+                  )}
+
                   {bookError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (!user && Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
                     className="w-full rounded-lg bg-brand-500 py-3 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
                   >
                     {submitting ? t.book.booking : t.book.bookFor(formatPrice(service.price))}

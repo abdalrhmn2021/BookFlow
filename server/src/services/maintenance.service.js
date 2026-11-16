@@ -48,7 +48,14 @@ async function removeOldGuestData({ now = new Date() } = {}) {
     { guest: { $exists: true }, personalDataRemovedAt: { $exists: false }, endTime: { $lt: before } },
     {
       $set: { "guest.name": REMOVED_NAME, personalDataRemovedAt: now },
-      $unset: { "guest.phone": 1, notes: 1, manageTokenHash: 1, "cancellation.reason": 1 },
+      $unset: {
+        "guest.phone": 1,
+        "guest.phoneKey": 1,
+        notes: 1,
+        manageTokenHash: 1,
+        "cancellation.reason": 1,
+        "autoReminder.lastError": 1, // WhatsApp's answer can quote the phone number
+      },
     },
   );
   return result.modifiedCount;

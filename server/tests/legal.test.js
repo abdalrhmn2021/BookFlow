@@ -155,8 +155,9 @@ describe("Removing old guest details (retention)", () => {
     const biz = await h.makeBusiness("retain-a");
     const customer = await h.makeCustomer("sara");
     const old = await pastBooking(biz, 400, {
-      guest: { name: "Old Guest", phone: "0599000222" },
+      guest: { name: "Old Guest", phone: "0599000222", phoneKey: "970599000222" },
       manageTokenHash: "a".repeat(64),
+      autoReminder: { attempts: 3, lastError: "WhatsApp answered 400: bad number 970599000222" },
     });
     const recent = await pastBooking(biz, 100, { guest: { name: "Recent Guest", phone: "0599000333" } });
     const registered = await pastBooking(biz, 400, { customerId: customer._id });
@@ -167,6 +168,7 @@ describe("Removing old guest details (retention)", () => {
     expect(cleaned.guest).toEqual({ name: REMOVED_NAME });
     expect(cleaned.notes).toBeUndefined();
     expect(cleaned.manageTokenHash).toBeUndefined();
+    expect(cleaned.autoReminder.lastError).toBeUndefined();
     expect(cleaned).toMatchObject({ status: "completed", price: 20, serviceName: "Haircut" });
 
     expect((await Appointment.findById(recent._id)).guest.phone).toBe("0599000333");

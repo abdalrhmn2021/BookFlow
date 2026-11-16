@@ -32,7 +32,7 @@ describe("Guest booking", () => {
 
     const saved = await Appointment.findById(res.body.appointment.id).lean();
     expect(saved.customerId).toBeUndefined();
-    expect(saved.guest).toEqual({ name: "Ahmad Guest", phone: "0599123456" });
+    expect(saved.guest).toEqual({ name: "Ahmad Guest", phone: "0599123456", phoneKey: "970599123456" });
 
     const list = await request(h.app)
       .get(`/api/appointments/business?date=${date}`)
