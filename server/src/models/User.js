@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const { workingDaySchema } = require("./Tenant");
 const { isValidDate } = require("../utils/time");
+const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 
 const userSchema = new mongoose.Schema(
   {
@@ -16,6 +17,7 @@ const userSchema = new mongoose.Schema(
       required: [true, "Email is required"],
       lowercase: true,
       trim: true,
+      maxlength: [254, "Email is too long"],
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email"],
     },
     password: {
@@ -24,9 +26,19 @@ const userSchema = new mongoose.Schema(
       minlength: [8, "Password must be at least 8 characters"],
       select: false,
     },
+    // Same cleaning and format as guests' phones ("0599 123-456" -> "0599123456"). Checked only
+    // when it's set or changed, so an older account with an odd phone can still log in and save.
     phone: {
       type: String,
       trim: true,
+      set: (v) => (typeof v === "string" ? normalizePhone(v) : v),
+      validate: {
+        validator(v) {
+          if (typeof this?.isModified === "function" && !this.isModified("phone")) return true;
+          return !v || PHONE_REGEX.test(v);
+        },
+        message: "Please provide a valid phone number",
+      },
     },
     role: {
       type: String,

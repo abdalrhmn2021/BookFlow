@@ -20,6 +20,7 @@ const { notifyNewBooking } = require("../services/notify.service");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { isValidDate } = require("../utils/time");
 const { passesTurnstile } = require("../utils/turnstile");
+const { isId } = require("../utils/ids");
 
 exports.listBusinesses = async (req, res) => {
   // A one-business site lists only its own business. A shared server answering a request
@@ -70,6 +71,8 @@ exports.getAvailability = async (req, res) => {
   if (!serviceId || !staffId || !date) {
     return res.status(400).json({ message: "serviceId, staffId and date are required" });
   }
+  if (!isId(serviceId)) return res.status(400).json({ message: "Invalid serviceId" });
+  if (staffId !== ANY_STAFF && !isId(staffId)) return res.status(400).json({ message: "Invalid staffId" });
   if (!isValidDate(date)) {
     return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }

@@ -7,6 +7,7 @@ const Service = require("../models/Service");
 const User = require("../models/User");
 const { bookableFilter } = require("../utils/bookable");
 const { phoneKey } = require("../utils/phone");
+const { isId } = require("../utils/ids");
 const { staffDayHours, offersService } = require("../utils/staffSchedule");
 const {
   TIME_REGEX,
@@ -203,6 +204,9 @@ async function bookAppointment({
     throw httpError(400, "slug, serviceId, staffId, date and time are required");
   }
 
+  if (!isId(serviceId)) throw httpError(400, "Invalid serviceId");
+  if (staffId !== ANY_STAFF && !isId(staffId)) throw httpError(400, "Invalid staffId");
+
   const tenant = await Tenant.findOne({ slug: String(slug).toLowerCase(), isActive: true });
   if (!tenant) throw httpError(404, "Business not found");
 
@@ -258,6 +262,7 @@ async function bookAppointment({
 // Moves an upcoming appointment to a new time (and optionally another staff member).
 // Same rules as a new booking; the appointment's own old slot doesn't count as a clash.
 async function rescheduleAppointment({ appointment, tenant, staffId, date, time, by }) {
+  if (!isId(staffId)) throw httpError(400, "Invalid staffId");
   const staff = await User.findOne(bookableFilter(tenant._id, { _id: staffId }));
   if (!staff) throw httpError(404, "Staff member not found");
   if (!offersService(staff, appointment.serviceId)) {

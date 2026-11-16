@@ -1,9 +1,9 @@
-const mongoose = require("mongoose");
 const Appointment = require("../models/Appointment");
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const { bookableFilter } = require("../utils/bookable");
+const { isId } = require("../utils/ids");
 const CustomerTenant = require("../models/CustomerTenant");
 const { isValidDate, localToDate, nextDate } = require("../utils/time");
 const {
@@ -480,10 +480,12 @@ exports.getBusinessAvailability = async (req, res) => {
   if (!serviceId || !staffId || !date) {
     return res.status(400).json({ message: "serviceId, staffId and date are required" });
   }
+  if (!isId(serviceId)) return res.status(400).json({ message: "Invalid serviceId" });
+  if (!isId(staffId)) return res.status(400).json({ message: "Invalid staffId" });
   if (!isValidDate(date)) {
     return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
-  if (exclude && !mongoose.isValidObjectId(exclude)) {
+  if (exclude && !isId(exclude)) {
     return res.status(400).json({ message: "Invalid exclude" });
   }
 

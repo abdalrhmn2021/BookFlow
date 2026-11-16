@@ -31,6 +31,7 @@ const tenantSchema = new mongoose.Schema(
       type: String,
       required: [true, "Tenant name is required"],
       trim: true,
+      maxlength: [80, "Business name is too long"],
     },
     slug: {
       type: String,
