@@ -58,6 +58,7 @@ function booking(biz, hoursFromJobRun, extra = {}) {
     endTime: new Date(start.getTime() + 30 * 60 * 1000),
     guest: { name: "Sara", phone: "0599123456" },
     whatsappConsent: true, // the customer ticked "remind me on WhatsApp"
+    status: "confirmed", // guests get automatic reminders only once the business confirmed
     ...extra,
   });
 }
@@ -135,5 +136,48 @@ describe("Automatic WhatsApp reminders", () => {
     const res = await request(h.app).post("/api/jobs/reminders").set("x-jobs-secret", process.env.JOBS_SECRET);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("checked");
+  });
+});
+
+// Security review L-02: the business's WhatsApp number must not become a free messenger.
+describe("Automatic reminders can't be abused", () => {
+  test("a guest booking nobody at the business confirmed (pending) gets no reminder", async () => {
+    const biz = await business("abuse-a");
+    await booking(biz, 20, { status: "pending" });
+    const r = await sendDueReminders({ now: later() });
+    expect(r.sent).toBe(0);
+    expect(sent).toHaveLength(0);
+  });
+
+  test("a signed-in customer's pending booking still gets its reminder", async () => {
+    const biz = await business("abuse-b");
+    const customer = await h.makeCustomer("lina");
+    await require("../src/models/User").updateOne({ _id: customer._id }, { phone: "0599000111" });
+    await booking(biz, 20, { status: "pending", guest: undefined, customerId: customer._id });
+    const r = await sendDueReminders({ now: later() });
+    expect(r.sent).toBe(1);
+  });
+
+  test("links, web addresses, @handles and long numbers are taken out of the name", async () => {
+    const biz = await business("abuse-c");
+    await booking(biz, 20, {
+      guest: { name: "Sara visit evil.example http://x.co/a @me 0599123456", phone: "0599123456" },
+    });
+    await sendDueReminders({ now: later() });
+    const name = sent[0].template.components[0].parameters[0].text;
+    expect(name).toBe("Sara visit");
+  });
+
+  test("no more than WHATSAPP_REMINDERS_PER_DAY reminders a day for one business", async () => {
+    process.env.WHATSAPP_REMINDERS_PER_DAY = "2";
+    try {
+      const biz = await business("abuse-d");
+      for (const h2 of [20, 21, 22]) await booking(biz, h2);
+      const r = await sendDueReminders({ now: later() });
+      expect(r.sent).toBe(2);
+      expect(r.skipped).toBe(1);
+    } finally {
+      delete process.env.WHATSAPP_REMINDERS_PER_DAY;
+    }
   });
 });

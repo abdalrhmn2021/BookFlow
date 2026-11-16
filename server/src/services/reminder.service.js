@@ -40,11 +40,38 @@ function formatWhen(date, timeZone) {
   }).format(date);
 }
 
+// The customer's name goes into a message sent from the BUSINESS's WhatsApp number, and a guest
+// can type anything as their name. So only the name is kept: no links, web addresses, emails,
+// @handles or long numbers (someone could otherwise send "their" text to any phone).
+function safeName(text) {
+  const clean = String(text ?? "")
+    .replace(/(https?:\/\/|www\.)\S*/gi, " ") // links
+    .replace(/\S+\.\S+/g, " ") // anything like a web address or email (word.word)
+    .replace(/[@#/\\:]+\S*/g, " ") // @handles, #tags, paths
+    .replace(/\d{4,}/g, " ") // phone numbers, codes
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40)
+    .trim();
+  return clean || "-";
+}
+
 // The 4 template variables, in order: customer, business, service, date and time.
 function reminderParams(appointment, tenant) {
   const name = appointment.guest?.name ?? appointment.customerId?.name ?? "";
-  return [name, tenant.name, appointment.serviceName, formatWhen(appointment.startTime, tenant.timezone)];
+  return [safeName(name), tenant.name, appointment.serviceName, formatWhen(appointment.startTime, tenant.timezone)];
 }
+
+// Who gets an automatic reminder: a booking the business confirmed, or one made by a signed-in
+// customer. A guest's booking that nobody at the business has looked at yet (pending) gets none:
+// otherwise anyone could make the business's number message any phone.
+const ELIGIBLE = [{ status: "confirmed" }, { status: "pending", customerId: { $exists: true, $ne: null } }];
+
+// Automatic reminders per business per 24 hours (each one costs money at Meta).
+const remindersPerDay = () => {
+  const n = Number(process.env.WHATSAPP_REMINDERS_PER_DAY);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 100;
+};
 
 const release = (id, update) =>
   Appointment.updateOne({ _id: id }, { ...update, $unset: { "autoReminder.claimedAt": 1 } });
@@ -58,7 +85,15 @@ async function remindOne(candidate, tenant, now) {
       status: { $in: ACTIVE_STATUSES },
       reminderSentAt: null,
       whatsappConsent: true,
-      $or: [{ "autoReminder.claimedAt": null }, { "autoReminder.claimedAt": { $lt: new Date(now - CLAIM_TIMEOUT) } }],
+      $and: [
+        { $or: ELIGIBLE },
+        {
+          $or: [
+            { "autoReminder.claimedAt": null },
+            { "autoReminder.claimedAt": { $lt: new Date(now - CLAIM_TIMEOUT) } },
+          ],
+        },
+      ],
     },
     { $set: { "autoReminder.claimedAt": now } },
     { returnDocument: "after" },
@@ -112,16 +147,40 @@ async function sendDueReminders({ now = new Date() } = {}) {
     reminderSentAt: null,
     whatsappConsent: true, // only customers who ticked "remind me on WhatsApp" (Meta's opt-in rule)
     "autoReminder.attempts": { $not: { $gte: MAX_ATTEMPTS } },
+    $or: ELIGIBLE,
   })
     .select("_id tenantId")
     .sort({ startTime: 1 })
     .limit(BATCH)
     .lean();
 
+  // Reminders each business already got in the last 24 hours, for the daily limit.
+  const sentToday = new Map(
+    (
+      await Appointment.aggregate([
+        {
+          $match: {
+            tenantId: { $in: tenants.map((t) => t._id) },
+            reminderChannel: "whatsapp",
+            reminderSentAt: { $gte: new Date(now.getTime() - 24 * HOUR) },
+          },
+        },
+        { $group: { _id: "$tenantId", n: { $sum: 1 } } },
+      ])
+    ).map((r) => [String(r._id), r.n]),
+  );
+
   // One at a time: a few reminders every 10 minutes, no need to hammer the API.
   for (const c of candidates) {
     result.checked++;
-    result[await remindOne(c, byId.get(String(c.tenantId)), now)]++;
+    const key = String(c.tenantId);
+    if ((sentToday.get(key) ?? 0) >= remindersPerDay()) {
+      result.skipped++;
+      continue;
+    }
+    const outcome = await remindOne(c, byId.get(key), now);
+    if (outcome === "sent") sentToday.set(key, (sentToday.get(key) ?? 0) + 1);
+    result[outcome]++;
   }
   return result;
 }
@@ -157,4 +216,4 @@ function startReminderJob() {
   console.log(`[reminder] automatic WhatsApp reminders every ${minutes} min, ${hoursBefore()}h before`);
 }
 
-module.exports = { sendDueReminders, startReminderJob, reminderParams, formatWhen, MAX_ATTEMPTS };
+module.exports = { sendDueReminders, startReminderJob, reminderParams, safeName, formatWhen, MAX_ATTEMPTS };

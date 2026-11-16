@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Appointment = require("../models/Appointment");
 
 // New-booking emails to the business owner(s) and the staff member who was booked.
 // Sent through Brevo's HTTPS API: Render's free plan blocks SMTP ports (25/465/587),
@@ -118,8 +119,24 @@ ${button("Open the schedule")}
 }
 
 // Called after a booking is saved. Never throws into the booking: callers fire and forget.
+// "New booking" emails per business per 24 hours. All businesses on a server share one email
+// account (Brevo free: 300 a day), so a flood of bookings at one business must not use it all -
+// the "forgot password" codes of every business go out through the same account.
+const newBookingEmailsPerDay = () => {
+  const n = Number(process.env.NEW_BOOKING_EMAILS_PER_DAY);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 20;
+};
+
 async function notifyNewBooking({ tenant, appointment, staff, site }) {
   if (!isEmailConfigured()) return { sent: 0, skipped: "email not configured" };
+
+  // Counts this booking too. Past the limit the dashboard still shows every booking (and its
+  // new-booking alerts) - only the emails stop until tomorrow.
+  const lastDay = await Appointment.countDocuments({
+    tenantId: tenant._id,
+    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  });
+  if (lastDay > newBookingEmailsPerDay()) return { sent: 0, skipped: "daily email limit" };
 
   const [owners, customer] = await Promise.all([
     User.find({ tenantId: tenant._id, role: "owner", isActive: true }).select("name email"),

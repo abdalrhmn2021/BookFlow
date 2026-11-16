@@ -50,6 +50,7 @@ exports.createAppointment = async (req, res) => {
     notes,
     customerId: req.user.id,
     whatsappConsent: whatsappConsent === true,
+    fromWebsite: true,
   });
 
   await CustomerTenant.updateOne(

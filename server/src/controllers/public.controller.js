@@ -19,6 +19,7 @@ const { TOKEN_REGEX, hashToken, createManageToken, maskPhone } = require("../uti
 const { notifyNewBooking } = require("../services/notify.service");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { isValidDate } = require("../utils/time");
+const { passesTurnstile } = require("../utils/turnstile");
 
 exports.listBusinesses = async (req, res) => {
   // A one-business site lists only its own business. A shared server answering a request
@@ -112,7 +113,11 @@ exports.getAvailability = async (req, res) => {
 const MAX_GUEST_UPCOMING = 3;
 
 exports.createGuestAppointment = async (req, res) => {
-  const { serviceId, staffId, date, time, notes, name, phone, whatsappConsent } = req.body || {};
+  const { serviceId, staffId, date, time, notes, name, phone, whatsappConsent, captchaToken } = req.body || {};
+
+  if (!(await passesTurnstile(captchaToken, req.clientIp))) {
+    throw httpError(400, "Please confirm you're not a robot");
+  }
 
   const cleanName = typeof name === "string" ? name.trim() : "";
   if (cleanName.length < 2) {
@@ -144,6 +149,7 @@ exports.createGuestAppointment = async (req, res) => {
     // Checked inside the booking transaction, under a per-phone lock (booking.service).
     maxGuestUpcoming: MAX_GUEST_UPCOMING,
     whatsappConsent: whatsappConsent === true,
+    fromWebsite: true,
   });
 
   // Not awaited: the guest gets the answer now, the email goes out in the background.

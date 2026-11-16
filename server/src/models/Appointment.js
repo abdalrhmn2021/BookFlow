@@ -20,6 +20,8 @@ const appointmentSchema = new mongoose.Schema(
           // Required on the public booking page (public.controller); optional when the business
           // enters a walk-in or phone booking itself.
           phone: { type: String, trim: true },
+          // The same number in one form (utils/phone.js phoneKey) - for the per-guest limits.
+          phoneKey: { type: String },
         },
         { _id: false },
       ),
@@ -95,6 +97,10 @@ appointmentSchema.index({ tenantId: 1, startTime: 1 });
 appointmentSchema.index({ tenantId: 1, createdAt: 1 }); // dashboard "new bookings" alerts
 appointmentSchema.index({ customerId: 1, startTime: -1 });
 appointmentSchema.index({ status: 1, startTime: 1 }); // reminder job: active bookings starting soon
+appointmentSchema.index(
+  { tenantId: 1, "guest.phoneKey": 1, startTime: 1 },
+  { partialFilterExpression: { "guest.phoneKey": { $exists: true } } },
+);
 appointmentSchema.index(
   { tenantId: 1, "guest.phone": 1, startTime: 1 },
   { partialFilterExpression: { "guest.phone": { $exists: true } } },

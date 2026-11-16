@@ -6,6 +6,7 @@ const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
 const { bookableFilter } = require("../utils/bookable");
+const { phoneKey } = require("../utils/phone");
 const { staffDayHours, offersService } = require("../utils/staffSchedule");
 const {
   TIME_REGEX,
@@ -62,10 +63,24 @@ const hasConflict = (staffId, startTime, endTime, session, excludeId) =>
     ...(excludeId && { _id: { $ne: excludeId } }),
   }).session(session);
 
+// How far ahead customers and guests may book (the business itself has no limit).
+// Without it, fake bookings could block slots months ahead where nobody looks.
+const maxDaysAhead = () => {
+  const n = Number(process.env.BOOKING_MAX_DAYS_AHEAD);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 60;
+};
+
+// New guest bookings (made on the website, not by the business) per business per 24 hours.
+// A stop for someone filling a calendar with fake bookings from many phones and IPs.
+const guestBookingsPerDay = () => {
+  const n = Number(process.env.GUEST_BOOKINGS_PER_DAY);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 30;
+};
+
 // The checks every new time goes through: real date and time, not in the past, inside the
 // business's working hours AND the staff member's own hours (utils/staffSchedule.js).
-function checkTime({ tenant, staff, date, time, duration }) {
-  const times = checkBusinessTime({ tenant, date, time, duration });
+function checkTime({ tenant, staff, date, time, duration, limitAhead }) {
+  const times = checkBusinessTime({ tenant, date, time, duration, limitAhead });
   if (!worksAt(tenant, staff, date, time, duration)) {
     throw httpError(400, "This staff member isn't working at that time");
   }
@@ -73,7 +88,7 @@ function checkTime({ tenant, staff, date, time, duration }) {
 }
 
 // The part that is the same for everyone at the business (date, past, business hours).
-function checkBusinessTime({ tenant, date, time, duration }) {
+function checkBusinessTime({ tenant, date, time, duration, limitAhead = false }) {
   if (!date || !time) throw httpError(400, "date and time are required");
   if (!isValidDate(date)) throw httpError(400, "date must be a real date in YYYY-MM-DD format");
   if (!TIME_REGEX.test(time)) throw httpError(400, "time must be HH:mm (e.g. 10:30)");
@@ -81,6 +96,9 @@ function checkBusinessTime({ tenant, date, time, duration }) {
   const startTime = localToDate(date, time, tenant.timezone);
   const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
   if (startTime <= new Date()) throw httpError(400, "You can't book a time in the past");
+  if (limitAhead && startTime.getTime() > Date.now() + maxDaysAhead() * 24 * 60 * 60 * 1000) {
+    throw httpError(400, `You can only book up to ${maxDaysAhead()} days ahead`);
+  }
   if (!fitsInWorkingHours(tenant.workingHours, dayNameOf(date), time, duration)) {
     throw httpError(400, "This time is outside working hours");
   }
@@ -119,7 +137,7 @@ async function insertWithLock(staff, startTime, endTime, fields, guestLimit) {
       await GuestLock.updateOne({ key: guestKey }, { $inc: { version: 1 } }, { session });
       const upcoming = await Appointment.countDocuments({
         tenantId: guestLimit.tenantId,
-        "guest.phone": guestLimit.phone,
+        "guest.phoneKey": guestLimit.phone,
         status: { $in: ACTIVE_STATUSES },
         startTime: { $gte: new Date() },
       }).session(session);
@@ -134,8 +152,8 @@ async function insertWithLock(staff, startTime, endTime, fields, guestLimit) {
 // "Any staff member": try the people who do the service, the least busy that day first, each
 // under their own lock - so two customers booking "anyone" at the same moment get two
 // different people (or one gets 409 when nobody is left), never the same person twice.
-async function bookAnyone({ tenant, service, date, time, fields, guestLimit }) {
-  const { startTime, endTime } = checkBusinessTime({ tenant, date, time, duration: service.duration });
+async function bookAnyone({ tenant, service, date, time, fields, guestLimit, limitAhead }) {
+  const { startTime, endTime } = checkBusinessTime({ tenant, date, time, duration: service.duration, limitAhead });
 
   const people = (await peopleForService(tenant, service)).filter((p) =>
     worksAt(tenant, p, date, time, service.duration),
@@ -179,6 +197,7 @@ async function bookAppointment({
   createdBy,
   maxGuestUpcoming, // public guest bookings only: max upcoming bookings per phone at this business
   whatsappConsent = false,
+  fromWebsite = false, // made by a customer or guest on the site: max days ahead + guest daily limit
 }) {
   if (!slug || !serviceId || !staffId || !date || !time) {
     throw httpError(400, "slug, serviceId, staffId, date and time are required");
@@ -189,6 +208,20 @@ async function bookAppointment({
 
   const service = await Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true });
   if (!service) throw httpError(404, "Service not found");
+
+  if (guest?.phone) guest = { ...guest, phoneKey: phoneKey(guest.phone, tenant.phoneCountryCode) };
+
+  if (fromWebsite && guest) {
+    const today = await Appointment.countDocuments({
+      tenantId: tenant._id,
+      guest: { $exists: true },
+      createdBy: { $exists: false },
+      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    });
+    if (today >= guestBookingsPerDay()) {
+      throw httpError(429, "Too many online bookings here today, please sign in or contact the business");
+    }
+  }
 
   const fields = {
     tenantId: tenant._id,
@@ -203,10 +236,11 @@ async function bookAppointment({
     whatsappConsent: whatsappConsent === true,
   };
   const guestLimit =
-    maxGuestUpcoming && guest?.phone ? { tenantId: tenant._id, phone: guest.phone, max: maxGuestUpcoming } : null;
+    maxGuestUpcoming && guest?.phoneKey ? { tenantId: tenant._id, phone: guest.phoneKey, max: maxGuestUpcoming } : null;
+  const limitAhead = fromWebsite;
 
   if (staffId === ANY_STAFF) {
-    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields, guestLimit });
+    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields, guestLimit, limitAhead });
     return { appointment, tenant, service, staff };
   }
 
@@ -214,7 +248,7 @@ async function bookAppointment({
   if (!staff) throw httpError(404, "Staff member not found");
   if (!offersService(staff, service._id)) throw httpError(400, "This staff member doesn't offer this service");
 
-  const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: service.duration });
+  const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: service.duration, limitAhead });
   const appointment = await insertWithLock(staff, startTime, endTime, fields, guestLimit);
 
   if (!appointment) throw httpError(409, "This staff member is already booked at that time");
