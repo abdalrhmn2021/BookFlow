@@ -2,6 +2,7 @@ const Appointment = require("../models/Appointment");
 const Tenant = require("../models/Tenant");
 const { ACTIVE_STATUSES } = require("./booking.service");
 const { isWhatsAppConfigured, toWhatsAppNumber, sendTemplate } = require("./whatsapp.service");
+const { reportError } = require("./alert.service");
 
 // The automatic WhatsApp reminder.
 //
@@ -206,6 +207,7 @@ function startReminderJob() {
         console.log(`[reminder] checked ${r.checked}: sent ${r.sent}, failed ${r.failed}, skipped ${r.skipped}`);
     } catch (err) {
       console.error("[reminder] job failed:", err.message);
+      reportError(err, "reminder job");
     } finally {
       running = false;
     }

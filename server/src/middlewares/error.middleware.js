@@ -1,3 +1,5 @@
+const { reportError, whereOf } = require("../services/alert.service");
+
 exports.notFound = (req, res) => {
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
 };
@@ -27,6 +29,8 @@ exports.errorHandler = (err, req, res, next) => {
 
   console.error("[error]", err);
   const status = err.statusCode || 500;
+  // An email to ALERT_EMAIL (if set) - in the background, the answer doesn't wait for it.
+  if (status >= 500) reportError(err, whereOf(req));
   res.status(status).json({
     message: status === 500 ? "Something went wrong" : err.message,
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),

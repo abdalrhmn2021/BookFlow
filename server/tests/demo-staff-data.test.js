@@ -30,6 +30,18 @@ const makeOld = (hours) =>
   );
 
 describe("B-02: the demo puts itself back", () => {
+  // Off unless DEMO_RESET_HOURS is set (review Q-01) - the demo platform sets 24.
+  beforeEach(() => {
+    process.env.DEMO_RESET_HOURS = "24";
+  });
+
+  test("off by default: without DEMO_RESET_HOURS nothing is reset", async () => {
+    delete process.env.DEMO_RESET_HOURS;
+    await seed(quiet);
+    await makeOld(25 * 24);
+    expect(await resetDemoIfDue()).toBe(false);
+  });
+
   test("a fresh demo is left alone; after 24 hours a visitor's changes are gone", async () => {
     await seed(quiet);
     const demo = await Tenant.findOne({ slug: DEMO_SLUG });

@@ -62,6 +62,7 @@ const devToken = (token) => (process.env.NODE_ENV === "production" ? {} : { toke
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    algorithm: "HS256", // the only one protect() accepts
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };

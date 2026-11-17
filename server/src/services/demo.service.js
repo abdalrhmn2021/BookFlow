@@ -9,7 +9,8 @@ const { localToDate, nextDate, dayNameOf } = require("../utils/time");
 // The public demo ("demo-salon"): created by `npm run seed`, and put back as new automatically
 // (security review B-02). Its password is public, so any visitor can log in as the owner and
 // rename the business, delete the services or deactivate the staff - for everyone after them.
-// The maintenance job resets it every DEMO_RESET_HOURS (default 24, 0 = never).
+// The maintenance job resets it every DEMO_RESET_HOURS. Off unless it's set (review Q-01): only the
+// demo platform's server sets it (24), so a client's copy never runs it, even by mistake.
 
 const SLUG = "demo-salon";
 const PASSWORD = "password123";
@@ -140,7 +141,7 @@ async function seed({ log = console.log } = {}) {
 
 const resetHours = () => {
   const raw = process.env.DEMO_RESET_HOURS;
-  if (raw === undefined || raw.trim() === "") return 24;
+  if (raw === undefined || raw.trim() === "") return 0;
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : 0;
 };

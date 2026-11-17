@@ -14,13 +14,17 @@ on:
   pull_request:
   workflow_dispatch:
 
+# The jobs only read the code (review E-04): the GITHUB_TOKEN can't push, comment or change anything.
+permissions:
+  contents: read
+
 jobs:
   format:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -34,8 +38,8 @@ jobs:
       run:
         working-directory: client
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -44,7 +48,7 @@ jobs:
       # Known holes in the packages that ship to Vercel (dev tools left out) fail the check (review F-02).
       - run: npm audit --omit=dev --audit-level=high
       # Next.js build cache: later builds only redo what changed.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: client/.next/cache
           key: next-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}-${{ hashFiles('client/src/**') }}
@@ -52,6 +56,8 @@ jobs:
       # typecheck = `next typegen` (PageProps / LayoutProps route types) + `tsc --noEmit`
       - run: npm run typecheck
       - run: npm run lint
+      # Unit tests (Vitest): links, redirects, dates, the CSRF guard.
+      - run: npm test
       # The same production build Vercel runs - a page that can't build fails here, not on deploy.
       - run: npm run build
         env:
@@ -66,9 +72,9 @@ jobs:
         working-directory: server
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -231,3 +237,43 @@ jobs:
             ].join("\n");
             require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + "\n");
           '
+
+  # The whole booking path in a real browser (Playwright, client/e2e): a guest books, the owner
+  # sees it, the guest cancels; plus the security headers. The API runs on a throwaway in-memory
+  # MongoDB with the demo data (server/scripts/e2e-server.js) - no secrets needed.
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - run: npm ci
+        working-directory: server
+      - run: npm ci
+        working-directory: client
+      # The MongoDB binary for mongodb-memory-server, downloaded once and kept between runs.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+      - name: Install Chromium for Playwright
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        working-directory: client
+        run: npm run test:e2e
+      # On failure: the trace (screens, network, console) of each failed test, to open with
+      # `npx playwright show-trace`. Only the demo data is in it.
+      - name: Keep the traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-traces
+          path: client/test-results/
+          retention-days: 7

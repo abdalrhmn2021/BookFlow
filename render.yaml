@@ -9,7 +9,7 @@ services:
     plan: free
     buildCommand: npm ci
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -44,3 +44,5 @@ services:
         value: ar
       - key: JOBS_SECRET
         generateValue: true # for an outside cron calling POST /api/jobs/reminders
+      - key: ALERT_EMAIL
+        sync: false # optional: your email, to hear about server errors (needs Brevo above)

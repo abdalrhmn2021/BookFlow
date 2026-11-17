@@ -133,6 +133,7 @@ Allowed transitions live in one map (`completed`, `cancelled`, `no-show` are fin
 ```
 BookFlow/
 ├── client/                  Next.js frontend
+│   ├── e2e/                 Playwright end-to-end tests (booking path, security headers)
 │   └── src/
 │       ├── app/             pages: book/[slug], businesses, dashboard, my-appointments, login, register...
 │       ├── components/      Navbar, RequireAuth, StatusBadge, dashboard/ tabs
@@ -149,7 +150,8 @@ BookFlow/
 │   │   │                    reminder + whatsapp (automatic reminders), maintenance (stale bookings), notify (emails)
 │   │   └── utils/           time-zone & overlap helpers, staff schedules, phone numbers, tokens
 │   ├── scripts/             seed.js (demo data), setup-client.js (a sold copy's business + owner),
-│   │                        create-admin.js (the seller's admin account), two-factor.js (2-step login)
+│   │                        create-admin.js (the seller's admin account), two-factor.js (2-step login),
+│   │                        backup.js / restore.js, e2e-server.js (the API for the end-to-end tests)
 │   ├── tests/               Jest + Supertest API tests (in-memory MongoDB replica set)
 │   └── api-tests.http       every endpoint, runnable in VS Code REST Client
 ├── docs/INSTALL.md          install guide for each sold copy (Arabic)
@@ -185,9 +187,18 @@ Reset the demo data any time: `npm run seed -- --reset`
 cd server
 npm test
 ```
-178 API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
+240+ API tests (Jest + Supertest) on a real MongoDB replica set in CI: 10 concurrent bookings for the same slot (exactly 1 wins), tenant isolation (404 across businesses), the shared server's site scope, the status state machine, cancellation rules, guest bookings, staff schedules, WhatsApp reminders (never twice), password reset, the admin panel and the new-client setup.
 Locally they run on an in-memory MongoDB started just for the tests (downloaded once, then cached), or on `MONGO_URI_TEST` if you set it - never on `MONGO_URI`;
 on GitHub Actions they run on every push against a MongoDB replica set started in Docker.
+
+```bash
+cd client
+npm test           # unit tests (Vitest): redirects after login, WhatsApp links, dates, the CSRF guard
+npx playwright install chromium   # once per computer
+npm run test:e2e   # end-to-end (Playwright): a guest books, the owner sees it, the guest cancels + security headers
+```
+The end-to-end tests start their own API on a throwaway in-memory database with the demo data
+(`server/scripts/e2e-server.js`) - they never read `server/.env` and never touch a real database.
 
 ### Code style
 ```bash
@@ -202,7 +213,15 @@ npm run lint       # ESLint
 npm run build      # the production build Vercel runs
 ```
 
-CI (GitHub Actions) runs three jobs on every push and pull request: **format** (Prettier), **client** (the three commands above) and **test** (the server's API tests on a MongoDB replica set).
+CI (GitHub Actions) runs four jobs on every push and pull request: **format** (Prettier), **client** (audit, typecheck, lint, unit tests, build), **test** (audit + the server's API tests on a MongoDB replica set) and **e2e** (the booking path in Chromium). The jobs can only read the repo, the actions are pinned to a commit, and Dependabot proposes updates monthly.
+
+### Backups & monitoring
+```bash
+cd server
+npm run backup -- --keep 10                                   # the whole database -> server/backups/ (never in git)
+npm run restore -- --from backups/<folder> --confirm <database> # into an EMPTY database (--drop to replace)
+```
+`GET /api/health` (200 / 503) is for an uptime monitor, and `ALERT_EMAIL` emails you every server error (at most one every 15 minutes). Setup: [`docs/INSTALL.md`](docs/INSTALL.md) → أ7.
 
 ## Deployment
 
@@ -276,7 +295,9 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 
 ## Known limitations & roadmap
 
-- [x] Automated tests (Jest + Supertest) and CI - 178 tests: concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin
+- [x] Automated tests and CI - 240+ API tests (Jest + Supertest): concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin; client unit tests (Vitest) and end-to-end booking tests (Playwright)
+- [x] A 6-day security review (secrets, auth, tenant isolation, booking abuse, input/CSRF, frontend & dependencies): no open Critical, High or Medium findings
+- [x] Backups (`npm run backup` / `restore`), a health endpoint for uptime monitors, error emails
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
 - [x] Per-staff working hours, days off and "which staff can do which service"

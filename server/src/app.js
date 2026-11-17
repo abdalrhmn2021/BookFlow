@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const mongoose = require("mongoose");
 
 const app = express();
 
@@ -25,6 +26,19 @@ app.use(require("./middlewares/site.middleware").identifySite);
 
 app.get("/", (req, res) => {
   res.json({ message: "BookFlow API is running" });
+});
+
+// For an uptime monitor (UptimeRobot, Better Stack...): 200 when the server AND the database
+// answer, 503 when the database doesn't. Says nothing else about the server.
+app.get("/api/health", async (req, res) => {
+  const ping = mongoose.connection.readyState === 1 ? mongoose.connection.db.admin().ping() : Promise.reject();
+  const timeout = new Promise((resolve, reject) => setTimeout(reject, 3000).unref());
+  const up = await Promise.race([ping, timeout]).then(
+    () => true,
+    () => false,
+  );
+  res.set("Cache-Control", "no-store");
+  res.status(up ? 200 : 503).json({ status: up ? "ok" : "down" });
 });
 
 app.use("/api/auth", require("./routes/auth.routes"));
