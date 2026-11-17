@@ -46,7 +46,14 @@ test("a guest books, the owner sees it, the guest cancels it", async ({ browser,
 
   await guest.getByLabel("Your name").fill(GUEST.name);
   await guest.getByLabel("Phone number").fill(GUEST.phone);
-  await guest.getByRole("button", { name: /^Book for/ }).click();
+  // The server's answer says which day the booking is on (the owner checks that day below).
+  const [booked] = await Promise.all([
+    guest.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/appointments")),
+    guest.getByRole("button", { name: /^Book for/ }).click(),
+  ]);
+  expect(booked.status()).toBe(201);
+  const { appointment } = await booked.json();
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hebron" }).format(new Date(appointment.startTime));
 
   await expect(guest.getByRole("heading", { name: "You're booked!" })).toBeVisible();
   const manageLink = await guest.locator("#manage-link").inputValue();
@@ -62,15 +69,15 @@ test("a guest books, the owner sees it, the guest cancels it", async ({ browser,
   await owner.getByRole("button", { name: "Log in", exact: true }).click();
   await expect(owner).toHaveURL(/\/dashboard/);
 
-  const res = await owner.request.get(
-    "/api/appointments/business/new?since=" + encodeURIComponent(new Date(Date.now() - 60 * 60 * 1000).toISOString()),
-  );
+  // That day's schedule, as the dashboard loads it (not the "new bookings" list: it shows at most
+  // 20, and the demo data alone fills it).
+  const res = await owner.request.get(`/api/appointments/business?date=${day}`);
   expect(res.ok()).toBe(true);
   const { appointments } = await res.json();
   const mine = appointments.find((a: { guest?: { name: string } }) => a.guest?.name === GUEST.name);
-  expect(mine, "the owner's dashboard API lists the guest's booking").toBeTruthy();
+  expect(mine, "the owner's schedule for that day has the guest's booking").toBeTruthy();
+  expect(mine.status).toBe("pending");
 
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hebron" }).format(new Date(mine.startTime));
   await owner.goto(`/dashboard?tab=schedule&date=${day}`);
   await expect(owner.getByText(GUEST.name).first()).toBeVisible();
   await expect(owner.getByText(time).first()).toBeVisible();
