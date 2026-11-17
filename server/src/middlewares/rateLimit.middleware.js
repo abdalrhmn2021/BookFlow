@@ -102,3 +102,14 @@ exports.manageBookingLimiter = rateLimit({
   limit: 30,
   message: { message: "Too many requests, please slow down" },
 });
+
+// Adding staff (security review B-01): each try tells whether an email is free, so it's counted
+// per business owner - 20 an hour is plenty for a real business.
+exports.staffCreateLimiter = rateLimit({
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  keyGenerator: (req) => `staff-create:${req.user.id}`,
+  message: { message: "Too many staff members added, please try again later" },
+});

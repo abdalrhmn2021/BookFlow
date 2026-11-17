@@ -135,6 +135,10 @@ npm run reset-password -- --email laila@example.com
 > **على خطة Render المجانية** السيرفر بينام، فالمؤقت الداخلي بيوقف. وقتها استخدم cron خارجي مجاني (مثل cron-job.org)
 > يعمل كل 10 دقائق: `POST https://<سيرفرك>.onrender.com/api/jobs/reminders` مع header اسمه `x-jobs-secret`
 > وقيمته `JOBS_SECRET` من Environment على Render. الطريقتين مع بعض آمنين - ما في زبون بيوصله تذكيرين.
+>
+> **الديمو (`demo-salon`)** بيرجع جديد لحاله كل 24 ساعة (`DEMO_RESET_HOURS`)، عشان أي زائر يخرّبه ما يضل خرابه للي بعده.
+> على الخطة المجانية ضيف cron ثاني كل ساعة: `POST https://<سيرفرك>.onrender.com/api/jobs/demo-reset` بنفس الـ header -
+> لما ما يكون وقته ما بيعمل إشي.
 
 ### لكل زبون: شغّل التذكير
 

@@ -1,5 +1,13 @@
 const User = require("../models/User");
 const Service = require("../models/Service");
+const { isDemoEmail } = require("../config/demo");
+
+// A business can have at most this many staff accounts (active or not). MAX_STAFF in .env.
+const maxStaff = () => {
+  const n = Number(process.env.MAX_STAFF);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 50;
+};
+const EMAIL_TAKEN = "This email can't be used for a new staff member";
 
 const CREATE_FIELDS = ["name", "email", "password", "phone"];
 const UPDATE_FIELDS = ["name", "phone", "isActive"];
@@ -38,11 +46,25 @@ exports.createStaff = async (req, res) => {
     return res.status(400).json({ message: "name, email and password are required" });
   }
 
-  const staff = await User.create({
-    ...data,
-    role: "staff",
-    tenantId: req.tenantId,
-  });
+  // The demo owner's password is public: a visitor must not tie a real person's email to the
+  // demo business. Demo staff use @demo.com addresses only (they're deleted at the next reset).
+  const owner = await User.findById(req.user.id).select("email").lean();
+  if (isDemoEmail(owner?.email) && !isDemoEmail(String(data.email))) {
+    return res.status(403).json({ message: "In the demo, staff emails must end with @demo.com" });
+  }
+
+  if ((await User.countDocuments({ tenantId: req.tenantId, role: "staff" })) >= maxStaff()) {
+    return res.status(400).json({ message: "You have reached the maximum number of staff members" });
+  }
+
+  let staff;
+  try {
+    staff = await User.create({ ...data, role: "staff", tenantId: req.tenantId });
+  } catch (err) {
+    // Not "email already exists": that would say this person has an account somewhere on the server.
+    if (err.code === 11000) return res.status(409).json({ message: EMAIL_TAKEN });
+    throw err;
+  }
 
   res.status(201).json({ staff: toStaffDTO(staff) });
 };

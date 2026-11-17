@@ -67,6 +67,37 @@ exports.createAppointment = async (req, res) => {
   res.status(201).json({ appointment, staffName: staff.name });
 };
 
+// What a customer sees of their own booking (security review B-03): no WhatsApp error text, no
+// ids of the staff who changed or cancelled it, no internal flags.
+function toCustomerAppointment(a) {
+  const doc = typeof a.toObject === "function" ? a.toObject() : a;
+  const staff =
+    doc.staffId && typeof doc.staffId === "object" && doc.staffId.name !== undefined
+      ? { _id: doc.staffId._id, name: doc.staffId.name }
+      : doc.staffId;
+  return {
+    _id: doc._id,
+    tenantId: doc.tenantId,
+    staffId: staff,
+    serviceId: doc.serviceId,
+    serviceName: doc.serviceName,
+    price: doc.price,
+    duration: doc.duration,
+    startTime: doc.startTime,
+    endTime: doc.endTime,
+    status: doc.status,
+    notes: doc.notes,
+    ...(doc.cancellation && {
+      cancellation: {
+        reason: doc.cancellation.reason,
+        cancelledAt: doc.cancellation.cancelledAt,
+        auto: doc.cancellation.auto,
+      },
+    }),
+    createdAt: doc.createdAt,
+  };
+}
+
 exports.getMyAppointments = async (req, res) => {
   const { status, when } = req.query;
 
@@ -99,7 +130,7 @@ exports.getMyAppointments = async (req, res) => {
     .populate("staffId", "name")
     .sort({ startTime: sortOrder });
 
-  res.status(200).json({ count: appointments.length, appointments });
+  res.status(200).json({ count: appointments.length, appointments: appointments.map(toCustomerAppointment) });
 };
 
 exports.cancelMyAppointment = async (req, res) => {
@@ -166,7 +197,7 @@ exports.cancelMyAppointment = async (req, res) => {
     });
   }
 
-  res.status(200).json({ message: "Appointment cancelled", appointment: updated });
+  res.status(200).json({ message: "Appointment cancelled", appointment: toCustomerAppointment(updated) });
 };
 
 // Owners see the whole business; staff only their own appointments.

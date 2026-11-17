@@ -1,4 +1,5 @@
 const Appointment = require("../models/Appointment");
+const { resetDemoIfDue } = require("./demo.service");
 
 // Housekeeping that keeps the calendar honest.
 //
@@ -72,6 +73,7 @@ function startMaintenanceJob() {
       if (n) console.log(`[maintenance] closed ${n} booking(s) nobody confirmed`);
       const cleaned = await removeOldGuestData();
       if (cleaned) console.log(`[maintenance] removed guest details from ${cleaned} old booking(s)`);
+      if (await resetDemoIfDue()) console.log("[maintenance] the demo business was reset");
     } catch (err) {
       console.error("[maintenance] failed:", err.message);
     }
