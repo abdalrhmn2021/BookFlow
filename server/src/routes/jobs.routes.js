@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const express = require("express");
 const { sendDueReminders } = require("../services/reminder.service");
+const { resetDemoIfDue } = require("../services/demo.service");
 
 const router = express.Router();
 
@@ -24,6 +25,12 @@ function requireJobsSecret(req, res, next) {
 
 router.post("/reminders", requireJobsSecret, async (req, res) => {
   res.status(200).json(await sendDueReminders());
+});
+
+// POST /api/jobs/demo-reset - resets the demo when it's due (DEMO_RESET_HOURS). Call it from the
+// same outside cron, e.g. every hour; when it isn't due it does nothing.
+router.post("/demo-reset", requireJobsSecret, async (req, res) => {
+  res.status(200).json({ reset: await resetDemoIfDue() });
 });
 
 module.exports = router;
