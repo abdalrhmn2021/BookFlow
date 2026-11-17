@@ -1,6 +1,11 @@
 node_modules/
 .env
 .env.local
+# npm run backup: full copies of the database (password hashes, phones) - never in git
+backups/
+# Playwright (client/e2e)
+test-results/
+playwright-report/
 .next/
 out/
 dist/

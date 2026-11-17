@@ -1,5 +1,6 @@
 const Appointment = require("../models/Appointment");
 const { resetDemoIfDue } = require("./demo.service");
+const { reportError } = require("./alert.service");
 
 // Housekeeping that keeps the calendar honest.
 //
@@ -76,6 +77,7 @@ function startMaintenanceJob() {
       if (await resetDemoIfDue()) console.log("[maintenance] the demo business was reset");
     } catch (err) {
       console.error("[maintenance] failed:", err.message);
+      reportError(err, "maintenance job (hourly)");
     }
   };
   timer = setInterval(run, HOUR);

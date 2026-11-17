@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 import { API_ORIGIN } from "./src/lib/apiOrigin";
 
@@ -25,6 +26,10 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   // No "X-Powered-By: Next.js" on every answer.
   poweredByHeader: false,
+
+  // The repo root has its own package-lock.json (Prettier only): without this Next.js guesses the
+  // root and warns on every build. The site is this folder.
+  turbopack: { root: path.join(__dirname) },
 
   async headers() {
     // Every page, but not /api: those answers come from the Express server with helmet's headers.

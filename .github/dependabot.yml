@@ -1,0 +1,18 @@
+# Dependabot (review E-04): a PR once a month when the pinned GitHub Actions or the npm packages
+# have new versions. Security fixes come as soon as they are published, whatever the schedule.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+  - package-ecosystem: npm
+    directory: /server
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /client
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5

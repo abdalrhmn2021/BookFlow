@@ -32,6 +32,13 @@ function checkModeConfig() {
   if (SITE_PROXY_SECRET && SITE_PROXY_SECRET.length < MIN_SECRET_LENGTH) {
     problems.push(`SITE_PROXY_SECRET is too short (< ${MIN_SECRET_LENGTH} chars).`);
   }
+  // JOBS_SECRET opens POST /api/jobs/* (review E-05): a short one could be guessed.
+  const jobsSecret = process.env.JOBS_SECRET?.trim();
+  if (jobsSecret && jobsSecret.length < MIN_SECRET_LENGTH) {
+    problems.push(
+      `JOBS_SECRET is too short (< ${MIN_SECRET_LENGTH} chars). Leave it empty or use a long random value.`,
+    );
+  }
   return problems;
 }
 

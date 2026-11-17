@@ -11,6 +11,8 @@
     "create-admin": "node scripts/create-admin.js",
     "reset-password": "node scripts/reset-password.js",
     "two-factor": "node scripts/two-factor.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
     "test": "jest --runInBand"
   },
   "keywords": [],

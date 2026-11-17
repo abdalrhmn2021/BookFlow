@@ -201,8 +201,16 @@ async function sendPasswordResetEmail({ email, name, code, minutes }) {
   await send({ sender, to: [{ email, name }], subject, htmlContent: html });
 }
 
+// An email to the person running the server (ALERT_EMAIL), e.g. services/alert.service.js.
+async function sendOperatorEmail({ subject, html }) {
+  const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
+  await send({ sender, to: [{ email: process.env.ALERT_EMAIL.trim() }], subject, htmlContent: html });
+}
+
 module.exports = {
   notifyNewBooking,
+  sendOperatorEmail,
+  escapeHtml,
   buildNewBookingEmail,
   buildPasswordResetEmail,
   sendPasswordResetEmail,
