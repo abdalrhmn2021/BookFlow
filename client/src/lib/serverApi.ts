@@ -19,7 +19,12 @@ export type BusinessLookup =
 
 // timeoutMs: a sleeping free-tier server can take ~50 s to wake up. A visitor's page must not wait
 // for that, so it gets generic metadata; link-preview crawlers get longer (see book/[slug]/layout).
+// Same rule as the server's slugs (site.middleware.js). Anything else can't be a business, so it
+// isn't sent: random addresses must not use up the API's rate limit for this site (review F-06).
+const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export async function getPublicBusiness(slug: string, timeoutMs: number): Promise<BusinessLookup> {
+  if (slug.length > 40 || !SLUG_REGEX.test(slug.toLowerCase())) return { status: "not-found" };
   try {
     const res = await fetch(`${API_ORIGIN}/api/public/businesses/${encodeURIComponent(slug)}`, {
       headers: siteHeaders(),

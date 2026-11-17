@@ -26,7 +26,10 @@ let replSet;
 const CONNECT_OPTIONS = { dbName: TEST_DB_NAME, runtimeAdapters: { os: require("os") } };
 
 async function connect() {
-  const uri = process.env.MONGO_URI_TEST || process.env.MONGO_URI;
+  // Only MONGO_URI_TEST, never MONGO_URI (security review F-05): that is the app's real database
+  // cluster, and tests must not run on it with its credentials, even in a separate database.
+  // Not set = an in-memory MongoDB started just for the tests (downloaded once, then cached).
+  const uri = process.env.MONGO_URI_TEST?.trim();
 
   if (uri) {
     if (uri.startsWith("mongodb+srv://")) {

@@ -41,6 +41,8 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - run: npm ci
+      # Known holes in the packages that ship to Vercel (dev tools left out) fail the check (review F-02).
+      - run: npm audit --omit=dev --audit-level=high
       # Next.js build cache: later builds only redo what changed.
       - uses: actions/cache@v4
         with:
@@ -71,6 +73,10 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: server/package-lock.json
+
+      # Known holes in the packages that ship to Render (dev tools left out) fail the check (review F-02).
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Start MongoDB 8.2 (single-node replica set)
         timeout-minutes: 4
