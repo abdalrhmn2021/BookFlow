@@ -61,11 +61,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-navy-100 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
       {step === "email" ? (
         <>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{p.forgotTitle}</h1>
-          <p className="mt-1 text-sm text-navy-500">{p.forgotSubtitle}</p>
+          <p className="mt-1 text-sm text-ink-500">{p.forgotSubtitle}</p>
           <form onSubmit={sendCode} className="mt-6 space-y-4">
             <label className="block">
               <span className="text-sm font-medium">{p.email}</span>
@@ -88,9 +88,9 @@ export default function ForgotPasswordPage() {
       ) : (
         <>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{p.sentTitle}</h1>
-          <p className="mt-1 text-sm text-navy-500">
+          <p className="mt-1 text-sm text-ink-500">
             {p.sentText}{" "}
-            <span dir="ltr" className="font-medium text-navy-700">
+            <span dir="ltr" className="font-medium text-ink-700">
               {email.trim()}
             </span>
           </p>
@@ -123,7 +123,7 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
               />
-              <span className="mt-1 block text-xs text-navy-400">{p.hint}</span>
+              <span className="mt-1 block text-xs text-ink-400">{p.hint}</span>
             </label>
             <label className="block">
               <span className="text-sm font-medium">{p.confirmPassword}</span>
@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
               {submitting ? p.saving : p.save}
             </button>
           </form>
-          <p className="mt-4 text-center text-sm text-navy-600">
+          <p className="mt-4 text-center text-sm text-ink-600">
             {p.noCode}{" "}
             <button
               type="button"

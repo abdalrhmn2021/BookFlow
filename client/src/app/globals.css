@@ -1,41 +1,44 @@
 @import "tailwindcss";
 
-/* Design tokens: Tailwind turns each --color-* into utilities (bg-navy-900, text-brand-700...).
-   navy  = the base colors (text, backgrounds, dark panels) - the same in every copy.
+/* Design tokens: Tailwind turns each --color-* into utilities (bg-ink-900, text-brand-700...).
+   ink   = the base colors, warm "sand" neutrals: ink-50/100 are the sand page and soft
+           surfaces, ink-500+ are the text colors - the same in every copy.
    brand = the client's color (buttons, highlights, links). The values below are the defaults
-           (BookFlow coral). BRAND_COLOR in .env replaces them: the root layout puts new
+           (BookFlow deep green). BRAND_COLOR in .env replaces them: the root layout puts new
            --color-brand-* values on <html>, and those win over these. */
 @theme {
-  --color-navy-50: #f3f5fa;
-  --color-navy-100: #e6ebf4;
-  --color-navy-200: #cdd5e5;
-  --color-navy-300: #a9b5cd;
-  --color-navy-400: #7d8cab;
-  --color-navy-500: #56678c;
-  --color-navy-600: #3d4f78;
-  --color-navy-700: #2b3d63;
-  --color-navy-800: #1d2d4f;
-  --color-navy-900: #16244a;
-  --color-navy-950: #0e1a33;
+  --color-ink-50: #f8f4ec;
+  --color-ink-100: #f0e9db;
+  --color-ink-200: #e3d8c3;
+  --color-ink-300: #cbbd9f;
+  --color-ink-400: #9a8f78;
+  --color-ink-500: #6e685a;
+  --color-ink-600: #575345;
+  --color-ink-700: #423f35;
+  --color-ink-800: #2e2d27;
+  --color-ink-900: #22221d;
+  --color-ink-950: #171814;
 
-  --color-brand-50: #fff4f2;
-  --color-brand-100: #ffe4e0;
-  --color-brand-200: #ffc9c1;
-  --color-brand-300: #ffa699;
-  --color-brand-400: #ff8a7d;
-  --color-brand-500: #ff6b5b;
-  --color-brand-600: #ec5242;
-  --color-brand-700: #c8402f;
+  --color-brand-50: #eef6f1;
+  --color-brand-100: #d6eadf;
+  --color-brand-200: #acd4bf;
+  --color-brand-300: #79b797;
+  --color-brand-400: #3f8f68;
+  --color-brand-500: #1e6b4a;
+  --color-brand-600: #175a3d;
+  --color-brand-700: #134a33;
   /* Text color ON a brand-500 background (dark for light brand colors, white for dark ones). */
-  --color-brand-ink: #0e1a33;
+  --color-brand-ink: #ffffff;
+
+  --shadow-soft: 0 1px 2px rgb(34 34 29 / 0.04), 0 8px 24px -12px rgb(34 34 29 / 0.12);
 
   --font-sans: var(--font-body), sans-serif;
   --font-display: var(--font-heading), var(--font-body), sans-serif;
 }
 
 body {
-  background: var(--color-navy-50);
-  color: var(--color-navy-900);
+  background: var(--color-ink-50);
+  color: var(--color-ink-900);
 }
 
 .tabular {

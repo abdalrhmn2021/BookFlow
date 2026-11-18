@@ -78,6 +78,7 @@ const en = {
   } satisfies Record<Role, string>,
 
   home: {
+    badge: "Online booking, open around the clock",
     title: "Let your customers book themselves",
     subtitle:
       "Salons, clinics, gyms and training centers get their own booking page. Customers pick a service, a staff member and a free time - no double bookings, ever.",
@@ -542,6 +543,7 @@ const ar: Dictionary = {
   },
 
   home: {
+    badge: "حجز إلكتروني على مدار الساعة",
     title: "دع زبائنك يحجزون بأنفسهم",
     subtitle:
       "الصالونات والعيادات والنوادي الرياضية ومراكز التدريب تحصل على صفحة حجز خاصة بها. يختار الزبون الخدمة والموظف والوقت المتاح - وبدون أي حجز مزدوج.",

@@ -65,12 +65,12 @@ export default function DashboardShell({
 
   return (
     <div className="min-h-screen lg:flex">
-      <div className="hidden w-64 shrink-0 bg-navy-950 lg:block">
-        <aside className="sticky top-0 flex h-screen flex-col text-white">
+      <div className="hidden w-64 shrink-0 border-e border-ink-200/70 bg-white lg:block">
+        <aside className="sticky top-0 flex h-screen flex-col text-ink-900">
           <div className="px-5 pt-6">
-            <Logo light />
-            <p className="font-display mt-6 truncate text-sm font-medium text-white">{tenant.name}</p>
-            <p className="truncate text-xs text-navy-300">{user && `${user.name} · ${t.roles[user.role]}`}</p>
+            <Logo />
+            <p className="font-display mt-6 truncate text-sm font-semibold text-ink-900">{tenant.name}</p>
+            <p className="truncate text-xs text-ink-500">{user && `${user.name} · ${t.roles[user.role]}`}</p>
           </div>
 
           <nav className="mt-6 flex-1 space-y-1 px-3" aria-label={t.nav.dashboard}>
@@ -83,32 +83,32 @@ export default function DashboardShell({
                   onClick={() => onSelect(name)}
                   aria-current={current ? "page" : undefined}
                   className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start text-sm font-medium transition ${
-                    current ? "bg-white/10 text-white" : "text-navy-300 hover:bg-white/5 hover:text-white"
+                    current ? "bg-brand-50 text-brand-700" : "text-ink-600 hover:bg-ink-50 hover:text-ink-900"
                   }`}
                 >
                   {current && <span className="absolute inset-y-2 start-0 w-1 rounded-full bg-brand-500" />}
-                  <Icon className={`h-5 w-5 ${current ? "text-brand-400" : ""}`} />
+                  <Icon className={`h-5 w-5 ${current ? "text-brand-500" : "text-ink-400"}`} />
                   {t.dashboard.tabs[name]}
                 </button>
               );
             })}
           </nav>
 
-          <div className="mx-3 rounded-xl bg-white/5 p-3">
-            <p className="flex items-center gap-2 text-xs text-navy-300">
+          <div className="mx-3 rounded-2xl border border-ink-100 bg-ink-50 p-3">
+            <p className="flex items-center gap-2 text-xs text-ink-500">
               <IconLink className="h-4 w-4" />
               {t.dashboard.bookingPage}
             </p>
             <Link
               href={bookingPath}
               dir="ltr"
-              className="mt-1 block truncate text-sm font-medium text-white hover:underline"
+              className="mt-1 block truncate text-sm font-medium text-ink-900 hover:underline"
             >
               {bookingPath}
             </Link>
             <button
               onClick={copyLink}
-              className="mt-2 w-full rounded-md bg-brand-500 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-400"
+              className="mt-2 w-full rounded-lg bg-brand-500 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-600"
             >
               {copied ? t.dashboard.copied : t.dashboard.copy}
             </button>
@@ -116,22 +116,22 @@ export default function DashboardShell({
 
           <Link
             href="/account/password"
-            className="mx-3 mt-3 block rounded-lg px-3 py-2 text-sm text-navy-300 transition hover:bg-white/5 hover:text-white"
+            className="mx-3 mt-3 block rounded-lg px-3 py-2 text-sm text-ink-600 transition hover:bg-ink-50 hover:text-ink-900"
           >
             {t.nav.password}
           </Link>
 
-          <div className="mt-1 flex items-center gap-1 border-t border-white/10 px-3 py-3">
+          <div className="mt-1 flex items-center gap-1 border-t border-ink-100 px-3 py-3">
             <button
               onClick={switchLang}
-              className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm text-navy-300 transition hover:bg-white/5 hover:text-white"
+              className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 transition hover:bg-ink-50 hover:text-ink-900"
             >
               <IconGlobe className="h-4 w-4" />
               {t.nav.switchLang}
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-navy-300 transition hover:bg-white/5 hover:text-white"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-600 transition hover:bg-ink-50 hover:text-ink-900"
             >
               <IconLogout className="h-4 w-4 rtl:rotate-180" />
               {t.nav.logout}
@@ -140,19 +140,19 @@ export default function DashboardShell({
         </aside>
       </div>
 
-      <header className="sticky top-0 z-20 bg-navy-950 text-white lg:hidden">
+      <header className="sticky top-0 z-20 border-b border-ink-200/70 bg-white/95 text-ink-900 backdrop-blur lg:hidden">
         <div className="flex h-14 items-center justify-between gap-2 px-4">
-          <Logo light />
+          <Logo />
           <div className="flex items-center gap-1">
             <button
               onClick={switchLang}
-              className="rounded-md px-2 py-1.5 text-xs font-medium text-navy-200 hover:bg-white/10"
+              className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-50"
             >
               {t.nav.switchLang}
             </button>
             <button
               onClick={handleLogout}
-              className="rounded-md p-1.5 text-navy-200 hover:bg-white/10"
+              className="rounded-md p-1.5 text-ink-600 hover:bg-ink-50"
               aria-label={t.nav.logout}
             >
               <IconLogout className="h-5 w-5 rtl:rotate-180" />
@@ -167,7 +167,7 @@ export default function DashboardShell({
                 onClick={() => onSelect(name)}
                 aria-current={name === active ? "page" : undefined}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-                  name === active ? "bg-brand-500 text-brand-ink" : "text-navy-200 hover:bg-white/10"
+                  name === active ? "bg-brand-500 text-brand-ink" : "text-ink-600 hover:bg-ink-50"
                 }`}
               >
                 {t.dashboard.tabs[name]}
@@ -182,7 +182,7 @@ export default function DashboardShell({
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2 lg:hidden">
             <p className="font-display font-semibold">{tenant.name}</p>
             <div className="flex items-center gap-4">
-              <Link href="/account/password" className="text-sm text-navy-600 hover:text-navy-900">
+              <Link href="/account/password" className="text-sm text-ink-600 hover:text-ink-900">
                 {t.nav.password}
               </Link>
               <button onClick={copyLink} className="flex items-center gap-1.5 text-sm font-medium text-brand-700">

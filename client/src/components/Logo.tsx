@@ -18,7 +18,7 @@ export default function Logo({ light = false, compact = false }: { light?: boole
         <DefaultMark light={light} />
       )}
       <span
-        className={`font-display text-lg font-semibold tracking-tight ${light ? "text-white" : "text-navy-900"} ${
+        className={`font-display text-lg font-semibold tracking-tight ${light ? "text-white" : "text-ink-900"} ${
           compact ? "hidden sm:inline" : ""
         }`}
       >
@@ -31,7 +31,7 @@ export default function Logo({ light = false, compact = false }: { light?: boole
 function DefaultMark({ light }: { light: boolean }) {
   return (
     <svg viewBox="0 0 28 28" aria-hidden="true" className="h-7 w-7 shrink-0">
-      <rect width="28" height="28" rx="7" className={light ? "fill-white/10" : "fill-navy-900"} />
+      <rect width="28" height="28" rx="7" className={light ? "fill-white/10" : "fill-brand-500"} />
       {[0, 1, 2].map((row) =>
         [0, 1].map((col) => (
           <rect
@@ -41,7 +41,7 @@ function DefaultMark({ light }: { light: boolean }) {
             width="6"
             height="4"
             rx="1.5"
-            className={row === 1 && col === 1 ? "fill-brand-500" : light ? "fill-white/40" : "fill-white/35"}
+            className={row === 1 && col === 1 ? (light ? "fill-brand-300" : "fill-white") : "fill-white/40"}
           />
         )),
       )}

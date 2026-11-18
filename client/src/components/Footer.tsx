@@ -10,16 +10,16 @@ export default function Footer() {
   const { t } = useLanguage();
 
   return (
-    <footer className="border-t border-navy-100 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-navy-500">
+    <footer className="border-t border-ink-200/60 bg-ink-50">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-ink-500">
         <p>
           © {new Date().getFullYear()} {name}
         </p>
         <nav className="flex gap-4">
-          <Link href="/privacy" className="hover:text-navy-900 hover:underline">
+          <Link href="/privacy" className="hover:text-ink-900 hover:underline">
             {t.legal.privacy}
           </Link>
-          <Link href="/terms" className="hover:text-navy-900 hover:underline">
+          <Link href="/terms" className="hover:text-ink-900 hover:underline">
             {t.legal.terms}
           </Link>
         </nav>

@@ -24,22 +24,22 @@ export default function ManageLinkBox({ token, businessName }: { token: string; 
   const whatsApp = `https://wa.me/?text=${encodeURIComponent(t.book.manageWhatsApp(businessName, link))}`;
 
   return (
-    <div className="mt-6 rounded-lg border border-navy-100 bg-navy-50 p-4 text-start">
-      <p className="font-semibold text-navy-900">{t.book.manageTitle}</p>
-      <p className="mt-1 text-sm text-navy-900/80">{t.book.manageText}</p>
+    <div className="mt-6 rounded-lg border border-ink-100 bg-ink-50 p-4 text-start">
+      <p className="font-semibold text-ink-900">{t.book.manageTitle}</p>
+      <p className="mt-1 text-sm text-ink-900/80">{t.book.manageText}</p>
       <input
         id="manage-link"
         readOnly
         dir="ltr"
         value={link}
         onFocus={(e) => e.target.select()}
-        className="mt-3 w-full rounded-lg border border-navy-200 bg-white px-3 py-2 font-mono text-xs text-navy-700"
+        className="mt-3 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 font-mono text-xs text-ink-700"
       />
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={copy}
-          className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-400"
+          className="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-600"
         >
           {copied ? t.book.copied : t.book.copyLink}
         </button>
@@ -53,7 +53,7 @@ export default function ManageLinkBox({ token, businessName }: { token: string; 
         </a>
         <a
           href={`/booking/${token}`}
-          className="rounded-lg border border-navy-200 bg-white px-3 py-1.5 text-sm font-medium text-navy-800 hover:bg-navy-100"
+          className="rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-800 hover:bg-ink-100"
         >
           {t.book.openLink}
         </a>

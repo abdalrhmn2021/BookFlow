@@ -81,7 +81,7 @@ function Content() {
   if (!appointments) {
     return (
       <Shell>
-        <p className="mt-8 text-navy-500">{t.myAppointments.loading}</p>
+        <p className="mt-8 text-ink-500">{t.myAppointments.loading}</p>
       </Shell>
     );
   }
@@ -92,12 +92,12 @@ function Content() {
   if (appointments.length === 0) {
     return (
       <Shell>
-        <div className="mt-8 rounded-xl border border-dashed border-navy-200 bg-white px-6 py-12 text-center">
+        <div className="mt-8 rounded-xl border border-dashed border-ink-200 bg-white px-6 py-12 text-center">
           <p className="font-medium">{t.myAppointments.emptyTitle}</p>
-          <p className="mt-1 text-sm text-navy-500">{t.myAppointments.emptyText}</p>
+          <p className="mt-1 text-sm text-ink-500">{t.myAppointments.emptyText}</p>
           <Link
             href={bookHref}
-            className="mt-5 inline-block rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400"
+            className="mt-5 inline-block rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-600"
           >
             {isSingleBusiness ? t.nav.book : t.myAppointments.browse}
           </Link>
@@ -111,7 +111,7 @@ function Content() {
       <section className="mt-8">
         <h2 className="text-lg font-semibold">{t.myAppointments.upcoming(upcoming.length)}</h2>
         {upcoming.length === 0 ? (
-          <p className="mt-3 text-sm text-navy-500">
+          <p className="mt-3 text-sm text-ink-500">
             {t.myAppointments.nothingUpcoming}{" "}
             <Link href={bookHref} className="font-medium text-brand-700 hover:underline">
               {t.myAppointments.bookSomething}
@@ -121,18 +121,18 @@ function Content() {
           <ul className="mt-3 space-y-3">
             {upcoming.map((a) => (
               <AppointmentCard key={a._id} a={a}>
-                <div className="mt-4 border-t border-navy-100 pt-3">
+                <div className="mt-4 border-t border-ink-100 pt-3">
                   {confirmingId === a._id ? (
                     <div className="space-y-2 text-sm">
-                      <p className="text-navy-600">{t.myAppointments.cancelQuestion}</p>
+                      <p className="text-ink-600">{t.myAppointments.cancelQuestion}</p>
                       <label className="block">
-                        <span className="text-xs font-medium text-navy-600">{t.myAppointments.cancelReason}</span>
+                        <span className="text-xs font-medium text-ink-600">{t.myAppointments.cancelReason}</span>
                         <input
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
                           maxLength={300}
                           placeholder={t.myAppointments.cancelReasonPlaceholder}
-                          className="mt-1 w-full rounded-lg border border-navy-200 px-3 py-1.5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                          className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-1.5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
                         />
                       </label>
                       <div className="flex flex-wrap items-center gap-3">
@@ -146,7 +146,7 @@ function Content() {
                         <button
                           onClick={() => setConfirmingId(null)}
                           disabled={cancellingId === a._id}
-                          className="text-navy-600 hover:text-navy-900"
+                          className="text-ink-600 hover:text-ink-900"
                         >
                           {t.myAppointments.keep}
                         </button>
@@ -178,7 +178,7 @@ function Content() {
 
       {past.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-semibold text-navy-500">{t.myAppointments.past(past.length)}</h2>
+          <h2 className="text-lg font-semibold text-ink-500">{t.myAppointments.past(past.length)}</h2>
           <ul className="mt-3 space-y-3 opacity-80">
             {past.map((a) => (
               <AppointmentCard key={a._id} a={a} />
@@ -199,7 +199,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">{t.myAppointments.title}</h1>
-          <p className="mt-1 text-navy-500">{t.myAppointments.hi(user?.name ?? "")}</p>
+          <p className="mt-1 text-ink-500">{t.myAppointments.hi(user?.name ?? "")}</p>
         </div>
         <Link href={bookHref} className="text-sm font-medium text-brand-700 hover:underline">
           {t.myAppointments.newBooking}
@@ -236,9 +236,9 @@ function DeleteAccount() {
   };
 
   return (
-    <section className="mt-16 border-t border-navy-100 pt-6">
-      <h2 className="text-sm font-semibold text-navy-700">{t.legal.deleteTitle}</h2>
-      <p className="mt-1 text-sm text-navy-500">{t.legal.deleteHint}</p>
+    <section className="mt-16 border-t border-ink-100 pt-6">
+      <h2 className="text-sm font-semibold text-ink-700">{t.legal.deleteTitle}</h2>
+      <p className="mt-1 text-sm text-ink-500">{t.legal.deleteHint}</p>
       {!open ? (
         <button onClick={() => setOpen(true)} className="mt-3 text-sm font-medium text-red-700 hover:underline">
           {t.legal.deleteStart}
@@ -278,11 +278,11 @@ function AppointmentCard({ a, children }: { a: MyAppointment; children?: React.R
   const { t } = useLanguage();
   const { date, time } = formatMomentIn(a.startTime, a.tenantId.timezone, t.locale);
   return (
-    <li className="rounded-xl border border-navy-100 bg-white p-4">
+    <li className="rounded-xl border border-ink-100 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-semibold">{a.serviceName}</p>
-          <p className="mt-0.5 text-sm text-navy-600">
+          <p className="mt-0.5 text-sm text-ink-600">
             {t.myAppointments.with} {a.staffId.name} {t.myAppointments.at}{" "}
             <Link href={`/book/${a.tenantId.slug}`} className="font-medium text-brand-700 hover:underline">
               {a.tenantId.name}
@@ -291,22 +291,22 @@ function AppointmentCard({ a, children }: { a: MyAppointment; children?: React.R
         </div>
         <StatusBadge status={a.status} />
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-navy-700">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-ink-700">
         <span className="inline-flex items-center gap-1.5">
-          <IconCalendar className="h-4 w-4 text-navy-400" />
+          <IconCalendar className="h-4 w-4 text-ink-400" />
           {date}
         </span>
-        <span className="tabular inline-flex items-center gap-1.5 font-semibold text-navy-900">
-          <IconClock className="h-4 w-4 text-navy-400" />
+        <span className="tabular inline-flex items-center gap-1.5 font-semibold text-ink-900">
+          <IconClock className="h-4 w-4 text-ink-400" />
           {time}
         </span>
-        <span className="text-navy-500">{formatDuration(a.duration, t.duration)}</span>
-        <span dir="ltr" className="tabular text-navy-500">
+        <span className="text-ink-500">{formatDuration(a.duration, t.duration)}</span>
+        <span dir="ltr" className="tabular text-ink-500">
           {formatPrice(a.price)}
         </span>
       </div>
       {a.notes && (
-        <p className="mt-2 inline-flex items-start gap-1.5 text-sm text-navy-500">
+        <p className="mt-2 inline-flex items-start gap-1.5 text-sm text-ink-500">
           <IconNote className="mt-0.5 h-4 w-4 shrink-0" />
           {a.notes}
         </p>

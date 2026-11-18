@@ -21,10 +21,10 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  const navLink = "whitespace-nowrap rounded-md px-1.5 py-1 text-navy-600 transition hover:text-navy-900 sm:px-2";
+  const navLink = "whitespace-nowrap rounded-md px-1.5 py-1 text-ink-600 transition hover:text-ink-900 sm:px-2";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-navy-100 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-ink-200/60 bg-ink-50/85 backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
         <Link href="/" aria-label={name} className="shrink-0">
           <Logo compact />
@@ -57,7 +57,7 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href="/register"
-                    className="whitespace-nowrap rounded-lg bg-navy-900 px-3 py-2 font-semibold text-white transition hover:bg-navy-700"
+                    className="whitespace-nowrap rounded-xl bg-brand-500 px-3 py-2 font-semibold text-brand-ink transition hover:bg-brand-600"
                   >
                     {t.nav.signup}
                   </Link>
@@ -68,7 +68,7 @@ export default function Navbar() {
 
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-            className="whitespace-nowrap rounded-lg border border-navy-200 px-2.5 py-1.5 text-xs font-medium text-navy-700 transition hover:bg-navy-50"
+            className="whitespace-nowrap rounded-xl border border-ink-200 bg-white px-2.5 py-1.5 text-xs font-medium text-ink-700 transition hover:bg-ink-50"
           >
             {t.nav.switchLang}
           </button>

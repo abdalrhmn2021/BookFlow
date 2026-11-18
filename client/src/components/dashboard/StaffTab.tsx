@@ -84,7 +84,7 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
   };
 
   if (loadError) return <p className={errorBox}>{tError(loadError)}</p>;
-  if (!staff) return <p className="text-sm text-navy-500">{t.common.loading}</p>;
+  if (!staff) return <p className="text-sm text-ink-500">{t.common.loading}</p>;
 
   // Customers need at least one active staff member, or the owner taking bookings.
   const nobodyBookable = editing !== "new" && !staff.some((s) => (s.role === "owner" ? s.bookable : s.isActive));
@@ -92,7 +92,7 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-navy-500">{st.hint}</p>
+        <p className="text-sm text-ink-500">{st.hint}</p>
         {editing !== "new" && (
           <button onClick={() => setEditing("new")} className={`shrink-0 ${btnPrimary}`}>
             {st.add}
@@ -138,7 +138,7 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
           ) : (
             <li
               key={s.id}
-              className={`rounded-xl border border-navy-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}
+              className={`rounded-xl border border-ink-100 bg-white p-4 ${s.isActive ? "" : "opacity-60"}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -149,12 +149,12 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
                     <p className="font-semibold">
                       {s.name}
                       {!s.isActive && (
-                        <span className="ms-2 rounded-full bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-500">
+                        <span className="ms-2 rounded-full bg-ink-50 px-2 py-0.5 text-xs font-medium text-ink-500">
                           {st.inactive}
                         </span>
                       )}
                     </p>
-                    <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
+                    <p dir="ltr" className="text-sm text-ink-500 rtl:text-right">
                       {s.email}
                       {s.phone && ` · ${s.phone}`}
                     </p>
@@ -180,7 +180,7 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
       </ul>
 
       {!nobodyBookable ? null : (
-        <p className="mt-3 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-8 text-center text-sm text-navy-500">
+        <p className="mt-3 rounded-lg border border-dashed border-ink-200 bg-white px-4 py-8 text-center text-sm text-ink-500">
           {st.empty}
         </p>
       )}
@@ -223,14 +223,14 @@ function OwnerRow({
                 {st.you}
               </span>
             </p>
-            <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
+            <p dir="ltr" className="text-sm text-ink-500 rtl:text-right">
               {owner.email}
               {owner.phone && ` · ${owner.phone}`}
             </p>
             {owner.bookable ? (
               <ScheduleSummary staff={owner} tenant={tenant} />
             ) : (
-              <p className="mt-0.5 text-xs text-navy-400">{st.ownerOff}</p>
+              <p className="mt-0.5 text-xs text-ink-400">{st.ownerOff}</p>
             )}
           </div>
         </div>
@@ -296,7 +296,7 @@ function StaffForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-navy-200 bg-navy-50 p-4">
+    <form onSubmit={handleSubmit} className="rounded-xl border border-ink-200 bg-ink-50 p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-sm font-medium">{st.name}</span>
@@ -304,7 +304,7 @@ function StaffForm({
         </label>
         <label className="block">
           <span className="text-sm font-medium">
-            {st.phone} <span className="text-navy-400">{t.common.optional}</span>
+            {st.phone} <span className="text-ink-400">{t.common.optional}</span>
           </span>
           <input name="phone" type="tel" dir="ltr" value={form.phone} onChange={handleChange} className={inputClass} />
         </label>
@@ -363,5 +363,5 @@ function ScheduleSummary({ staff, tenant }: { staff: StaffMember; tenant: Tenant
     staff.services.length ? st.servicesCount(staff.services.length) : st.allServices,
     ...(nextOff ? [st.nextDayOff(formatLongDate(nextOff, t.locale))] : []),
   ];
-  return <p className="mt-0.5 text-xs text-navy-400">{parts.join(" · ")}</p>;
+  return <p className="mt-0.5 text-xs text-ink-400">{parts.join(" · ")}</p>;
 }

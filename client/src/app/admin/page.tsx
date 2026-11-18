@@ -53,7 +53,7 @@ function Admin() {
     );
   }
   if (!businesses) {
-    return <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-navy-500">{t.common.loading}</main>;
+    return <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-ink-500">{t.common.loading}</main>;
   }
 
   const stats = [
@@ -66,12 +66,12 @@ function Admin() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="font-display text-3xl font-semibold tracking-tight">{a.title}</h1>
-      <p className="mt-1 text-sm text-navy-500">{a.subtitle}</p>
+      <p className="mt-1 text-sm text-ink-500">{a.subtitle}</p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-navy-100 bg-white p-4">
-            <p className="text-xs text-navy-500">{s.label}</p>
+          <div key={s.label} className="rounded-xl border border-ink-100 bg-white p-4">
+            <p className="text-xs text-ink-500">{s.label}</p>
             <p className={`tabular mt-1 text-2xl font-semibold ${s.warn && s.value ? "text-red-600" : ""}`}>
               {s.value}
             </p>
@@ -80,7 +80,7 @@ function Admin() {
       </div>
 
       {businesses.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-dashed border-navy-200 bg-white px-4 py-8 text-center text-sm text-navy-500">
+        <p className="mt-6 rounded-lg border border-dashed border-ink-200 bg-white px-4 py-8 text-center text-sm text-ink-500">
           {a.empty}
         </p>
       ) : (
@@ -161,22 +161,22 @@ function BusinessCard({
   );
 
   return (
-    <li className={`rounded-xl border bg-white p-4 ${b.isActive ? "border-navy-100" : "border-navy-200 opacity-70"}`}>
+    <li className={`rounded-xl border bg-white p-4 ${b.isActive ? "border-ink-100" : "border-ink-200 opacity-70"}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex flex-wrap items-center gap-2 font-semibold">
             {b.name}
             {b.isActive
               ? badge(a.activeBadge, "bg-emerald-50 text-emerald-700")
-              : badge(a.disabledBadge, "bg-navy-50 text-navy-500")}
+              : badge(a.disabledBadge, "bg-ink-50 text-ink-500")}
             {b.isActive && b.overdue && badge(a.overdueBadge, "bg-red-50 text-red-700")}
           </p>
-          <p dir="ltr" className="text-sm text-navy-500 rtl:text-right">
+          <p dir="ltr" className="text-sm text-ink-500 rtl:text-right">
             /{b.slug}
           </p>
           {owner && (
             <p className="mt-1 text-sm">
-              <span className="text-navy-500">{a.owner}: </span>
+              <span className="text-ink-500">{a.owner}: </span>
               {owner.name} ·{" "}
               <span dir="ltr">
                 {owner.email}
@@ -184,7 +184,7 @@ function BusinessCard({
               </span>
             </p>
           )}
-          <p className="mt-1 text-xs text-navy-400">
+          <p className="mt-1 text-xs text-ink-400">
             {a.staff(b.staffCount)} · {a.stats(b.bookingsLast30Days, b.upcomingBookings)} ·{" "}
             {b.lastBookingAt ? a.lastBooking(shortDate(b.lastBookingAt, t.locale)) : a.noBookings} ·{" "}
             {a.created(shortDate(b.createdAt, t.locale))}
@@ -203,7 +203,7 @@ function BusinessCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 border-t border-navy-100 pt-4 sm:grid-cols-[auto_auto_auto_1fr]">
+      <div className="mt-4 grid gap-3 border-t border-ink-100 pt-4 sm:grid-cols-[auto_auto_auto_1fr]">
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -215,11 +215,11 @@ function BusinessCard({
           {a.whatsapp}
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-navy-500">{a.plan}</span>
+          <span className="block text-xs text-ink-500">{a.plan}</span>
           <select
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
-            className="mt-1 rounded-lg border border-navy-200 bg-white px-2 py-1.5"
+            className="mt-1 rounded-lg border border-ink-200 bg-white px-2 py-1.5"
           >
             {plans.map((p) => (
               <option key={p} value={p}>
@@ -229,21 +229,21 @@ function BusinessCard({
           </select>
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-navy-500">{a.paidUntil}</span>
+          <span className="block text-xs text-ink-500">{a.paidUntil}</span>
           <input
             type="date"
             value={paidUntil}
             onChange={(e) => setPaidUntil(e.target.value)}
-            className="mt-1 rounded-lg border border-navy-200 bg-white px-2 py-1.5"
+            className="mt-1 rounded-lg border border-ink-200 bg-white px-2 py-1.5"
           />
         </label>
         <label className="text-sm">
-          <span className="block text-xs text-navy-500">{a.note}</span>
+          <span className="block text-xs text-ink-500">{a.note}</span>
           <input
             value={note}
             maxLength={300}
             onChange={(e) => setNote(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-navy-200 bg-white px-2 py-1.5"
+            className="mt-1 w-full rounded-lg border border-ink-200 bg-white px-2 py-1.5"
           />
         </label>
       </div>

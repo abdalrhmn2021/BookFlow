@@ -59,9 +59,9 @@ export default function RegisterBusinessPage() {
   const r = t.registerBusiness;
 
   return (
-    <div className="mx-auto mt-12 mb-16 max-w-md rounded-xl border border-navy-100 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-12 mb-16 max-w-md rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{r.title}</h1>
-      <p className="mt-1 text-sm text-navy-500">{r.subtitle}</p>
+      <p className="mt-1 text-sm text-ink-500">{r.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
@@ -79,9 +79,9 @@ export default function RegisterBusinessPage() {
           <span className="text-sm font-medium">{r.slug}</span>
           <div
             dir="ltr"
-            className="mt-1 flex rounded-lg border border-navy-200 bg-white focus-within:border-navy-700 focus-within:ring-4 focus-within:ring-navy-100"
+            className="mt-1 flex rounded-lg border border-ink-200 bg-white focus-within:border-ink-700 focus-within:ring-4 focus-within:ring-ink-100"
           >
-            <span className="flex items-center border-r border-navy-100 bg-navy-50 px-3 text-sm text-navy-500">
+            <span className="flex items-center border-r border-ink-100 bg-ink-50 px-3 text-sm text-ink-500">
               /book/
             </span>
             <input
@@ -95,7 +95,7 @@ export default function RegisterBusinessPage() {
               className="w-full rounded-e-md px-3 py-2 text-sm outline-none"
             />
           </div>
-          <span className={`mt-1 block text-xs ${form.slug && !slugValid ? "text-red-600" : "text-navy-500"}`}>
+          <span className={`mt-1 block text-xs ${form.slug && !slugValid ? "text-red-600" : "text-ink-500"}`}>
             {r.slugHint}
           </span>
         </label>
@@ -119,7 +119,7 @@ export default function RegisterBusinessPage() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">
-            {r.phone} <span className="text-navy-400">{t.common.optional}</span>
+            {r.phone} <span className="text-ink-400">{t.common.optional}</span>
           </span>
           <input
             name="phone"
@@ -154,7 +154,7 @@ export default function RegisterBusinessPage() {
         <LegalNotice text={t.legal.agreeSignup} />
       </form>
 
-      <p className="mt-6 text-center text-sm text-navy-600">
+      <p className="mt-6 text-center text-sm text-ink-600">
         {r.haveAccount}{" "}
         <Link href="/login" className="font-medium text-brand-700 hover:underline">
           {r.login}

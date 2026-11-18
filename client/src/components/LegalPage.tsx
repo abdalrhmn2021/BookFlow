@@ -36,7 +36,7 @@ export default async function LegalPage({ kind }: { kind: "privacy" | "terms" })
       <h1 className="font-display text-3xl font-semibold tracking-tight">
         {kind === "privacy" ? legal.privacyTitle : legal.termsTitle}
       </h1>
-      <p className="mt-2 text-sm text-navy-500">
+      <p className="mt-2 text-sm text-ink-500">
         {params.site} · {legal.updated(formatUpdated(LEGAL_UPDATED, t.locale))}
       </p>
 
@@ -46,14 +46,14 @@ export default async function LegalPage({ kind }: { kind: "privacy" | "terms" })
             <h2 className="font-display text-lg font-semibold">{section.heading}</h2>
             {/* A list first, then any closing sentence (e.g. "we don't sell your data"). */}
             {section.bullets && (
-              <ul className="mt-2 list-disc space-y-1.5 ps-5 leading-relaxed text-navy-700 marker:text-brand-500">
+              <ul className="mt-2 list-disc space-y-1.5 ps-5 leading-relaxed text-ink-700 marker:text-brand-500">
                 {section.bullets.map((text) => (
                   <li key={text}>{text}</li>
                 ))}
               </ul>
             )}
             {section.paragraphs?.map((text) => (
-              <p key={text} className="mt-2 leading-relaxed text-navy-700">
+              <p key={text} className="mt-2 leading-relaxed text-ink-700">
                 {text}
               </p>
             ))}
@@ -61,7 +61,7 @@ export default async function LegalPage({ kind }: { kind: "privacy" | "terms" })
         ))}
       </div>
 
-      <p className="mt-12 border-t border-navy-100 pt-6 text-sm">
+      <p className="mt-12 border-t border-ink-100 pt-6 text-sm">
         <Link href={other.href} className="font-medium text-brand-700 hover:underline">
           {other.label}
         </Link>

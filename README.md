@@ -50,7 +50,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - **Phone & walk-in bookings** from the dashboard (confirmed at once, phone optional, a manage link to send on WhatsApp) and **rescheduling** to another time or staff member, under the same double-booking lock as online bookings
 
 **Platform**
-- Own navy + coral design system (Tailwind v4 theme tokens), Alexandria + IBM Plex Sans Arabic for both scripts
+- Own "sand luxury" design system - warm sand neutrals, white cards, deep green accent (Tailwind v4 theme tokens), Alexandria + IBM Plex Sans Arabic for both scripts
 - Full Arabic / English with RTL layout, no flash on load (language stored in a cookie, read on the server)
 - Backend error messages translated on the client
 - **Privacy & terms**: `/privacy` and `/terms` in Arabic and English (business name, operator and retention period from `.env`), linked in the footer and under the booking / sign-up buttons; a **WhatsApp opt-in** checkbox (off by default) - the automatic reminder only goes to customers who ticked it; customers can **delete their account**; guests' name, phone and notes are **removed after 12 months** (the booking stays for the numbers); the admin can **export a business's data** as JSON

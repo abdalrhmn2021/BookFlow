@@ -59,12 +59,12 @@ function LoginForm() {
   };
 
   const inputClass =
-    "mt-1 w-full rounded-lg border border-navy-200 px-3 py-2 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-100";
+    "mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 outline-none focus:border-ink-700 focus:ring-2 focus:ring-ink-100";
 
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-navy-100 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t.login.title}</h1>
-      <p className="mt-1 text-sm text-navy-500">{t.login.subtitle}</p>
+      <p className="mt-1 text-sm text-ink-500">{t.login.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
@@ -101,7 +101,7 @@ function LoginForm() {
         {needCode && (
           <label className="block">
             <span className="text-sm font-medium">{t.login.code}</span>
-            <span className="mt-0.5 block text-xs text-navy-500">{t.login.codeHint}</span>
+            <span className="mt-0.5 block text-xs text-ink-500">{t.login.codeHint}</span>
             <input
               type="text"
               required
@@ -127,15 +127,15 @@ function LoginForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
+          className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-600 disabled:opacity-50"
         >
           {submitting ? t.login.submitting : t.login.submit}
         </button>
       </form>
 
       {DEMO_ENABLED && (
-        <div className="mt-6 rounded-lg bg-navy-50 p-4">
-          <p className="text-center text-sm font-medium text-navy-900">{t.login.demoTitle}</p>
+        <div className="mt-6 rounded-lg bg-ink-50 p-4">
+          <p className="text-center text-sm font-medium text-ink-900">{t.login.demoTitle}</p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             {(Object.keys(DEMO_ACCOUNTS) as (keyof typeof DEMO_ACCOUNTS)[]).map((role) => (
               <button
@@ -143,7 +143,7 @@ function LoginForm() {
                 type="button"
                 disabled={submitting}
                 onClick={() => doLogin(DEMO_ACCOUNTS[role], DEMO_PASSWORD)}
-                className="rounded-lg border border-navy-200 bg-white px-2 py-2 text-xs font-medium text-navy-800 hover:bg-navy-100 disabled:opacity-60"
+                className="rounded-lg border border-ink-200 bg-white px-2 py-2 text-xs font-medium text-ink-800 hover:bg-ink-100 disabled:opacity-60"
               >
                 {t.login.demoAs[role]}
               </button>
@@ -152,7 +152,7 @@ function LoginForm() {
         </div>
       )}
 
-      <p className="mt-6 text-center text-sm text-navy-600">
+      <p className="mt-6 text-center text-sm text-ink-600">
         {t.login.noAccount}{" "}
         <Link
           href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
