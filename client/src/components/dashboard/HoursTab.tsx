@@ -45,9 +45,9 @@ export default function HoursTab({ tenant, onSaved }: { tenant: TenantInfo; onSa
 
   return (
     <div>
-      <p className="text-sm text-navy-500">{h.subtitle}</p>
+      <p className="text-sm text-ink-500">{h.subtitle}</p>
 
-      <ul className="mt-4 divide-y divide-navy-100 rounded-xl border border-navy-100 bg-white">
+      <ul className="mt-4 divide-y divide-ink-100 rounded-xl border border-ink-100 bg-white">
         {days.map((d) => (
           <li key={d.day} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
             <label className="flex w-36 items-center gap-2">
@@ -64,27 +64,27 @@ export default function HoursTab({ tenant, onSaved }: { tenant: TenantInfo; onSa
 
             {d.isOpen ? (
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-navy-500">{h.from}</span>
+                <span className="text-ink-500">{h.from}</span>
                 <input
                   type="time"
                   step={900}
                   dir="ltr"
                   value={d.open ?? ""}
                   onChange={(e) => update(d.day, { open: e.target.value })}
-                  className="rounded-lg border border-navy-200 px-2 py-1"
+                  className="rounded-lg border border-ink-200 px-2 py-1"
                 />
-                <span className="text-navy-500">{h.to}</span>
+                <span className="text-ink-500">{h.to}</span>
                 <input
                   type="time"
                   step={900}
                   dir="ltr"
                   value={d.close ?? ""}
                   onChange={(e) => update(d.day, { close: e.target.value })}
-                  className="rounded-lg border border-navy-200 px-2 py-1"
+                  className="rounded-lg border border-ink-200 px-2 py-1"
                 />
               </div>
             ) : (
-              <span className="text-sm text-navy-400">{h.closed}</span>
+              <span className="text-sm text-ink-400">{h.closed}</span>
             )}
 
             {!isValidDay(d) && <span className="w-full text-sm text-red-600">{h.invalid}</span>}

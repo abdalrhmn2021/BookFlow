@@ -85,10 +85,10 @@ export default function StaffScheduleForm({
     }
   };
 
-  const section = "rounded-xl border border-navy-100 bg-white p-4";
+  const section = "rounded-xl border border-ink-100 bg-white p-4";
 
   return (
-    <div className="space-y-4 rounded-xl border border-navy-200 bg-navy-50 p-4">
+    <div className="space-y-4 rounded-xl border border-ink-200 bg-ink-50 p-4">
       <p className="font-semibold">
         {st.schedule} · {staff.name}
       </p>
@@ -96,7 +96,7 @@ export default function StaffScheduleForm({
       {/* Working hours */}
       <div className={section}>
         <p className="font-medium">{st.hoursTitle}</p>
-        <p className="mt-1 text-sm text-navy-500">{st.hoursHint}</p>
+        <p className="mt-1 text-sm text-ink-500">{st.hoursHint}</p>
         <label className="mt-3 flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -108,7 +108,7 @@ export default function StaffScheduleForm({
         </label>
 
         {ownHours && (
-          <ul className="mt-3 divide-y divide-navy-100">
+          <ul className="mt-3 divide-y divide-ink-100">
             {days.map((d) => {
               const closedForBusiness = !businessDay(d.day).isOpen;
               return (
@@ -131,27 +131,27 @@ export default function StaffScheduleForm({
                   </label>
                   {d.isOpen && !closedForBusiness ? (
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="text-navy-500">{h.from}</span>
+                      <span className="text-ink-500">{h.from}</span>
                       <input
                         type="time"
                         step={900}
                         dir="ltr"
                         value={d.open ?? ""}
                         onChange={(e) => updateDay(d.day, { open: e.target.value })}
-                        className="rounded-lg border border-navy-200 px-2 py-1"
+                        className="rounded-lg border border-ink-200 px-2 py-1"
                       />
-                      <span className="text-navy-500">{h.to}</span>
+                      <span className="text-ink-500">{h.to}</span>
                       <input
                         type="time"
                         step={900}
                         dir="ltr"
                         value={d.close ?? ""}
                         onChange={(e) => updateDay(d.day, { close: e.target.value })}
-                        className="rounded-lg border border-navy-200 px-2 py-1"
+                        className="rounded-lg border border-ink-200 px-2 py-1"
                       />
                     </div>
                   ) : (
-                    <span className="text-sm text-navy-400">{h.closed}</span>
+                    <span className="text-sm text-ink-400">{h.closed}</span>
                   )}
                   {!isValidDay(d) && <span className="w-full text-sm text-red-600">{h.invalid}</span>}
                 </li>
@@ -164,16 +164,16 @@ export default function StaffScheduleForm({
       {/* Services */}
       <div className={section}>
         <p className="font-medium">{st.servicesTitle}</p>
-        <p className="mt-1 text-sm text-navy-500">{st.servicesHint}</p>
+        <p className="mt-1 text-sm text-ink-500">{st.servicesHint}</p>
         {!services ? (
-          <p className="mt-3 text-sm text-navy-500">{t.common.loading}</p>
+          <p className="mt-3 text-sm text-ink-500">{t.common.loading}</p>
         ) : (
           <div className="mt-3 flex flex-wrap gap-2">
             {services.map((s) => (
               <label
                 key={s._id}
                 className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
-                  serviceIds.includes(s._id) ? "border-brand-500 bg-brand-50" : "border-navy-200 bg-white"
+                  serviceIds.includes(s._id) ? "border-brand-500 bg-brand-50" : "border-ink-200 bg-white"
                 }`}
               >
                 <input
@@ -192,34 +192,34 @@ export default function StaffScheduleForm({
       {/* Days off */}
       <div className={section}>
         <p className="font-medium">{st.daysOffTitle}</p>
-        <p className="mt-1 text-sm text-navy-500">{st.daysOffHint}</p>
+        <p className="mt-1 text-sm text-ink-500">{st.daysOffHint}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input
             type="date"
             min={today}
             value={newDayOff}
             onChange={(e) => setNewDayOff(e.target.value)}
-            className="w-48 rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm"
+            className="w-48 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm"
           />
           <button type="button" onClick={addDayOff} disabled={!newDayOff} className={btnSecondary}>
             {st.addDayOff}
           </button>
         </div>
         {daysOff.length === 0 ? (
-          <p className="mt-3 text-sm text-navy-400">{st.noDaysOff}</p>
+          <p className="mt-3 text-sm text-ink-400">{st.noDaysOff}</p>
         ) : (
           <ul className="mt-3 flex flex-wrap gap-2">
             {daysOff.map((d) => (
               <li
                 key={d}
-                className="flex items-center gap-2 rounded-full border border-navy-200 bg-white px-3 py-1 text-sm"
+                className="flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1 text-sm"
               >
                 {formatLongDate(d, t.locale)}
                 <button
                   type="button"
                   onClick={() => setDaysOff((prev) => prev.filter((x) => x !== d))}
                   aria-label={st.remove}
-                  className="text-navy-400 hover:text-red-600"
+                  className="text-ink-400 hover:text-red-600"
                 >
                   ✕
                 </button>

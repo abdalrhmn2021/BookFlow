@@ -70,7 +70,7 @@ export function contrast(a: [number, number, number], b: [number, number, number
 }
 
 const WHITE: [number, number, number] = [1, 1, 1];
-const DARK_TEXT = "#0e1a33"; // navy-950: the text color used on light buttons
+const DARK_TEXT = "#171814"; // ink-950: the text color used on light buttons
 
 // Light shades: fixed lightness, with chroma reduced so tints stay soft (not neon).
 const TINTS: [shade: number, l: number, chroma: number][] = [
@@ -104,7 +104,7 @@ export function brandScale(hex: string): BrandScale {
   while (l700 > 0.15 && contrast(oklchToRgb({ l: l700, c: base.c, h: base.h }), WHITE) < 4.5) l700 -= 0.02;
   scale["--color-brand-700"] = shade(l700);
 
-  // Text ON a brand-500 button: dark navy or white, whichever is easier to read.
+  // Text ON a brand-500 button: dark ink or white, whichever is easier to read.
   const brandRgb = hexToRgb(hex);
   scale["--color-brand-ink"] =
     contrast(brandRgb, hexToRgb(DARK_TEXT)) >= contrast(brandRgb, WHITE) ? DARK_TEXT : "#ffffff";

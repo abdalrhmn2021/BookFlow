@@ -10,10 +10,10 @@ import { card, errorBox } from "@/lib/ui";
 import type { AppointmentStatus, BusinessStats } from "@/lib/types";
 
 const BAR: { status: AppointmentStatus; color: string }[] = [
-  { status: "completed", color: "bg-navy-500" },
+  { status: "completed", color: "bg-ink-500" },
   { status: "confirmed", color: "bg-emerald-500" },
   { status: "pending", color: "bg-amber-400" },
-  { status: "no-show", color: "bg-navy-300" },
+  { status: "no-show", color: "bg-ink-300" },
   { status: "cancelled", color: "bg-red-400" },
 ];
 
@@ -57,7 +57,7 @@ export default function OverviewTab({
   }, [refreshKey]);
 
   if (error) return <p className={errorBox}>{tError(error)}</p>;
-  if (!stats) return <p className="text-sm text-navy-500">{o.loading}</p>;
+  if (!stats) return <p className="text-sm text-ink-500">{o.loading}</p>;
 
   const { today, week, toConfirm, next } = stats;
   const maxDay = Math.max(1, ...week.map((d) => d.count));
@@ -65,14 +65,14 @@ export default function OverviewTab({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <section className="relative overflow-hidden rounded-2xl bg-navy-900 p-6 text-white sm:p-8">
+        <section className="relative overflow-hidden rounded-3xl bg-brand-700 p-6 text-white shadow-soft sm:p-8">
           <div aria-hidden="true" className="absolute -end-6 -top-6 grid grid-cols-3 gap-2 opacity-10">
             {Array.from({ length: 12 }, (_, i) => (
-              <span key={i} className={`h-5 w-9 rounded ${i === 4 ? "bg-brand-500 opacity-100" : "bg-white"}`} />
+              <span key={i} className={`h-5 w-9 rounded ${i === 4 ? "bg-brand-300 opacity-100" : "bg-white"}`} />
             ))}
           </div>
 
-          <h2 className="text-sm font-medium text-navy-200">{o.next}</h2>
+          <h2 className="text-sm font-medium text-white/75">{o.next}</h2>
           {next ? (
             <NextAppointment
               next={next}
@@ -84,17 +84,17 @@ export default function OverviewTab({
               }
             />
           ) : (
-            <p className="mt-4 max-w-sm text-navy-200">{o.noNext}</p>
+            <p className="mt-4 max-w-sm text-white/75">{o.noNext}</p>
           )}
         </section>
 
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
           <section className={`${card} p-5`}>
-            <h2 className="text-sm text-navy-500">{o.todayCount}</h2>
+            <h2 className="text-sm text-ink-500">{o.todayCount}</h2>
             <p className="font-display tabular mt-1 text-3xl font-semibold">{today.total}</p>
             {today.total > 0 && (
               <>
-                <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-navy-100">
+                <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-ink-100">
                   {BAR.map(({ status, color }) =>
                     today.byStatus[status] ? (
                       <span
@@ -105,7 +105,7 @@ export default function OverviewTab({
                     ) : null,
                   )}
                 </div>
-                <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-navy-500">
+                <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-500">
                   {BAR.filter(({ status }) => today.byStatus[status]).map(({ status, color }) => (
                     <span key={status} className="inline-flex items-center gap-1">
                       <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
@@ -118,19 +118,19 @@ export default function OverviewTab({
           </section>
 
           <section
-            className={`rounded-xl border p-5 ${toConfirm > 0 ? "border-brand-200 bg-brand-50" : "border-navy-100 bg-white"}`}
+            className={`rounded-xl border p-5 ${toConfirm > 0 ? "border-brand-200 bg-brand-50" : "border-ink-100 bg-white"}`}
           >
-            <h2 className={`text-sm ${toConfirm > 0 ? "text-brand-700" : "text-navy-500"}`}>{o.toConfirm}</h2>
+            <h2 className={`text-sm ${toConfirm > 0 ? "text-brand-700" : "text-ink-500"}`}>{o.toConfirm}</h2>
             <p className="font-display tabular mt-1 text-3xl font-semibold">{toConfirm}</p>
-            {toConfirm === 0 && <p className="mt-1 text-xs text-navy-500">{o.toConfirmNone}</p>}
+            {toConfirm === 0 && <p className="mt-1 text-xs text-ink-500">{o.toConfirmNone}</p>}
           </section>
 
           <section className={`${card} p-5`}>
-            <h2 className="text-sm text-navy-500">{o.revenue}</h2>
+            <h2 className="text-sm text-ink-500">{o.revenue}</h2>
             <p dir="ltr" className="font-display tabular mt-1 text-3xl font-semibold rtl:text-right">
               {formatPrice(today.revenue)}
             </p>
-            <p className="mt-1 text-xs text-navy-500">{o.revenueHint}</p>
+            <p className="mt-1 text-xs text-ink-500">{o.revenueHint}</p>
           </section>
         </div>
       </div>
@@ -148,16 +148,16 @@ export default function OverviewTab({
                 aria-label={`${weekday} ${day}: ${t.dashboard.schedule.count(d.count)}`}
               >
                 <span className="tabular text-sm font-semibold">{d.count}</span>
-                <span className="flex h-28 w-full max-w-10 items-end rounded-md bg-navy-50">
+                <span className="flex h-28 w-full max-w-10 items-end rounded-lg bg-ink-50">
                   <span
-                    className={`w-full rounded-md transition group-hover:opacity-80 ${i === 0 ? "bg-brand-500" : "bg-navy-700"}`}
+                    className={`w-full rounded-lg transition group-hover:opacity-80 ${i === 0 ? "bg-brand-500" : "bg-brand-200"}`}
                     style={{ height: `${d.count ? Math.max((d.count / maxDay) * 100, 6) : 0}%` }}
                   />
                 </span>
-                <span className={`text-xs ${i === 0 ? "font-semibold text-navy-900" : "text-navy-500"}`}>
+                <span className={`text-xs ${i === 0 ? "font-semibold text-ink-900" : "text-ink-500"}`}>
                   {i === 0 ? t.dashboard.schedule.today : weekday}
                 </span>
-                <span className="tabular -mt-2 text-xs text-navy-400">{day}</span>
+                <span className="tabular -mt-2 text-xs text-ink-400">{day}</span>
               </button>
             );
           })}
@@ -190,10 +190,10 @@ function NextAppointment({
   return (
     <div className="relative">
       <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p dir="ltr" className="font-display tabular text-6xl font-semibold tracking-tight text-brand-400 sm:text-7xl">
+        <p dir="ltr" className="font-display tabular text-6xl font-semibold tracking-tight text-white sm:text-7xl">
           {time}
         </p>
-        <p className="text-sm text-navy-200">
+        <p className="text-sm text-white/75">
           {!isToday && <span className="me-2 text-white">{date}</span>}
           {timeUntil(next.startTime, t.locale)}
         </p>
@@ -202,12 +202,12 @@ function NextAppointment({
       <p className="font-display mt-4 text-xl font-semibold">
         {name}
         {next.guest && (
-          <span className="ms-2 rounded-full bg-white/10 px-2 py-0.5 align-middle font-sans text-xs font-medium text-navy-200">
+          <span className="ms-2 rounded-full bg-white/15 px-2 py-0.5 align-middle font-sans text-xs font-medium text-white/75">
             {s.guest}
           </span>
         )}
       </p>
-      <p className="mt-1 text-navy-200">
+      <p className="mt-1 text-white/75">
         {next.serviceName}
         {showStaff && (
           <>
@@ -220,7 +220,7 @@ function NextAppointment({
       <div className="mt-6 flex flex-wrap gap-2">
         <button
           onClick={onOpen}
-          className="inline-flex items-center gap-1 rounded-md bg-brand-500 px-3 py-1.5 text-sm font-semibold text-brand-ink transition hover:bg-brand-400"
+          className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
         >
           {t.dashboard.overview.openDay}
           <IconChevron className="h-4 w-4 rtl:rotate-180" />

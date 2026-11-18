@@ -183,11 +183,11 @@ export default function BookingForm({
     onClose();
   };
 
-  const select = "mt-1.5 w-full rounded-lg border border-navy-200 bg-white px-3 py-2.5 text-sm";
+  const select = "mt-1.5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-navy-950/40 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink-950/40 p-0 sm:items-center sm:p-4"
       onClick={(e) => e.target === e.currentTarget && finish()}
     >
       <div
@@ -201,7 +201,7 @@ export default function BookingForm({
             <h2 id="booking-form-title" className="font-display text-xl font-semibold">
               {moving ? b.moveTitle : b.newTitle}
             </h2>
-            <p className="mt-1 text-sm text-navy-500">
+            <p className="mt-1 text-sm text-ink-500">
               {moving
                 ? `${(moving.guest ?? moving.customerId)?.name ?? ""} · ${moving.serviceName} · ${
                     formatMomentIn(moving.startTime, timezone, t.locale).date
@@ -212,7 +212,7 @@ export default function BookingForm({
           <button
             onClick={finish}
             aria-label={b.close}
-            className="rounded px-2 text-2xl leading-none text-navy-400 hover:bg-navy-50"
+            className="rounded px-2 text-2xl leading-none text-ink-400 hover:bg-ink-50"
           >
             ×
           </button>
@@ -241,7 +241,7 @@ export default function BookingForm({
         ) : loadError ? (
           <p className={`mt-6 ${errorBox}`}>{tError(loadError)}</p>
         ) : !page ? (
-          <p className="mt-6 text-sm text-navy-500">{b.loadingSlots}</p>
+          <p className="mt-6 text-sm text-ink-500">{b.loadingSlots}</p>
         ) : (
           <form onSubmit={submit} className="mt-6 space-y-4">
             {!moving && (
@@ -301,11 +301,11 @@ export default function BookingForm({
               <div>
                 <span className="text-sm font-medium">{b.time}</span>
                 {!slotsNow ? (
-                  <p className="mt-2 text-sm text-navy-500">{b.loadingSlots}</p>
+                  <p className="mt-2 text-sm text-ink-500">{b.loadingSlots}</p>
                 ) : slotsNow.error ? (
                   <p className={`mt-2 ${errorBox}`}>{tError(slotsNow.error)}</p>
                 ) : freeTimes.length === 0 ? (
-                  <p className="mt-2 text-sm text-navy-500">
+                  <p className="mt-2 text-sm text-ink-500">
                     {slotsNow.data?.isOpen === false ? b.closedDay : b.noSlots}
                   </p>
                 ) : (
@@ -320,7 +320,7 @@ export default function BookingForm({
                         className={`tabular rounded-lg border px-2 py-2 text-sm font-medium transition ${
                           slot === chosen
                             ? "border-brand-500 bg-brand-500 text-brand-ink"
-                            : "border-navy-100 hover:border-brand-300"
+                            : "border-ink-100 hover:border-brand-300"
                         }`}
                       >
                         {slot}
@@ -347,7 +347,7 @@ export default function BookingForm({
                   </label>
                   <label className="block">
                     <span className="text-sm font-medium">
-                      {b.phone} <span className="text-navy-400">{b.optional}</span>
+                      {b.phone} <span className="text-ink-400">{b.optional}</span>
                     </span>
                     <input
                       type="tel"
@@ -363,7 +363,7 @@ export default function BookingForm({
                 </div>
                 <label className="block">
                   <span className="text-sm font-medium">
-                    {b.notes} <span className="text-navy-400">{b.optional}</span>
+                    {b.notes} <span className="text-ink-400">{b.optional}</span>
                   </span>
                   <textarea
                     rows={2}
@@ -374,7 +374,7 @@ export default function BookingForm({
                   />
                 </label>
                 {phone.trim() && (
-                  <label className="flex items-start gap-2 text-sm text-navy-700">
+                  <label className="flex items-start gap-2 text-sm text-ink-700">
                     <input
                       type="checkbox"
                       checked={whatsappConsent}

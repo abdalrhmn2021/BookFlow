@@ -29,23 +29,23 @@ export default function BusinessesPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t.businesses.title}</h1>
-      <p className="mt-1 text-navy-500">{t.businesses.subtitle}</p>
+      <p className="mt-1 text-ink-500">{t.businesses.subtitle}</p>
 
       {error ? (
         <p className="mt-8 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{tError(error)}</p>
       ) : !businesses ? (
-        <p className="mt-8 text-navy-500">{t.common.loading}</p>
+        <p className="mt-8 text-ink-500">{t.common.loading}</p>
       ) : businesses.length === 0 ? (
-        <p className="mt-8 text-navy-500">{t.businesses.empty}</p>
+        <p className="mt-8 text-ink-500">{t.businesses.empty}</p>
       ) : (
         <ul className="mt-8 grid gap-3 sm:grid-cols-2">
           {businesses.map((b) => (
             <li key={b.slug}>
               <Link
                 href={`/book/${b.slug}`}
-                className="flex items-center gap-4 rounded-xl border border-navy-100 bg-white p-4 transition hover:border-brand-300 hover:shadow-sm"
+                className="flex items-center gap-4 rounded-xl border border-ink-100 bg-white p-4 transition hover:border-brand-300 hover:shadow-sm"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-lg font-bold text-white">
+                <span className="font-display flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg font-bold text-brand-700 ring-1 ring-brand-100">
                   {b.name.charAt(0).toUpperCase()}
                 </span>
                 <span>

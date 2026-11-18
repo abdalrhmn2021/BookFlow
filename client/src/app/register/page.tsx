@@ -47,12 +47,12 @@ function RegisterForm() {
   };
 
   const inputClass =
-    "mt-1 w-full rounded-lg border border-navy-200 px-3 py-2 outline-none focus:border-navy-700 focus:ring-2 focus:ring-navy-100";
+    "mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 outline-none focus:border-ink-700 focus:ring-2 focus:ring-ink-100";
 
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-navy-100 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{t.register.title}</h1>
-      <p className="mt-1 text-sm text-navy-500">{t.register.subtitle}</p>
+      <p className="mt-1 text-sm text-ink-500">{t.register.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block">
@@ -74,7 +74,7 @@ function RegisterForm() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">
-            {t.register.phone} <span className="text-navy-400">{t.common.optional}</span>
+            {t.register.phone} <span className="text-ink-400">{t.common.optional}</span>
           </span>
           <input
             name="phone"
@@ -106,14 +106,14 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
+          className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-600 disabled:opacity-50"
         >
           {submitting ? t.register.submitting : t.register.submit}
         </button>
         <LegalNotice text={t.legal.agreeSignup} />
       </form>
 
-      <p className="mt-6 text-center text-sm text-navy-600">
+      <p className="mt-6 text-center text-sm text-ink-600">
         {t.register.haveAccount}{" "}
         <Link
           href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
@@ -125,7 +125,7 @@ function RegisterForm() {
       {/* One-business copies have no "register your business" - the business already exists. */}
       {!isSingleBusiness && (
         <p className="mt-2 text-center text-sm">
-          <Link href="/register-business" className="text-navy-500 hover:text-brand-700">
+          <Link href="/register-business" className="text-ink-500 hover:text-brand-700">
             {t.registerBusiness.cta}
           </Link>
         </p>

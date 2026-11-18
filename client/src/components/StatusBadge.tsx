@@ -6,9 +6,9 @@ import type { AppointmentStatus } from "@/lib/types";
 const STATUS_STYLE: Record<AppointmentStatus, { badge: string; dot: string }> = {
   pending: { badge: "bg-amber-50 text-amber-800 ring-amber-200", dot: "bg-amber-500" },
   confirmed: { badge: "bg-emerald-50 text-emerald-800 ring-emerald-200", dot: "bg-emerald-500" },
-  completed: { badge: "bg-navy-50 text-navy-700 ring-navy-200", dot: "bg-navy-500" },
+  completed: { badge: "bg-ink-50 text-ink-700 ring-ink-200", dot: "bg-ink-500" },
   cancelled: { badge: "bg-red-50 text-red-700 ring-red-200", dot: "bg-red-500" },
-  "no-show": { badge: "bg-navy-50 text-navy-500 ring-navy-200", dot: "bg-navy-300" },
+  "no-show": { badge: "bg-ink-50 text-ink-500 ring-ink-200", dot: "bg-ink-300" },
 };
 
 export default function StatusBadge({ status }: { status: AppointmentStatus }) {

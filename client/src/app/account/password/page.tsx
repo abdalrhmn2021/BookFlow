@@ -66,14 +66,14 @@ function ChangePasswordForm() {
         }}
         className={inputClass}
       />
-      {hint && <span className="mt-1 block text-xs text-navy-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-ink-400">{hint}</span>}
     </label>
   );
 
   return (
-    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-navy-100 bg-white p-8 shadow-sm">
+    <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
       <h1 className="font-display text-2xl font-semibold tracking-tight">{p.changeTitle}</h1>
-      <p className="mt-1 text-sm text-navy-500">{p.changeSubtitle}</p>
+      <p className="mt-1 text-sm text-ink-500">{p.changeSubtitle}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         {field(p.currentPassword, current, setCurrent, "current-password")}

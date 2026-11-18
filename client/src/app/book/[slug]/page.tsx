@@ -224,7 +224,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           {pageError.status === 404 ? t.book.notFoundTitle : t.book.loadErrorTitle}
         </h1>
-        <p className="mt-2 text-navy-500">{pageError.status === 404 ? t.book.notFoundText : tError(pageError.err)}</p>
+        <p className="mt-2 text-ink-500">{pageError.status === 404 ? t.book.notFoundText : tError(pageError.err)}</p>
         <Link href="/" className="mt-6 inline-block font-medium text-brand-700 hover:underline">
           {t.common.backHome}
         </Link>
@@ -243,26 +243,26 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
           ✓
         </div>
         <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight">{t.book.bookedTitle}</h1>
-        <p className="mt-2 text-navy-600">
+        <p className="mt-2 text-ink-600">
           <b>{booked.serviceName}</b> {t.book.bookedWith} <b>{booked.staffName}</b>
           <br />
           {t.book.bookedAt(formatLongDate(booked.date, t.locale), booked.time)}
         </p>
-        <p className="mt-3 text-sm text-navy-500">{t.book.willConfirm(business.name)}</p>
-        {booked.guestPhone && <p className="mt-1 text-sm text-navy-500">{t.book.guestBooked(booked.guestPhone)}</p>}
+        <p className="mt-3 text-sm text-ink-500">{t.book.willConfirm(business.name)}</p>
+        {booked.guestPhone && <p className="mt-1 text-sm text-ink-500">{t.book.guestBooked(booked.guestPhone)}</p>}
         {booked.manageToken && <ManageLinkBox token={booked.manageToken} businessName={business.name} />}
         <div className="mt-8 flex justify-center gap-3">
           {!booked.guestPhone && (
             <Link
               href="/my-appointments"
-              className="rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-400"
+              className="rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-600"
             >
               {t.book.myAppointments}
             </Link>
           )}
           <button
             onClick={bookAnother}
-            className="rounded-lg border border-navy-200 px-4 py-2 font-medium hover:bg-navy-50"
+            className="rounded-lg border border-ink-200 px-4 py-2 font-medium hover:bg-ink-50"
           >
             {t.book.bookAnother}
           </button>
@@ -289,14 +289,14 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 
   return (
     <>
-      <header className="bg-navy-950 text-white">
+      <header className="border-b border-ink-100 bg-gradient-to-b from-brand-50 to-ink-50">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-10">
-          <span className="font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-2xl font-semibold text-brand-ink">
+          <span className="font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-500 text-2xl font-semibold text-brand-ink shadow-soft">
             {business.name.charAt(0).toUpperCase()}
           </span>
           <div>
-            <h1 className="font-display text-3xl font-semibold tracking-tight">{business.name}</h1>
-            <p className="mt-1 text-navy-200">{t.book.subtitle}</p>
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-ink-950">{business.name}</h1>
+            <p className="mt-1 text-ink-600">{t.book.subtitle}</p>
           </div>
         </div>
       </header>
@@ -318,17 +318,17 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   className={`rounded-lg border p-4 text-start transition ${
                     s.id === serviceId
                       ? "border-brand-500 bg-brand-50 ring-2 ring-brand-100"
-                      : "border-navy-100 bg-white hover:border-brand-300"
+                      : "border-ink-100 bg-white hover:border-brand-300"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="font-medium">{s.name}</span>
-                    <span dir="ltr" className="tabular font-semibold text-navy-900">
+                    <span dir="ltr" className="tabular font-semibold text-ink-900">
                       {formatPrice(s.price)}
                     </span>
                   </div>
-                  {s.description && <p className="mt-1 text-sm text-navy-500">{s.description}</p>}
-                  <p className="mt-2 text-xs text-navy-400">{formatDuration(s.duration, t.duration)}</p>
+                  {s.description && <p className="mt-1 text-sm text-ink-500">{s.description}</p>}
+                  <p className="mt-2 text-xs text-ink-400">{formatDuration(s.duration, t.duration)}</p>
                 </button>
               ))}
             </div>
@@ -371,8 +371,8 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                       d === date
                         ? "border-brand-500 bg-brand-500 text-brand-ink"
                         : open
-                          ? "border-navy-100 bg-white hover:border-brand-300"
-                          : "cursor-not-allowed border-navy-100 bg-navy-50 text-navy-300"
+                          ? "border-ink-100 bg-white hover:border-brand-300"
+                          : "cursor-not-allowed border-ink-100 bg-ink-50 text-ink-300"
                     }`}
                   >
                     <span className="text-xs">{d === today ? t.book.today : weekday}</span>
@@ -388,7 +388,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
         {service && member && date && (
           <Step n={4} title={t.book.step4(formatLongDate(date, t.locale))}>
             {slotsLoading ? (
-              <p className="text-sm text-navy-500">{t.book.loadingSlots}</p>
+              <p className="text-sm text-ink-500">{t.book.loadingSlots}</p>
             ) : slotsNow?.error ? (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{tError(slotsNow.error)}</p>
             ) : slots.length === 0 ? (
@@ -416,19 +416,19 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 
         {service && member && date && time && (
           <Step n={5} title={t.book.step5}>
-            <div className="rounded-xl border border-navy-100 bg-white p-5">
+            <div className="rounded-xl border border-ink-100 bg-white p-5">
               <dl className="grid grid-cols-2 gap-y-2 text-sm">
-                <dt className="text-navy-500">{t.book.service}</dt>
+                <dt className="text-ink-500">{t.book.service}</dt>
                 <dd className="font-medium">{service.name}</dd>
-                <dt className="text-navy-500">{t.book.with}</dt>
+                <dt className="text-ink-500">{t.book.with}</dt>
                 <dd className="font-medium">{member.name}</dd>
-                <dt className="text-navy-500">{t.book.when}</dt>
+                <dt className="text-ink-500">{t.book.when}</dt>
                 <dd className="font-medium">
                   {formatLongDate(date, t.locale)}, {time}
                 </dd>
-                <dt className="text-navy-500">{t.book.duration}</dt>
+                <dt className="text-ink-500">{t.book.duration}</dt>
                 <dd className="font-medium">{formatDuration(service.duration, t.duration)}</dd>
-                <dt className="text-navy-500">{t.book.price}</dt>
+                <dt className="text-ink-500">{t.book.price}</dt>
                 <dd className="font-medium">{formatPrice(service.price)}</dd>
               </dl>
 
@@ -438,7 +438,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                 </p>
               ) : (
                 <form
-                  className="mt-5 space-y-4 border-t border-navy-100 pt-5"
+                  className="mt-5 space-y-4 border-t border-ink-100 pt-5"
                   onSubmit={(e) => {
                     e.preventDefault();
                     handleBook();
@@ -447,7 +447,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   {!user && (
                     <fieldset className="space-y-3">
                       <legend className="text-sm font-semibold">{t.book.guestTitle}</legend>
-                      <p className="text-xs text-navy-500">{t.book.guestHint}</p>
+                      <p className="text-xs text-ink-500">{t.book.guestHint}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block">
                           <span className="text-sm font-medium">{t.book.guestName}</span>
@@ -483,7 +483,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
 
                   <label className="block">
                     <span className="text-sm font-medium">
-                      {t.book.notes} <span className="text-navy-400">{t.common.optional}</span>
+                      {t.book.notes} <span className="text-ink-400">{t.common.optional}</span>
                     </span>
                     <textarea
                       value={notes}
@@ -495,7 +495,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                     />
                   </label>
 
-                  <label className="flex items-start gap-2 text-sm text-navy-700">
+                  <label className="flex items-start gap-2 text-sm text-ink-700">
                     <input
                       type="checkbox"
                       checked={whatsappConsent}
@@ -518,14 +518,14 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                   <button
                     type="submit"
                     disabled={submitting || (!user && Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
-                    className="w-full rounded-lg bg-brand-500 py-3 font-semibold text-brand-ink transition hover:bg-brand-400 disabled:opacity-50"
+                    className="w-full rounded-lg bg-brand-500 py-3 font-semibold text-brand-ink transition hover:bg-brand-600 disabled:opacity-50"
                   >
                     {submitting ? t.book.booking : t.book.bookFor(formatPrice(service.price))}
                   </button>
                   <LegalNotice text={t.legal.agreeBooking} />
 
                   {!user && (
-                    <p className="text-center text-sm text-navy-500">
+                    <p className="text-center text-sm text-ink-500">
                       {t.book.haveAccount}{" "}
                       <Link
                         href={`/login?next=${encodeURIComponent(nextUrl)}`}
@@ -558,7 +558,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   return (
     <section className="mt-10">
       <h2 className="font-display flex items-center gap-3 text-lg font-semibold">
-        <span className="tabular flex h-8 w-8 items-center justify-center rounded-lg bg-navy-900 text-sm text-white">
+        <span className="tabular flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500 text-sm font-semibold text-brand-ink">
           {n}
         </span>
         {title}
@@ -573,7 +573,7 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
     <button
       onClick={onClick}
       className={`tabular rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
-        selected ? "border-brand-500 bg-brand-500 text-brand-ink" : "border-navy-100 bg-white hover:border-brand-300"
+        selected ? "border-brand-500 bg-brand-500 text-brand-ink" : "border-ink-100 bg-white hover:border-brand-300"
       }`}
     >
       {children}
@@ -583,8 +583,6 @@ function Chip({ selected, onClick, children }: { selected: boolean; onClick: () 
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-xl border border-dashed border-navy-200 bg-white px-4 py-4 text-sm text-navy-500">
-      {children}
-    </p>
+    <p className="rounded-xl border border-dashed border-ink-200 bg-white px-4 py-4 text-sm text-ink-500">{children}</p>
   );
 }

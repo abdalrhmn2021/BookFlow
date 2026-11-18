@@ -134,9 +134,9 @@ export default function ScheduleTab({
   };
 
   const actionButton: Record<AppointmentStatus, { label: string; className: string }> = {
-    confirmed: { label: s.confirm, className: "bg-navy-900 text-white hover:bg-navy-700" },
-    completed: { label: s.complete, className: "bg-navy-900 text-white hover:bg-navy-700" },
-    "no-show": { label: s.noShow, className: "border border-navy-200 bg-white text-navy-800 hover:bg-navy-50" },
+    confirmed: { label: s.confirm, className: "bg-brand-500 text-brand-ink hover:bg-brand-600" },
+    completed: { label: s.complete, className: "bg-brand-500 text-brand-ink hover:bg-brand-600" },
+    "no-show": { label: s.noShow, className: "border border-ink-200 bg-white text-ink-800 hover:bg-ink-50" },
     cancelled: { label: s.cancel, className: "text-red-700 hover:bg-red-50" },
     pending: { label: "", className: "" },
   };
@@ -184,19 +184,19 @@ export default function ScheduleTab({
             value={date}
             onChange={(e) => e.target.value && setDate(e.target.value)}
             aria-label={s.today}
-            className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm"
+            className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm"
           />
         </div>
       </div>
 
-      <div className="mt-5 flex gap-1 overflow-x-auto rounded-xl bg-navy-100/60 p-1">
+      <div className="mt-5 flex gap-1 overflow-x-auto rounded-xl bg-ink-100/60 p-1">
         {FILTERS.map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             aria-pressed={filter === f}
             className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-              filter === f ? "bg-white text-navy-900 shadow-sm" : "text-navy-500 hover:text-navy-900"
+              filter === f ? "bg-white text-ink-900 shadow-sm" : "text-ink-500 hover:text-ink-900"
             }`}
           >
             {f === "all" ? s.all : t.status[f]}
@@ -206,14 +206,14 @@ export default function ScheduleTab({
 
       <div className="mt-6">
         {!current ? (
-          <p className="text-sm text-navy-500">{s.loading}</p>
+          <p className="text-sm text-ink-500">{s.loading}</p>
         ) : current.error ? (
           <p className={errorBox}>{tError(current.error)}</p>
         ) : list.length === 0 ? (
           <p className={emptyBox}>{s.empty}</p>
         ) : (
           <>
-            <p className="mb-4 text-sm text-navy-500">{s.count(list.length)}</p>
+            <p className="mb-4 text-sm text-ink-500">{s.count(list.length)}</p>
             <ol className="relative">
               {list.map((a, i) => {
                 const start = formatMomentIn(a.startTime, timezone, t.locale).time;
@@ -224,40 +224,40 @@ export default function ScheduleTab({
                 return (
                   <li key={a._id} className="relative flex gap-3 pb-4 sm:gap-5">
                     <div dir="ltr" className="tabular w-12 shrink-0 pt-4 text-end sm:w-14">
-                      <p className="font-semibold text-navy-900">{start}</p>
-                      <p className="text-xs text-navy-400">{end}</p>
+                      <p className="font-semibold text-ink-900">{start}</p>
+                      <p className="text-xs text-ink-400">{end}</p>
                     </div>
                     <div aria-hidden="true" className="relative flex w-3 shrink-0 justify-center">
-                      {i < list.length - 1 && <span className="absolute top-6 -bottom-4 w-px bg-navy-200" />}
+                      {i < list.length - 1 && <span className="absolute top-6 -bottom-4 w-px bg-ink-200" />}
                       <span
-                        className={`relative mt-5 h-3 w-3 rounded-full ring-4 ring-navy-50 ${
-                          finished ? "bg-navy-300" : a.status === "pending" ? "bg-amber-400" : "bg-brand-500"
+                        className={`relative mt-5 h-3 w-3 rounded-full ring-4 ring-ink-50 ${
+                          finished ? "bg-ink-300" : a.status === "pending" ? "bg-amber-400" : "bg-brand-500"
                         }`}
                       />
                     </div>
 
                     <div
-                      className={`min-w-0 flex-1 rounded-xl border border-navy-100 bg-white p-4 ${finished ? "opacity-75" : ""}`}
+                      className={`min-w-0 flex-1 rounded-xl border border-ink-100 bg-white p-4 ${finished ? "opacity-75" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="flex flex-wrap items-center gap-2 font-semibold">
                             {nameOf(a) ?? s.noCustomer}
                             {a.guest && (
-                              <span className="rounded-full bg-navy-50 px-2 py-0.5 text-xs font-medium text-navy-600">
+                              <span className="rounded-full bg-ink-50 px-2 py-0.5 text-xs font-medium text-ink-600">
                                 {s.guest}
                               </span>
                             )}
                           </p>
-                          <p className="mt-0.5 text-sm text-navy-600">
+                          <p className="mt-0.5 text-sm text-ink-600">
                             {a.serviceName}
                             {user?.role === "owner" && (
                               <>
                                 {" "}
-                                {s.with} <span className="font-medium text-navy-900">{a.staffId.name}</span>
+                                {s.with} <span className="font-medium text-ink-900">{a.staffId.name}</span>
                               </>
                             )}
-                            <span className="tabular ms-2 text-navy-400">
+                            <span className="tabular ms-2 text-ink-400">
                               <bdi>{formatPrice(a.price)}</bdi>
                             </span>
                           </p>
@@ -266,14 +266,14 @@ export default function ScheduleTab({
                               <a
                                 href={`tel:${phoneOf(a)}`}
                                 dir="ltr"
-                                className="inline-flex items-center gap-1.5 text-navy-700 hover:text-brand-700"
+                                className="inline-flex items-center gap-1.5 text-ink-700 hover:text-brand-700"
                               >
                                 <IconPhone className="h-4 w-4" />
                                 {phoneOf(a)}
                               </a>
                             )}
                             {a.notes && (
-                              <span className="inline-flex items-start gap-1.5 text-navy-500">
+                              <span className="inline-flex items-start gap-1.5 text-ink-500">
                                 <IconNote className="mt-0.5 h-4 w-4 shrink-0" />
                                 {a.notes}
                               </span>
@@ -284,18 +284,18 @@ export default function ScheduleTab({
                       </div>
 
                       {(actions.length > 0 || canRemind(a)) && (
-                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-navy-50 pt-3">
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-50 pt-3">
                           {confirmCancelId === a._id ? (
                             <div className="w-full space-y-2">
-                              <p className="text-sm text-navy-600">{s.cancelQuestion}</p>
+                              <p className="text-sm text-ink-600">{s.cancelQuestion}</p>
                               <label className="block">
-                                <span className="text-xs font-medium text-navy-600">{s.cancelReason}</span>
+                                <span className="text-xs font-medium text-ink-600">{s.cancelReason}</span>
                                 <input
                                   value={cancelReason}
                                   onChange={(e) => setCancelReason(e.target.value)}
                                   maxLength={300}
                                   placeholder={s.cancelReasonPlaceholder}
-                                  className="mt-1 w-full rounded-lg border border-navy-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                                  className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100"
                                 />
                               </label>
                               <div className="flex flex-wrap items-center gap-2">
@@ -309,7 +309,7 @@ export default function ScheduleTab({
                                 <button
                                   onClick={() => setConfirmCancelId(null)}
                                   disabled={busy}
-                                  className="rounded-md px-3 py-1.5 text-sm text-navy-600 hover:bg-navy-50"
+                                  className="rounded-md px-3 py-1.5 text-sm text-ink-600 hover:bg-ink-50"
                                 >
                                   {s.keep}
                                 </button>
@@ -335,7 +335,7 @@ export default function ScheduleTab({
                                 <button
                                   disabled={busy}
                                   onClick={() => setForm({ kind: "move", appointment: a })}
-                                  className="rounded-md border border-navy-200 bg-white px-3 py-1.5 text-sm font-medium text-navy-800 transition hover:bg-navy-50 disabled:opacity-50"
+                                  className="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-800 transition hover:bg-ink-50 disabled:opacity-50"
                                 >
                                   {t.dashboard.booking.moveButton}
                                 </button>
