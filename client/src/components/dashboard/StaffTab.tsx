@@ -8,11 +8,14 @@ import { formatLongDate, todayIn } from "@/lib/format";
 import type { StaffMember, TenantInfo } from "@/lib/types";
 import StaffScheduleForm from "./StaffScheduleForm";
 
+type TeamRole = "staff" | "receptionist";
+
 interface StaffInput {
   name: string;
   phone?: string;
   email?: string;
   password?: string;
+  role?: TeamRole; // new members only
 }
 
 export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
@@ -86,8 +89,10 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
   if (loadError) return <p className={errorBox}>{tError(loadError)}</p>;
   if (!staff) return <p className="text-sm text-ink-500">{t.common.loading}</p>;
 
-  // Customers need at least one active staff member, or the owner taking bookings.
-  const nobodyBookable = editing !== "new" && !staff.some((s) => (s.role === "owner" ? s.bookable : s.isActive));
+  // Customers need at least one active staff member, or the owner taking bookings
+  // (a receptionist doesn't count: nobody books them).
+  const nobodyBookable =
+    editing !== "new" && !staff.some((s) => (s.role === "owner" ? s.bookable : s.role === "staff" && s.isActive));
 
   return (
     <div>
@@ -148,6 +153,11 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
                   <div>
                     <p className="font-semibold">
                       {s.name}
+                      {s.role === "receptionist" && (
+                        <span className="ms-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+                          {t.roles.receptionist}
+                        </span>
+                      )}
                       {!s.isActive && (
                         <span className="ms-2 rounded-full bg-ink-50 px-2 py-0.5 text-xs font-medium text-ink-500">
                           {st.inactive}
@@ -158,13 +168,19 @@ export default function StaffTab({ tenant }: { tenant: TenantInfo }) {
                       {s.email}
                       {s.phone && ` · ${s.phone}`}
                     </p>
-                    <ScheduleSummary staff={s} tenant={tenant} />
+                    {s.role === "receptionist" ? (
+                      <p className="mt-0.5 text-xs text-ink-400">{st.receptionistInfo}</p>
+                    ) : (
+                      <ScheduleSummary staff={s} tenant={tenant} />
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button onClick={() => setEditing(`schedule:${s.id}`)} className={btnSecondary}>
-                    {st.schedule}
-                  </button>
+                  {s.role === "staff" && (
+                    <button onClick={() => setEditing(`schedule:${s.id}`)} className={btnSecondary}>
+                      {st.schedule}
+                    </button>
+                  )}
                   <button onClick={() => setEditing(s.id)} className={btnSecondary}>
                     {t.common.edit}
                   </button>
@@ -267,6 +283,7 @@ function StaffForm({
   const isEdit = !!initial;
 
   const [form, setForm] = useState({ name: initial?.name ?? "", phone: initial?.phone ?? "", email: "", password: "" });
+  const [role, setRole] = useState<TeamRole>("staff");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -287,6 +304,7 @@ function StaffForm({
               phone: form.phone.trim() || undefined,
               email: form.email,
               password: form.password,
+              role,
             },
       );
     } catch (err) {
@@ -297,6 +315,33 @@ function StaffForm({
 
   return (
     <form onSubmit={handleSubmit} className="rounded-xl border border-ink-200 bg-ink-50 p-4">
+      {!isEdit && (
+        <fieldset className="mb-4">
+          <legend className="text-sm font-medium">{st.role}</legend>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {(["staff", "receptionist"] as const).map((r) => (
+              <label
+                key={r}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
+                  role === r
+                    ? "border-brand-500 bg-white ring-2 ring-brand-100"
+                    : "border-ink-200 bg-white hover:border-ink-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="role"
+                  value={r}
+                  checked={role === r}
+                  onChange={() => setRole(r)}
+                  className="accent-brand-600"
+                />
+                {r === "staff" ? st.roleStaff : st.roleReceptionist}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-sm font-medium">{st.name}</span>

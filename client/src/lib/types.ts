@@ -1,4 +1,7 @@
-export type Role = "superadmin" | "owner" | "staff" | "customer";
+export type Role = "superadmin" | "owner" | "staff" | "receptionist" | "customer";
+
+// Everyone who works in a business's dashboard.
+export const BUSINESS_ROLES: Role[] = ["owner", "staff", "receptionist"];
 
 export interface Business {
   id: string;
@@ -110,6 +113,12 @@ export interface BusinessListItem {
   slug: string;
 }
 
+// What the logged-in person may do with bookings (GET /tenants/me). The API checks again anyway.
+export interface DashboardAccess {
+  manageBookings: boolean; // confirm / reject / new booking / move / remind
+  hasReceptionist: boolean;
+}
+
 export interface TenantInfo {
   id: string;
   name: string;
@@ -133,7 +142,7 @@ export interface StaffMember {
   name: string;
   email: string;
   phone?: string;
-  role: "owner" | "staff";
+  role: "owner" | "staff" | "receptionist";
   isActive: boolean;
   bookable?: boolean; // the owner's own row only: "I take bookings too"
   workingHours: WorkingDay[] | null; // null = the business's hours

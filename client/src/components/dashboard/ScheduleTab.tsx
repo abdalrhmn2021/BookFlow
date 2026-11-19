@@ -21,10 +21,13 @@ const canRemind = (a: BusinessAppointment) =>
 const MIN_REASON_LENGTH = 10;
 
 // Mirrors the API's allowed transitions; only decides which buttons to show.
-function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
+// Not the booking desk (staff, or an owner with a receptionist): only close your OWN started
+// appointment - "completed" / "no-show". The API enforces the same (utils/bookingDesk.js).
+function nextStatuses(a: BusinessAppointment, canManage: boolean, userId?: string): AppointmentStatus[] {
   const started = new Date(a.startTime) <= new Date();
-  if (a.status === "pending") return started ? ["completed", "no-show"] : ["confirmed", "cancelled"];
-  if (a.status === "confirmed") return started ? ["completed", "no-show"] : ["cancelled"];
+  if (!canManage && a.staffId._id !== userId) return [];
+  if (a.status === "pending") return started ? ["completed", "no-show"] : canManage ? ["confirmed", "cancelled"] : [];
+  if (a.status === "confirmed") return started ? ["completed", "no-show"] : canManage ? ["cancelled"] : [];
   return [];
 }
 
@@ -35,11 +38,14 @@ export default function ScheduleTab({
   slug,
   initialDate,
   refreshKey = 0,
+  canManage,
 }: {
   timezone: string;
   slug: string;
   initialDate?: string;
   refreshKey?: number;
+  // The booking desk: new bookings, confirm / cancel, move, WhatsApp reminders.
+  canManage: boolean;
 }) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
@@ -171,9 +177,11 @@ export default function ScheduleTab({
           </h2>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setForm({ kind: "new", date: date < today ? today : date })} className={btnPrimary}>
-            + {t.dashboard.booking.newButton}
-          </button>
+          {canManage && (
+            <button onClick={() => setForm({ kind: "new", date: date < today ? today : date })} className={btnPrimary}>
+              + {t.dashboard.booking.newButton}
+            </button>
+          )}
           {date !== today && (
             <button onClick={() => setDate(today)} className={btnSecondary}>
               {s.today}
@@ -218,7 +226,8 @@ export default function ScheduleTab({
               {list.map((a, i) => {
                 const start = formatMomentIn(a.startTime, timezone, t.locale).time;
                 const end = formatMomentIn(a.endTime, timezone, t.locale).time;
-                const actions = nextStatuses(a);
+                const actions = nextStatuses(a, canManage, user?.id);
+                const remindable = canManage && canRemind(a);
                 const busy = busyId === a._id;
                 const finished = a.status === "completed" || a.status === "cancelled" || a.status === "no-show";
                 return (
@@ -251,7 +260,7 @@ export default function ScheduleTab({
                           </p>
                           <p className="mt-0.5 text-sm text-ink-600">
                             {a.serviceName}
-                            {user?.role === "owner" && (
+                            {user?.role !== "staff" && (
                               <>
                                 {" "}
                                 {s.with} <span className="font-medium text-ink-900">{a.staffId.name}</span>
@@ -283,7 +292,7 @@ export default function ScheduleTab({
                         <StatusBadge status={a.status} />
                       </div>
 
-                      {(actions.length > 0 || canRemind(a)) && (
+                      {(actions.length > 0 || remindable) && (
                         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink-50 pt-3">
                           {confirmCancelId === a._id ? (
                             <div className="w-full space-y-2">
@@ -331,7 +340,7 @@ export default function ScheduleTab({
                                   {actionButton[status].label}
                                 </button>
                               ))}
-                              {canRemind(a) && (
+                              {remindable && (
                                 <button
                                   disabled={busy}
                                   onClick={() => setForm({ kind: "move", appointment: a })}
@@ -340,7 +349,7 @@ export default function ScheduleTab({
                                   {t.dashboard.booking.moveButton}
                                 </button>
                               )}
-                              {canRemind(a) && toWhatsAppNumber(phoneOf(a)) && (
+                              {remindable && toWhatsAppNumber(phoneOf(a)) && (
                                 <span className="ms-auto inline-flex flex-wrap items-center gap-2">
                                   {a.reminderSentAt && (
                                     <span className="text-xs text-emerald-700">

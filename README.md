@@ -44,6 +44,7 @@ Every business gets its own booking page; customers pick a service, a staff memb
 - **The owner can take bookings too** ("I take bookings too" on their own card): a barber who runs the shop alone needs no second account - customers book the owner like any staff member, with the same double-booking lock, own hours, services and days off
 - **Per-staff schedules**: each staff member's own week (narrowed to the business's hours, never widened), single days off, and the services they do - the booking page only offers staff who do the chosen service, and only their own free times
 - Staff see only **their own** appointments - enforced by the API, not the UI
+- **Receptionist role**: the owner can add a receptionist who confirms, rejects, enters, moves and reminds everyone's bookings. While one is active, the owner only watches (full schedule + overview) and manages the team, services and hours; staff only mark their own started appointments completed / no-show. A shop without a receptionist works exactly as before (the owner handles bookings)
 - **Automatic WhatsApp reminder** before each appointment (Meta WhatsApp Cloud API, approved template), plus a one-tap manual WhatsApp button; a booking is never reminded twice, even with two job runs at once
 - **Stale bookings close themselves**: a `pending` booking nobody confirmed can be closed after it starts, and is closed automatically a day after it ends
 - **New-booking alerts**: the dashboard chimes and shows a card within 30 s (plus a system notification in the background), and an Arabic + English email goes to the owner and the booked staff member (Brevo HTTPS API)
@@ -278,18 +279,19 @@ Step-by-step install guide (Arabic): [`docs/INSTALL.md`](docs/INSTALL.md).
 | GET | `/api/public/businesses` · `/api/public/businesses/:slug` · `/api/public/businesses/:slug/availability` (`staffId=any` = anyone free) | public |
 | POST | `/api/appointments` | customer |
 | GET · PATCH | `/api/appointments/me` · `/api/appointments/:id/cancel` | customer |
-| GET · PATCH | `/api/appointments/business` · `/api/appointments/:id/status` | owner, staff |
-| GET | `/api/appointments/business/stats` (dashboard overview) | owner, staff |
-| GET | `/api/appointments/business/new?since=` (new-booking alerts) | owner, staff |
-| POST · PATCH | `/api/appointments/business` (walk-in / phone booking) · `/api/appointments/:id/reschedule` | owner, staff (own) |
-| GET | `/api/appointments/business/availability` (free times, `exclude` for rescheduling) | owner, staff |
-| CRUD | `/api/services` | owner (staff: read) |
-| PATCH | `/api/appointments/:id/reminded` (manual WhatsApp reminder sent) | owner, staff (own) |
-| CRUD | `/api/staff` | owner |
+| GET | `/api/appointments/business` · `/api/appointments/business/stats` · `/api/appointments/business/new?since=` | owner, receptionist, staff (own) |
+| PATCH | `/api/appointments/:id/status` | booking desk*; staff and a watching owner: completed / no-show on their own |
+| POST · PATCH | `/api/appointments/business` (walk-in / phone booking) · `/api/appointments/:id/reschedule` | booking desk* |
+| GET | `/api/appointments/business/availability` (free times, `exclude` for rescheduling) | booking desk* |
+| CRUD | `/api/services` | owner (staff, receptionist: read) |
+| PATCH | `/api/appointments/:id/reminded` (manual WhatsApp reminder sent) | booking desk* |
+| CRUD | `/api/staff` (staff and receptionists) | owner |
 | PUT | `/api/staff/:id/schedule` (own hours, days off, services) | owner |
-| GET · PUT | `/api/tenants/me` · `/api/tenants/me/working-hours` | owner (staff: read) |
+| GET · PUT | `/api/tenants/me` (+ what this person may do with bookings) · `/api/tenants/me/working-hours` | owner (staff, receptionist: read) |
 | GET · PATCH | `/api/admin/businesses` · `/api/admin/businesses/:id` | superadmin |
 | POST | `/api/jobs/reminders` (for an outside cron, `x-jobs-secret` header) | server secret |
+
+\* **Booking desk** = the receptionist, or the owner while the business has no active receptionist (`server/src/utils/bookingDesk.js`).
 
 Full request examples: [`server/api-tests.http`](server/api-tests.http).
 

@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["superadmin", "owner", "staff", "customer"],
+      enum: ["superadmin", "owner", "staff", "receptionist", "customer"],
       required: true,
     },
     // Customers who signed up on one business's site of a SHARED server belong to that

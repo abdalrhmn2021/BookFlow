@@ -49,16 +49,14 @@ describe("Booking from the dashboard", () => {
     await bookAs(biz.owner, walkIn(biz, { time: "11:00", name: "A" })).expect(400);
   });
 
-  test("staff can book themselves only; customers and other businesses can't book here", async () => {
+  test("staff, customers and other businesses can't book here", async () => {
     const biz = await h.makeBusiness("manual-staff", { staffCount: 2 });
     const other = await h.makeBusiness("manual-other");
     const customer = await h.makeCustomer("lina");
 
-    await bookAs(biz.staff[0], walkIn(biz)).expect(201);
-    await bookAs(biz.staff[0], walkIn(biz, { staffId: biz.staff[1]._id, time: "11:00" })).expect(403);
-    // Without staffId, a staff member books themselves.
-    const own = await bookAs(biz.staff[1], walkIn(biz, { staffId: undefined, time: "12:00" })).expect(201);
-    expect(own.body.appointment.staffId.name).toBe("Staff 2");
+    // Staff don't enter bookings (the owner or the receptionist does) - not even their own.
+    await bookAs(biz.staff[0], walkIn(biz)).expect(403);
+    await bookAs(biz.staff[1], walkIn(biz, { staffId: undefined, time: "12:00" })).expect(403);
 
     await bookAs(customer, walkIn(biz, { time: "13:00" })).expect(403);
     await bookAs(other.owner, walkIn(biz, { time: "13:00" })).expect(404); // biz's staff isn't theirs
@@ -109,15 +107,15 @@ describe("Rescheduling", () => {
     await moveAs(biz.owner, body.appointment._id, { date, time: "10:15" }).expect(200);
   });
 
-  test("won't move onto another booking, a finished one, or another staff member's calendar (staff)", async () => {
+  test("won't move onto another booking or a finished one; staff can't move bookings at all", async () => {
     const biz = await h.makeBusiness("move-rules", { staffCount: 2 });
     const date = h.nextOpenDate();
     const a = (await bookAs(biz.owner, walkIn(biz, { date }))).body.appointment;
     await bookAs(biz.owner, walkIn(biz, { date, time: "11:00", name: "Sara" })).expect(201);
 
     await moveAs(biz.owner, a._id, { date, time: "11:00" }).expect(409);
-    await moveAs(biz.staff[0], a._id, { date, time: "12:00", staffId: biz.staff[1]._id }).expect(403);
-    await moveAs(biz.staff[1], a._id, { date, time: "12:00" }).expect(404); // not Staff 2's booking
+    await moveAs(biz.staff[0], a._id, { date, time: "12:00" }).expect(403); // their own, still no
+    await moveAs(biz.staff[1], a._id, { date, time: "12:00" }).expect(403);
 
     // The owner can move it to another staff member.
     const toStaff2 = await moveAs(biz.owner, a._id, { date, time: "11:00", staffId: biz.staff[1]._id }).expect(200);

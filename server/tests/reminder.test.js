@@ -39,12 +39,12 @@ describe("Mark appointment as reminded", () => {
     expect(saved.reminderSentAt).toBeInstanceOf(Date);
   });
 
-  test("a staff member can't mark a colleague's appointment (404, it doesn't exist for him)", async () => {
+  test("staff don't send reminders - not a colleague's, not their own (403: the desk does it)", async () => {
     const biz = await h.makeBusiness("colleague-salon", { staffCount: 2 });
     const appt = await makeAppointment(biz, { staffIndex: 1 });
 
-    expect((await remind(biz.staff[0], appt)).status).toBe(404);
-    expect((await remind(biz.staff[1], appt)).status).toBe(200);
+    expect((await remind(biz.staff[0], appt)).status).toBe(403);
+    expect((await remind(biz.staff[1], appt)).status).toBe(403);
   });
 
   test("another business can't touch it (404)", async () => {

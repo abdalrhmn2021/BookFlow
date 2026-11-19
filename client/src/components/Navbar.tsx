@@ -6,6 +6,7 @@ import { homeFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useBrand } from "@/context/BrandContext";
 import Logo from "@/components/Logo";
+import { BUSINESS_ROLES } from "@/lib/types";
 
 export default function Navbar() {
   const { user, loading, logout } = useAuth();
@@ -33,7 +34,7 @@ export default function Navbar() {
         <div className="flex items-center gap-1 text-sm sm:gap-3">
           {!loading && (
             <>
-              {user?.role !== "owner" && user?.role !== "staff" && (
+              {!(user && BUSINESS_ROLES.includes(user.role)) && (
                 <Link href={bookHref} className={`hidden sm:inline ${navLink}`}>
                   {isSingleBusiness ? t.nav.book : t.nav.businesses}
                 </Link>

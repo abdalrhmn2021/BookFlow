@@ -21,6 +21,7 @@ const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { siteAllows } = require("../middlewares/site.middleware");
 const { closeStalePending } = require("../services/maintenance.service");
 const { siteUrl } = require("../utils/siteUrl");
+const { canManageBookings, PROVIDER_STATUSES, DESK_ONLY } = require("../utils/bookingDesk");
 
 const WHEN_VALUES = ["upcoming", "past"];
 
@@ -200,7 +201,7 @@ exports.cancelMyAppointment = async (req, res) => {
   res.status(200).json({ message: "Appointment cancelled", appointment: toCustomerAppointment(updated) });
 };
 
-// Owners see the whole business; staff only their own appointments.
+// Owners and receptionists see the whole business; staff only their own appointments.
 const businessFilter = (user, tenantId) => (user.role === "staff" ? { tenantId, staffId: user.id } : { tenantId });
 
 // completed / cancelled / no-show are final.
@@ -386,6 +387,16 @@ exports.updateAppointmentStatus = async (req, res) => {
   });
   if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
+  // Confirming, rejecting and cancelling belong to the booking desk (utils/bookingDesk.js).
+  // Anyone else - a staff member, or an owner who has a receptionist - may only close their OWN
+  // appointment once it started: "completed" or "no-show".
+  if (!(await canManageBookings(req.user, req.tenantId))) {
+    const ownAppointment = String(appointment.staffId) === String(req.user.id);
+    if (!ownAppointment || !PROVIDER_STATUSES.includes(status)) {
+      return res.status(403).json({ message: DESK_ONLY });
+    }
+  }
+
   const current = appointment.status;
   if (!ALLOWED_TRANSITIONS[current].includes(status)) {
     return res.status(409).json({ message: `Can't change status from ${current} to ${status}` });
@@ -429,7 +440,9 @@ exports.updateAppointmentStatus = async (req, res) => {
 
 // ---------- Bookings entered and moved by the business (dashboard) ----------
 
-// Staff work on their own calendar only; owners on anyone's.
+// Staff work on their own calendar only; the desk (owner / receptionist) on anyone's.
+// (Today staff can't reach the routes that use this - they aren't the desk - but it stays as a
+// second lock in case that ever changes.)
 function staffFor(req, requested) {
   if (req.user.role !== "staff") return requested;
   if (requested && String(requested) !== String(req.user.id)) {

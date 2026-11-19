@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { Role, User } from "@/lib/types";
+import { BUSINESS_ROLES, type Role, type User } from "@/lib/types";
 
 interface RegisterData {
   name: string;
@@ -36,7 +36,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function homeFor(role: Role): string {
-  if (role === "owner" || role === "staff") return "/dashboard";
+  if (BUSINESS_ROLES.includes(role)) return "/dashboard";
   if (role === "customer") return "/my-appointments";
   if (role === "superadmin") return "/admin";
   return "/";
