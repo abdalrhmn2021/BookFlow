@@ -92,7 +92,5 @@ module.exports = {
   closeStalePending,
   removeOldGuestData,
   startMaintenanceJob,
-  retentionMonths,
-  REASON,
   REMOVED_NAME,
 };
