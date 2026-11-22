@@ -64,7 +64,7 @@ function luminance(rgb: [number, number, number]) {
   const [r, g, b] = rgb.map(toLinear);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
-export function contrast(a: [number, number, number], b: [number, number, number]) {
+function contrast(a: [number, number, number], b: [number, number, number]) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }

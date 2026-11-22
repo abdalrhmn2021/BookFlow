@@ -218,4 +218,4 @@ function startReminderJob() {
   console.log(`[reminder] automatic WhatsApp reminders every ${minutes} min, ${hoursBefore()}h before`);
 }
 
-module.exports = { sendDueReminders, startReminderJob, reminderParams, safeName, formatWhen, MAX_ATTEMPTS };
+module.exports = { sendDueReminders, startReminderJob, MAX_ATTEMPTS };
