@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
@@ -19,7 +19,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const { t, tError } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,6 +36,12 @@ function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
   // The account was never confirmed: the server sent a code to this email.
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+
+  // Already logged in (the page opened from a bookmark, a link or the Back button): no login form
+  // under a "logged in" header - straight to their own page.
+  useEffect(() => {
+    if (!loading && user && !submitting) router.replace(next ?? homeFor(user.role));
+  }, [loading, user, submitting, next, router]);
 
   const doLogin = async (loginEmail: string, loginPassword: string, loginCode?: string) => {
     setError("");
