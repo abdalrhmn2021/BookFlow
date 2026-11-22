@@ -409,6 +409,7 @@ const en = {
     price: "Price",
     guestTitle: "Your details",
     guestHint: "No account needed. The business will use this number only about your booking.",
+    rememberGuest: "Remember my name and number on this device",
     guestName: "Your name",
     guestNamePlaceholder: "e.g. Ahmad Ali",
     guestPhone: "Phone number",
@@ -898,6 +899,7 @@ const ar: Dictionary = {
     price: "السعر",
     guestTitle: "بياناتك",
     guestHint: "بدون حساب. سيستخدم المكان هذا الرقم فقط بخصوص حجزك.",
+    rememberGuest: "تذكّر اسمي ورقمي على هذا الجهاز",
     guestName: "الاسم",
     guestNamePlaceholder: "مثلاً: أحمد علي",
     guestPhone: "رقم الجوال",
@@ -995,6 +997,7 @@ const ar: Dictionary = {
   },
 
   errors: {
+    "You logged out, please log in again": "سجّلت خروجك، سجّل دخولك من جديد",
     "Please confirm your email first": "أكّد بريدك الإلكتروني أولاً",
     "email and code are required": "البريد الإلكتروني والرمز مطلوبان",
     "Too many codes requested, please try again later": "طلبت رموزاً كثيرة، حاول لاحقاً",

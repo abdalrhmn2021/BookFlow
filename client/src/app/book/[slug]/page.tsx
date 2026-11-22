@@ -40,10 +40,20 @@ function readGuest(): GuestDetails {
   } catch {}
   return { name: "", phone: "" };
 }
-function saveGuest(details: GuestDetails) {
+// Kept on this device only if the guest ticks "remember me" (security review): on a shared or
+// borrowed phone the next person shouldn't find their name and number filled in. Unticked = forgotten.
+function saveGuest(details: GuestDetails, remember: boolean) {
   try {
-    localStorage.setItem(GUEST_KEY, JSON.stringify(details));
+    if (remember) localStorage.setItem(GUEST_KEY, JSON.stringify(details));
+    else localStorage.removeItem(GUEST_KEY);
   } catch {}
+}
+function hasSavedGuest(): boolean {
+  try {
+    return localStorage.getItem(GUEST_KEY) !== null;
+  } catch {
+    return false;
+  }
 }
 
 function readDraft(slug: string, data: PublicBusinessPage): Draft | null {
@@ -86,6 +96,8 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
   const [guest, setGuest] = useState<GuestDetails>(() =>
     typeof window === "undefined" ? { name: "", phone: "" } : readGuest(),
   );
+  // Ticked when details were saved before (they chose it then); off for a first booking.
+  const [rememberGuest, setRememberGuest] = useState(() => typeof window !== "undefined" && hasSavedGuest());
 
   const [refreshTick, setRefreshTick] = useState(0);
   const [slotsResult, setSlotsResult] = useState<{ key: string; data?: Availability; error?: unknown } | null>(null);
@@ -190,7 +202,7 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
         );
         manageToken = result.manageToken;
         if (result.appointment.staffName) staffName = result.appointment.staffName;
-        saveGuest(details);
+        saveGuest(details, rememberGuest);
       }
       setBooked({
         serviceName: page.services.find((s) => s.id === serviceId)?.name ?? "",
@@ -479,6 +491,15 @@ export default function BookPage({ params }: PageProps<"/book/[slug]">) {
                           />
                         </label>
                       </div>
+                      <label className="flex items-center gap-2 text-sm text-ink-700">
+                        <input
+                          type="checkbox"
+                          checked={rememberGuest}
+                          onChange={(e) => setRememberGuest(e.target.checked)}
+                          className="h-4 w-4 rounded border-ink-300"
+                        />
+                        {t.book.rememberGuest}
+                      </label>
                     </fieldset>
                   )}
 

@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const RevokedToken = require("../models/RevokedToken");
 const { readAuthCookie } = require("../utils/authCookie");
 const { customerScope, OTHER_BUSINESS_MESSAGE } = require("./site.middleware");
 const { needsVerification } = require("../services/emailVerification.service");
@@ -15,6 +16,11 @@ exports.protect = async (req, res, next) => {
 
     // Only the algorithm we sign with (review A-08): a token made any other way is refused.
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+
+    // Logged out: this token was revoked (auth.controller logout), even if it hasn't expired yet.
+    if (decoded.jti && (await RevokedToken.exists({ jti: decoded.jti }))) {
+      return res.status(401).json({ message: "You logged out, please log in again" });
+    }
 
     const user = await User.findById(decoded.id);
 

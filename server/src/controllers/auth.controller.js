@@ -5,7 +5,8 @@ const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG, SHARED_SERVER } = require("../config/mode");
 const { siteAllows, customerScope, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
 const { isDemoEmail } = require("../config/demo");
-const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
+const { setAuthCookie, clearAuthCookie, readAuthCookie } = require("../utils/authCookie");
+const RevokedToken = require("../models/RevokedToken");
 const { isDevOrTest } = require("../config/env");
 const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
@@ -85,6 +86,7 @@ const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     algorithm: "HS256", // the only one protect() accepts
     expiresIn: process.env.JWT_EXPIRES_IN,
+    jwtid: crypto.randomUUID(), // its id: logout puts it on the revoked list (models/RevokedToken.js)
   });
 };
 
@@ -303,7 +305,25 @@ exports.getMe = async (req, res) => {
   });
 };
 
-exports.logout = (req, res) => {
+// Logout ends this login on the server too: its token goes on the revoked list until it would have
+// expired, so a copy of it (a stolen cookie, a saved Bearer token) is refused from now on.
+exports.logout = async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : readAuthCookie(req);
+  if (token) {
+    try {
+      const { jti, exp } = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+      if (jti && exp) {
+        await RevokedToken.updateOne(
+          { jti },
+          { $setOnInsert: { jti, expiresAt: new Date(exp * 1000) } },
+          { upsert: true },
+        );
+      }
+    } catch {
+      // Expired or not ours: nothing to revoke.
+    }
+  }
   clearAuthCookie(res);
   res.status(200).json({ message: "Logged out" });
 };
