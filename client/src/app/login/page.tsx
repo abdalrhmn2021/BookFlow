@@ -7,6 +7,7 @@ import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { ApiError } from "@/lib/api";
 import Loading from "@/components/Loading";
+import VerifyEmailForm from "@/components/VerifyEmailForm";
 import { DEMO_ACCOUNTS, DEMO_ENABLED, DEMO_PASSWORD } from "@/lib/demo";
 
 export default function LoginPage() {
@@ -33,6 +34,8 @@ function LoginForm() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // The account was never confirmed: the server sent a code to this email.
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   const doLogin = async (loginEmail: string, loginPassword: string, loginCode?: string) => {
     setError("");
@@ -41,6 +44,10 @@ function LoginForm() {
       const user = await login(loginEmail, loginPassword, loginCode);
       router.replace(next ?? homeFor(user.role));
     } catch (err) {
+      if (err instanceof ApiError && err.data.verificationRequired === true) {
+        setVerifyEmail(typeof err.data.email === "string" ? err.data.email : loginEmail.trim());
+        return;
+      }
       const askedForCode = err instanceof ApiError && err.data.twoFactorRequired === true;
       if (askedForCode && !needCode) {
         setNeedCode(true); // first time: just show the code field, no red error
@@ -60,6 +67,14 @@ function LoginForm() {
 
   const inputClass =
     "mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 outline-none focus:border-ink-700 focus:ring-2 focus:ring-ink-100";
+
+  if (verifyEmail) {
+    return (
+      <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
+        <VerifyEmailForm email={verifyEmail} onVerified={(user) => router.replace(next ?? homeFor(user.role))} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">

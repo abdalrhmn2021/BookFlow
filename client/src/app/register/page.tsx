@@ -8,6 +8,7 @@ import { homeFor, safeNext, useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
+import VerifyEmailForm from "@/components/VerifyEmailForm";
 
 export default function RegisterPage() {
   return (
@@ -27,6 +28,8 @@ function RegisterForm() {
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Set once the account is made and the server asks for the emailed code.
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -38,6 +41,10 @@ function RegisterForm() {
     setSubmitting(true);
     try {
       const user = await register({ ...form, phone: form.phone || undefined });
+      if (!user) {
+        setVerifyEmail(form.email.trim());
+        return;
+      }
       router.replace(next ?? homeFor(user.role));
     } catch (err) {
       setError(tError(err));
@@ -48,6 +55,14 @@ function RegisterForm() {
 
   const inputClass =
     "mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 outline-none focus:border-ink-700 focus:ring-2 focus:ring-ink-100";
+
+  if (verifyEmail) {
+    return (
+      <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
+        <VerifyEmailForm email={verifyEmail} onVerified={(user) => router.replace(next ?? homeFor(user.role))} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto mt-16 max-w-sm rounded-xl border border-ink-100 bg-white p-8 shadow-sm">

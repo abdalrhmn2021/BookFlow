@@ -57,6 +57,9 @@ const tenantSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Signed up from the web and the owner hasn't confirmed their email yet: kept inactive
+    // (hidden, no bookings) until they do - services/emailVerification.service.js.
+    pendingVerification: { type: Boolean },
     workingHours: {
       type: [workingDaySchema],
       default: defaultWorkingHours,

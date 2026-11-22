@@ -1,6 +1,7 @@
 const Appointment = require("../models/Appointment");
 const { resetDemoIfDue } = require("./demo.service");
 const { reportError } = require("./alert.service");
+const { removeStaleUnverified } = require("./emailVerification.service");
 
 // Housekeeping that keeps the calendar honest.
 //
@@ -75,6 +76,8 @@ function startMaintenanceJob() {
       const cleaned = await removeOldGuestData();
       if (cleaned) console.log(`[maintenance] removed guest details from ${cleaned} old booking(s)`);
       if (await resetDemoIfDue()) console.log("[maintenance] the demo business was reset");
+      const unverified = await removeStaleUnverified();
+      if (unverified) console.log(`[maintenance] removed ${unverified} sign-up(s) never confirmed by email`);
     } catch (err) {
       console.error("[maintenance] failed:", err.message);
       reportError(err, "maintenance job (hourly)");
