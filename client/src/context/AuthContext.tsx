@@ -71,6 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreSession().finally(() => setLoading(false));
   }, [loadMe]);
 
+  // Back/forward cache: after logging out, the browser's Back button can show an earlier page
+  // exactly as it was - still "logged in" on screen, though the server already refuses that login.
+  // Whenever a page comes back that way, ask the server again who is logged in.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) loadMe().catch(() => setUser(null));
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [loadMe]);
+
   const login = async (email: string, password: string, code?: string) => {
     await api.post("/auth/login", { email, password, ...(code && { code }) });
     return loadMe();
