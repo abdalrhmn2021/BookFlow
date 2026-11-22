@@ -24,8 +24,12 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string, code?: string) => Promise<User>;
-  register: (data: RegisterData) => Promise<User>;
-  registerBusiness: (data: RegisterBusinessData) => Promise<User>;
+  // null = the account was made, but the 6-digit code from the email must be typed first
+  // (verifyEmail) - the server's email verification is on.
+  register: (data: RegisterData) => Promise<User | null>;
+  registerBusiness: (data: RegisterBusinessData) => Promise<User | null>;
+  // The code from the "confirm your email" email: confirmed, then logged in.
+  verifyEmail: (email: string, code: string) => Promise<User>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // The 6-digit code from the "forgot password" email.
@@ -73,12 +77,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const register = async (data: RegisterData) => {
-    await api.post("/auth/register", data);
+    const res = await api.post<{ verificationRequired?: boolean }>("/auth/register", data);
+    if (res.verificationRequired) return null;
     return loadMe();
   };
 
   const registerBusiness = async (data: RegisterBusinessData) => {
-    await api.post("/auth/register-business", data);
+    const res = await api.post<{ verificationRequired?: boolean }>("/auth/register-business", data);
+    if (res.verificationRequired) return null;
+    return loadMe();
+  };
+
+  const verifyEmail = async (email: string, code: string) => {
+    await api.post("/auth/verify-email", { email, code });
     return loadMe();
   };
 
@@ -104,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, registerBusiness, logout, changePassword, resetPassword }}
+      value={{ user, loading, login, register, registerBusiness, verifyEmail, logout, changePassword, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

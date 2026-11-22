@@ -121,3 +121,30 @@ exports.staffCreateLimiter = rateLimit({
   keyGenerator: (req) => `staff-create:${req.user.id}`,
   message: { message: "Too many staff members added, please try again later" },
 });
+
+// Email verification codes (security review M-01): the same protection as "forgot password".
+// Typing the code: per IP (each code also dies after 5 wrong tries).
+exports.verifyEmailLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: { message: "Too many attempts, please try again in 15 minutes" },
+});
+
+// Asking for a new code sends an email: per IP and per email, every email counted.
+exports.resendVerificationLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  message: { message: "Too many codes requested, please try again later" },
+});
+
+exports.resendVerificationEmailLimiter = rateLimit({
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  skip: (req) => !loginEmail(req),
+  keyGenerator: (req) => `verify:${loginEmail(req)}`,
+  message: { message: "Too many codes requested for this email, please try again in an hour" },
+});

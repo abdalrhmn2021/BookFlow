@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { readAuthCookie } = require("../utils/authCookie");
 const { customerScope, OTHER_BUSINESS_MESSAGE } = require("./site.middleware");
+const { needsVerification } = require("../services/emailVerification.service");
 
 exports.protect = async (req, res, next) => {
   try {
@@ -23,6 +24,11 @@ exports.protect = async (req, res, next) => {
 
     if (!user.isActive) {
       return res.status(403).json({ message: "Account is disabled" });
+    }
+
+    // No login is handed out before the email is confirmed; this keeps it so for any token anyway.
+    if (needsVerification(user)) {
+      return res.status(403).json({ message: "Please confirm your email first", verificationRequired: true });
     }
 
     // Compared in whole seconds (a JWT's iat has no milliseconds), so the token issued

@@ -53,6 +53,8 @@ exports.listBusinesses = async (req, res) => {
         slug: t.slug,
         plan: t.plan,
         isActive: t.isActive,
+        // Signed up from the web, owner hasn't confirmed their email yet (inactive until they do).
+        pendingVerification: Boolean(t.pendingVerification),
         whatsappReminders: Boolean(t.whatsappReminders),
         aiAssistant: Boolean(t.aiAssistant),
         timezone: t.timezone,

@@ -27,7 +27,8 @@ exports.errorHandler = (err, req, res, next) => {
     return res.status(err.statusCode).json({ message: err.message });
   }
 
-  console.error("[error]", err);
+  // Name, message and stack only - not the whole error object, which can carry request data.
+  console.error(`[error] ${whereOf(req)}`, err?.stack || `${err?.name}: ${err?.message}`);
   const status = err.statusCode || 500;
   // An email to ALERT_EMAIL (if set) - in the background, the answer doesn't wait for it.
   if (status >= 500) reportError(err, whereOf(req));

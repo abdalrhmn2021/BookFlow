@@ -1,11 +1,13 @@
 const jwt = require("jsonwebtoken");
+const { isDevOrTest } = require("../config/env");
 
 const COOKIE_NAME = "bookflow_token";
 
 const baseOptions = () => ({
   // Not readable from JavaScript -> an XSS can't steal the session.
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  // HTTPS-only everywhere except an explicit development/test run (config/env.js).
+  secure: !isDevOrTest(),
   sameSite: "lax",
   path: "/",
 });

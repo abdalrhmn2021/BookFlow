@@ -1,5 +1,11 @@
 require("dotenv").config();
 
+// NODE_ENV missing = production settings (src/config/env.js). Said out loud, so local development
+// isn't surprised by the HTTPS-only login cookie: set NODE_ENV=development in .env for that.
+if (!process.env.NODE_ENV) {
+  console.warn("NODE_ENV is not set - running with production security settings (NODE_ENV=development for local work)");
+}
+
 const REQUIRED_ENV = ["MONGO_URI", "JWT_SECRET", "JWT_EXPIRES_IN"];
 const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
 if (missing.length) {

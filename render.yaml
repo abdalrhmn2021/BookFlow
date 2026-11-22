@@ -7,7 +7,7 @@ services:
     runtime: node
     rootDir: server
     plan: free
-    buildCommand: npm ci
+    buildCommand: npm ci --omit=dev # the test tools (jest, nodemon) never ship to the server
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

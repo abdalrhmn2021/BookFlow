@@ -5,6 +5,8 @@ const setByTest = new Set(MODE_KEYS.filter((key) => key in process.env));
 require("dotenv").config({ quiet: true });
 for (const key of MODE_KEYS) if (!setByTest.has(key)) delete process.env[key];
 process.env.NODE_ENV = "test";
+// The real server hashes passwords with cost 12; 10 (the minimum allowed) keeps the tests fast.
+process.env.BCRYPT_ROUNDS = process.env.BCRYPT_ROUNDS || "10";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-secret-".padEnd(64, "x");
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
 

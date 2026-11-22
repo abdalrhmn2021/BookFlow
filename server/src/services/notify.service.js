@@ -201,6 +201,38 @@ async function sendPasswordResetEmail({ email, name, code, minutes }) {
   await send({ sender, to: [{ email, name }], subject, htmlContent: html });
 }
 
+// Pure: the "confirm your email" email sent after signing up, with the 6-digit code.
+function buildVerificationEmail({ name, code, minutes }) {
+  const e = escapeHtml;
+  const codeBox = `<p style="font-size:28px;font-weight:bold;letter-spacing:8px;font-family:monospace;background:#f1f5f9;border-radius:8px;padding:12px 18px;display:inline-block;direction:ltr">${e(code)}</p>`;
+
+  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a">
+<div dir="rtl" style="text-align:right">
+<p>مرحباً ${e(name)}،</p>
+<p>شكراً لتسجيلك. لتأكيد بريدك الإلكتروني وتفعيل حسابك، اكتب هذا الرمز في صفحة التسجيل:</p>
+${codeBox}
+<p>الرمز صالح لمدة ${minutes} دقيقة. لا تعطه لأي شخص.</p>
+<p style="color:#64748b">إذا ما سجّلت أنت، تجاهل هذه الرسالة وما رح ينفعّل أي حساب ببريدك.</p>
+</div>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+<div dir="ltr" style="text-align:left">
+<p>Hi ${e(name)},</p>
+<p>Thanks for signing up. To confirm your email and activate your account, type this code on the sign-up page:</p>
+${codeBox}
+<p>The code works for ${minutes} minutes. Don't share it with anyone.</p>
+<p style="color:#64748b">If you didn't sign up, ignore this email - no account will be activated with your address.</p>
+</div>
+</body></html>`;
+
+  return { subject: `${code} رمز تأكيد البريد · Email confirmation code`, html };
+}
+
+async function sendVerificationEmail({ email, name, code, minutes }) {
+  const { subject, html } = buildVerificationEmail({ name, code, minutes });
+  const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
+  await send({ sender, to: [{ email, name }], subject, htmlContent: html });
+}
+
 // An email to the person running the server (ALERT_EMAIL), e.g. services/alert.service.js.
 async function sendOperatorEmail({ subject, html }) {
   const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
@@ -214,6 +246,8 @@ module.exports = {
   buildNewBookingEmail,
   buildPasswordResetEmail,
   sendPasswordResetEmail,
+  buildVerificationEmail,
+  sendVerificationEmail,
   isEmailConfigured,
   setSenderForTests,
 };

@@ -153,6 +153,17 @@ const en = {
     login: "Log in",
   },
 
+  verifyEmail: {
+    title: "Confirm your email",
+    text: "We sent a 6-digit code to your email (valid 30 minutes, check the spam folder too). Type it here to activate your account:",
+    code: "The code from the email",
+    submit: "Confirm",
+    submitting: "Confirming...",
+    noCode: "No code?",
+    resend: "Send a new one",
+    resent: "A new code is on its way.",
+  },
+
   registerBusiness: {
     cta: "Own a business? Register it here",
     title: "Register your business",
@@ -632,6 +643,17 @@ const ar: Dictionary = {
     login: "سجّل الدخول",
   },
 
+  verifyEmail: {
+    title: "أكّد بريدك الإلكتروني",
+    text: "أرسلنا رمزاً من 6 أرقام إلى بريدك (صالح 30 دقيقة، شيّك على مجلد الرسائل غير المرغوب فيها كمان). اكتبه هنا لتفعيل حسابك:",
+    code: "الرمز من الإيميل",
+    submit: "تأكيد",
+    submitting: "جارٍ التأكيد...",
+    noCode: "ما وصلك الرمز؟",
+    resend: "أرسل رمزاً جديداً",
+    resent: "رمز جديد في الطريق إليك.",
+  },
+
   registerBusiness: {
     cta: "صاحب عمل؟ سجّل عملك من هنا",
     title: "سجّل عملك",
@@ -973,6 +995,10 @@ const ar: Dictionary = {
   },
 
   errors: {
+    "Please confirm your email first": "أكّد بريدك الإلكتروني أولاً",
+    "email and code are required": "البريد الإلكتروني والرمز مطلوبان",
+    "Too many codes requested, please try again later": "طلبت رموزاً كثيرة، حاول لاحقاً",
+    "Password is too long (72 bytes max)": "كلمة المرور طويلة جداً",
     "Can't reach the server. Is the backend running?": "تعذّر الاتصال بالخادم. تأكد أن الخادم يعمل.",
     "Something went wrong": "حدث خطأ ما، حاول مرة أخرى",
     "The assistant can't answer right now, please try again": "المساعد لا يستطيع الرد الآن، حاول مرة أخرى",
