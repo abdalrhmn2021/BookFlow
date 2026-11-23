@@ -296,7 +296,7 @@ Full request examples: [`server/api-tests.http`](server/api-tests.http).
 ## Known limitations & roadmap
 
 - [x] Automated tests and CI - 240+ API tests (Jest + Supertest): concurrent double booking, tenant isolation, shared-server scope, status transitions, guest booking, staff schedules, reminders, admin; client unit tests (Vitest) and end-to-end booking tests (Playwright)
-- [x] A 6-day security review (secrets, auth, tenant isolation, booking abuse, input/CSRF, frontend & dependencies): no open Critical, High or Medium findings
+- [x] A 6-day security review (secrets, auth, tenant isolation, booking abuse, input/CSRF, frontend & dependencies): no open Critical, High or Medium findings - checklist, method and every finding: [`docs/SECURITY-REVIEW.md`](docs/SECURITY-REVIEW.md)
 - [x] Backups (`npm run backup` / `restore`), a health endpoint for uptime monitors, error emails
 - [x] JWT in an httpOnly cookie instead of `localStorage` (API proxied through Next.js rewrites, so the cookie is first-party)
 - [x] Automatic WhatsApp reminder before each appointment (Meta Cloud API template, idempotent job + cron endpoint)
