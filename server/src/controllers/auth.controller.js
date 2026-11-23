@@ -10,7 +10,8 @@ const RevokedToken = require("../models/RevokedToken");
 const { isDevOrTest } = require("../config/env");
 const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
-const { isEmailConfigured, sendPasswordResetEmail } = require("../services/notify.service");
+const { isEmailConfigured, hasEmailBudget, sendPasswordResetEmail } = require("../services/notify.service");
+const { passesTurnstile } = require("../utils/turnstile");
 const Appointment = require("../models/Appointment");
 const CustomerTenant = require("../models/CustomerTenant");
 const { ACTIVE_STATUSES } = require("../services/booking.service");
@@ -25,6 +26,13 @@ const {
 } = require("../services/emailVerification.service");
 
 const ACCOUNT_DELETED_REASON = "The customer deleted their account";
+
+// Security review H-2: the routes that send an email (sign-up, "forgot password", a new code)
+// need a Turnstile token when TURNSTILE_SECRET_KEY is set (off otherwise), and answer 503 when the
+// server's daily email budget (notify.service.js) is used up.
+const CAPTCHA_FAILED = "Please confirm you're not a robot";
+const EMAIL_BUDGET_USED = "We can't send emails right now, please try again tomorrow";
+const notARobot = (req) => passesTurnstile(req.body?.captchaToken, req.clientIp);
 
 // Credentials must be real strings: an object like { "$gt": "" } would become a
 // MongoDB operator inside findOne (NoSQL injection).
@@ -97,6 +105,7 @@ exports.register = async (req, res) => {
     if (!isText(name) || !isText(email) || !isText(password)) {
       return res.status(400).json({ message: "name, email and password are required" });
     }
+    if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
 
     // On a shared server the account belongs to this site's business only - so it can only be
     // made on that site. Straight on the server (no site) there is no business to give it to.
@@ -107,6 +116,7 @@ exports.register = async (req, res) => {
     // With email verification on, an earlier sign-up with this email that was never confirmed
     // (and whose code ran out) doesn't block this one.
     const verify = isVerificationOn();
+    if (verify && !(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
     if (verify) await removeExpiredUnverified({ email, scope });
 
     const existingUser = await User.findOne({ email: email.trim().toLowerCase(), scope });
@@ -237,8 +247,10 @@ exports.registerBusiness = async (req, res) => {
   if (SHARED_SERVER || (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG)) {
     return res.status(403).json({ message: "Business registration is disabled" });
   }
+  if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
 
   const verify = isVerificationOn();
+  if (verify && !(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
   if (verify) await removeExpiredUnverified({ email, scope: null, slug });
 
   const { tenant, owner } = await createBusinessWithOwner({
@@ -433,6 +445,9 @@ exports.forgotPassword = async (req, res) => {
   if (!isEmailConfigured()) {
     return res.status(503).json({ message: "Password reset by email isn't set up here, please contact the business" });
   }
+  if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
+  // The same 503 for every email, so it says nothing about which ones have an account.
+  if (!(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
 
   const cleanEmail = email.trim().toLowerCase();
   const user = isDemoEmail(cleanEmail) ? null : (await accountsFor(req, cleanEmail, { isActive: true }))[0];
@@ -561,8 +576,10 @@ exports.verifyEmail = async (req, res) => {
 exports.resendVerification = async (req, res) => {
   const { email } = req.body || {};
   if (!isText(email)) return res.status(400).json({ message: "email is required" });
+  if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
 
   if (isVerificationOn()) {
+    if (!(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
     const waiting = await User.find({
       email: email.trim().toLowerCase(),
       scope: { $in: [await customerScope(req), null] },

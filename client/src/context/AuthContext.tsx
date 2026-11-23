@@ -9,6 +9,7 @@ interface RegisterData {
   email: string;
   password: string;
   phone?: string;
+  captchaToken?: string;
 }
 
 interface RegisterBusinessData {
@@ -18,6 +19,7 @@ interface RegisterBusinessData {
   email: string;
   password: string;
   phone?: string;
+  captchaToken?: string;
 }
 
 interface AuthContextValue {

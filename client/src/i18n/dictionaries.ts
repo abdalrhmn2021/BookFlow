@@ -1027,6 +1027,7 @@ const ar: Dictionary = {
     "You do not have permission to perform this action": "ليس لديك صلاحية للقيام بهذا الإجراء",
     "Too many login attempts, please try again in 15 minutes": "محاولات دخول كثيرة، حاول مجدداً بعد 15 دقيقة",
     "Please confirm you're not a robot": "أكّد إنك مش روبوت (المربع فوق الزر) وجرّب تاني",
+    "We can't send emails right now, please try again tomorrow": "ما بنقدر نبعث إيميلات هلّق، جرّب بكرة",
     "You can only book up to 60 days ahead": "الحجز متاح لحد 60 يوم لقدّام بس",
     "Too many online bookings here today, please sign in or contact the business":
       "في حجوزات أونلاين كتير هنا النهارده، سجّل دخول أو تواصل مع المكان مباشرة",

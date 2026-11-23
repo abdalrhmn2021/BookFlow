@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import type { User } from "@/lib/types";
 import { btnPrimary, errorBox, inputClass } from "@/lib/ui";
+import { CaptchaBox, useCaptcha } from "@/components/Turnstile";
 
 // After signing up (or logging in to an account that was never confirmed): the 6-digit code from
 // the email confirms the address and logs the user in (server: POST /api/auth/verify-email).
@@ -18,6 +19,8 @@ export default function VerifyEmailForm({ email, onVerified }: { email: string; 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [resent, setResent] = useState(false);
+  // Turnstile (when the site uses it) for "send a new code": each request needs a fresh token.
+  const captcha = useCaptcha();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +40,12 @@ export default function VerifyEmailForm({ email, onVerified }: { email: string; 
     setError("");
     setResent(false);
     try {
-      await api.post("/auth/resend-verification", { email });
+      await api.post("/auth/resend-verification", { email, ...captcha.field });
       setResent(true);
     } catch (err) {
       setError(tError(err));
+    } finally {
+      captcha.reset();
     }
   };
 
@@ -78,9 +83,17 @@ export default function VerifyEmailForm({ email, onVerified }: { email: string; 
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-ink-600">
+      <div className="mt-6">
+        <CaptchaBox captcha={captcha} />
+      </div>
+      <p className="mt-2 text-center text-sm text-ink-600">
         {v.noCode}{" "}
-        <button type="button" onClick={resend} className="font-medium text-brand-700 hover:underline">
+        <button
+          type="button"
+          onClick={resend}
+          disabled={!captcha.ready}
+          className="font-medium text-brand-700 hover:underline disabled:opacity-50"
+        >
           {v.resend}
         </button>
       </p>
