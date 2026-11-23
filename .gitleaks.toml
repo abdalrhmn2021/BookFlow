@@ -1,0 +1,13 @@
+# gitleaks (.github/workflows/security.yml): its default rules, minus the files that hold
+# MADE-UP secrets on purpose (tests, examples). A real key must never be in these files either.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test fixtures and examples - made-up values only"
+paths = [
+  '''^server/tests/''',
+  '''^client/e2e/''',
+  '''(^|/)\.env\.example$''',
+  '''^server/api-tests\.http$''',
+]
