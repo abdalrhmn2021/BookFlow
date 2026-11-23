@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { protect, restrictTo } = require("../middlewares/auth.middleware");
 const { requireTenant } = require("../middlewares/tenant.middleware");
+const { customerBookingLimiter } = require("../middlewares/rateLimit.middleware");
 const {
   createAppointment,
   getMyAppointments,
@@ -17,7 +18,7 @@ const {
   getBusinessAvailability,
 } = require("../controllers/appointment.controller");
 
-router.post("/", protect, restrictTo("customer"), createAppointment);
+router.post("/", protect, restrictTo("customer"), customerBookingLimiter, createAppointment);
 router.get("/me", protect, restrictTo("customer"), getMyAppointments);
 router.patch("/:id/cancel", protect, restrictTo("customer"), cancelMyAppointment);
 

@@ -198,7 +198,7 @@ exports.createGuestAppointment = async (req, res) => {
     guest: { name: cleanName, phone: cleanPhone },
     manageTokenHash,
     // Checked inside the booking transaction, under a per-phone lock (booking.service).
-    maxGuestUpcoming: MAX_GUEST_UPCOMING,
+    maxUpcoming: MAX_GUEST_UPCOMING,
     whatsappConsent: whatsappConsent === true,
     fromWebsite: true,
   });

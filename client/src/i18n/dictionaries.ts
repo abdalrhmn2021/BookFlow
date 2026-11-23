@@ -1080,6 +1080,7 @@ const ar: Dictionary = {
     "Please provide a valid phone number": "أدخل رقم جوال صحيح",
     "You already have too many upcoming bookings here": "لديك حجوزات قادمة كثيرة هنا بالفعل",
     "Too many bookings from this device, please try again later": "حجوزات كثيرة من هذا الجهاز، حاول لاحقاً",
+    "Too many booking attempts, please try again later": "محاولات حجز كثيرة، حاول لاحقاً",
     "Staff can only manage their own bookings": "يمكن للموظف إدارة حجوزاته فقط",
     "Can't reschedule an appointment that already started": "لا يمكن تغيير موعد بدأ بالفعل",
     "Can't reschedule an appointment that is cancelled": "هذا الموعد ملغى، لا يمكن تغييره",

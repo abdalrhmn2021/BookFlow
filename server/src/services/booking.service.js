@@ -71,6 +71,14 @@ const maxDaysAhead = () => {
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 60;
 };
 
+// Upcoming bookings one customer ACCOUNT may hold at one business (security review H-1). Guests
+// have their own limit per phone (public.controller); without this one, a single account could
+// fill a whole calendar with pending bookings. CUSTOMER_MAX_UPCOMING in .env.
+const customerMaxUpcoming = () => {
+  const n = Number(process.env.CUSTOMER_MAX_UPCOMING);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 5;
+};
+
 // New guest bookings (made on the website, not by the business) per business per 24 hours.
 // A stop for someone filling a calendar with fake bookings from many phones and IPs.
 const guestBookingsPerDay = () => {
@@ -123,26 +131,43 @@ async function peopleForService(tenant, service) {
   return people.filter((p) => offersService(p, service._id));
 }
 
+const TOO_MANY_UPCOMING = "You already have too many upcoming bookings here";
+
+// The limit on upcoming bookings for whoever is booking on the website (security review H-1):
+//   guest    - per phone number at this business  (lock key "<tenantId>:<phone>")
+//   customer - per customer account at this business (lock key "cust:<tenantId>:<userId>")
+// Returns { key, filter, max } or null (no limit: bookings the business enters itself).
+function bookerLimit({ tenantId, guestPhoneKey, customerId, max }) {
+  if (!max) return null;
+  if (customerId) {
+    return { key: `cust:${tenantId}:${customerId}`, filter: { tenantId, customerId }, max };
+  }
+  if (guestPhoneKey) {
+    return { key: `${tenantId}:${guestPhoneKey}`, filter: { tenantId, "guest.phoneKey": guestPhoneKey }, max };
+  }
+  return null;
+}
+
 // Saves the appointment for this person under their lock, or returns null if they're taken.
-// guestLimit: { tenantId, phone, max } - the guest's own limit, checked under their phone lock
-// in the same transaction, so parallel bookings from one phone can't all pass the count.
-async function insertWithLock(staff, startTime, endTime, fields, guestLimit) {
-  const guestKey = guestLimit && `${guestLimit.tenantId}:${guestLimit.phone}`;
-  if (guestKey) {
-    await GuestLock.updateOne({ key: guestKey }, { $setOnInsert: { key: guestKey } }, { upsert: true }).catch((err) => {
-      if (err.code !== 11000) throw err;
-    });
+// limit (from bookerLimit): the booker's own limit, checked under their own lock in the same
+// transaction, so parallel bookings from one phone or one account can't all pass the count.
+async function insertWithLock(staff, startTime, endTime, fields, limit) {
+  if (limit) {
+    await GuestLock.updateOne({ key: limit.key }, { $setOnInsert: { key: limit.key } }, { upsert: true }).catch(
+      (err) => {
+        if (err.code !== 11000) throw err;
+      },
+    );
   }
   return withStaffLock(staff._id, async (session) => {
-    if (guestKey) {
-      await GuestLock.updateOne({ key: guestKey }, { $inc: { version: 1 } }, { session });
+    if (limit) {
+      await GuestLock.updateOne({ key: limit.key }, { $inc: { version: 1 } }, { session });
       const upcoming = await Appointment.countDocuments({
-        tenantId: guestLimit.tenantId,
-        "guest.phoneKey": guestLimit.phone,
+        ...limit.filter,
         status: { $in: ACTIVE_STATUSES },
         startTime: { $gte: new Date() },
       }).session(session);
-      if (upcoming >= guestLimit.max) throw httpError(429, "You already have too many upcoming bookings here");
+      if (upcoming >= limit.max) throw httpError(429, TOO_MANY_UPCOMING);
     }
     if (await hasConflict(staff._id, startTime, endTime, session)) return null;
     const [created] = await Appointment.create([{ ...fields, staffId: staff._id, startTime, endTime }], { session });
@@ -153,7 +178,7 @@ async function insertWithLock(staff, startTime, endTime, fields, guestLimit) {
 // "Any staff member": try the people who do the service, the least busy that day first, each
 // under their own lock - so two customers booking "anyone" at the same moment get two
 // different people (or one gets 409 when nobody is left), never the same person twice.
-async function bookAnyone({ tenant, service, date, time, fields, guestLimit, limitAhead }) {
+async function bookAnyone({ tenant, service, date, time, fields, limit, limitAhead }) {
   const { startTime, endTime } = checkBusinessTime({ tenant, date, time, duration: service.duration, limitAhead });
 
   const people = (await peopleForService(tenant, service)).filter((p) =>
@@ -178,7 +203,7 @@ async function bookAnyone({ tenant, service, date, time, fields, guestLimit, lim
   people.sort((a, b) => (load.get(String(a._id)) ?? 0) - (load.get(String(b._id)) ?? 0));
 
   for (const staff of people) {
-    const appointment = await insertWithLock(staff, startTime, endTime, fields, guestLimit);
+    const appointment = await insertWithLock(staff, startTime, endTime, fields, limit);
     if (appointment) return { appointment, staff };
   }
   throw httpError(409, NOBODY_FREE);
@@ -196,7 +221,9 @@ async function bookAppointment({
   manageTokenHash,
   status = "pending",
   createdBy,
-  maxGuestUpcoming, // public guest bookings only: max upcoming bookings per phone at this business
+  // Website bookings only: max upcoming bookings per guest phone / per customer account at this
+  // business (empty = no limit, e.g. bookings the business enters itself).
+  maxUpcoming,
   whatsappConsent = false,
   fromWebsite = false, // made by a customer or guest on the site: max days ahead + guest daily limit
 }) {
@@ -239,12 +266,11 @@ async function bookAppointment({
     createdBy,
     whatsappConsent: whatsappConsent === true,
   };
-  const guestLimit =
-    maxGuestUpcoming && guest?.phoneKey ? { tenantId: tenant._id, phone: guest.phoneKey, max: maxGuestUpcoming } : null;
+  const limit = bookerLimit({ tenantId: tenant._id, guestPhoneKey: guest?.phoneKey, customerId, max: maxUpcoming });
   const limitAhead = fromWebsite;
 
   if (staffId === ANY_STAFF) {
-    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields, guestLimit, limitAhead });
+    const { appointment, staff } = await bookAnyone({ tenant, service, date, time, fields, limit, limitAhead });
     return { appointment, tenant, service, staff };
   }
 
@@ -253,7 +279,7 @@ async function bookAppointment({
   if (!offersService(staff, service._id)) throw httpError(400, "This staff member doesn't offer this service");
 
   const { startTime, endTime } = checkTime({ tenant, staff, date, time, duration: service.duration, limitAhead });
-  const appointment = await insertWithLock(staff, startTime, endTime, fields, guestLimit);
+  const appointment = await insertWithLock(staff, startTime, endTime, fields, limit);
 
   if (!appointment) throw httpError(409, "This staff member is already booked at that time");
   return { appointment, tenant, service, staff };
@@ -350,6 +376,7 @@ module.exports = {
   findFreeSlots,
   findFreeSlotsAny,
   ANY_STAFF,
+  customerMaxUpcoming,
   httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,

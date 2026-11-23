@@ -10,6 +10,7 @@ const {
   bookAppointment,
   rescheduleAppointment,
   findFreeSlots,
+  customerMaxUpcoming,
   httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,
@@ -49,6 +50,8 @@ exports.createAppointment = async (req, res) => {
     time,
     notes,
     customerId: req.user.id,
+    // At most CUSTOMER_MAX_UPCOMING upcoming bookings per account at this business (review H-1).
+    maxUpcoming: customerMaxUpcoming(),
     whatsappConsent: whatsappConsent === true,
     fromWebsite: true,
   });

@@ -96,6 +96,18 @@ exports.guestBookingLimiter = rateLimit({
   message: { message: "Too many bookings from this device, please try again later" },
 });
 
+// Bookings by a logged-in customer (security review H-1): counted per ACCOUNT, from any IP, so one
+// account can't hammer the booking route with a script. Every try counts (a 409 "taken" too):
+// 20 an hour is far more than a real person needs.
+exports.customerBookingLimiter = rateLimit({
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  windowMs: 60 * 60 * 1000,
+  limit: 20,
+  keyGenerator: (req) => `customer-booking:${req.user.id}`,
+  message: { message: "Too many booking attempts, please try again later" },
+});
+
 // Every message is a Gemini call on the seller's key.
 exports.assistantLimiter = rateLimit({
   ...base,
