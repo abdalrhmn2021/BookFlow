@@ -1,4 +1,7 @@
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+// Every limiter counts in MongoDB, not in the server's memory, so a restart or a deploy doesn't
+// set the counters back to zero (security review L-1, utils/rateLimitStore.js).
+const { MongoRateLimitStore } = require("../utils/rateLimitStore");
 
 // Count per visitor: req.clientIp is the real visitor IP when the request came through one of
 // our sites' proxies (see site.middleware.js). ipKeyGenerator groups IPv6 addresses by subnet,
@@ -10,6 +13,7 @@ const base = {
 };
 
 exports.loginLimiter = rateLimit({
+  store: new MongoRateLimitStore("loginLimiter"),
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 5,
@@ -31,6 +35,7 @@ const loginEmail = (req) => (typeof req.body?.email === "string" ? req.body.emai
 const knownDevice = (req) => isKnownDevice(req, loginEmail(req));
 
 exports.loginEmailLimiter = rateLimit({
+  store: new MongoRateLimitStore("loginEmailLimiter"),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   windowMs: 15 * 60 * 1000,
@@ -44,6 +49,7 @@ exports.loginEmailLimiter = rateLimit({
 // Same idea for the forms that ask a logged-in user for their password again (change password,
 // delete account): counted per account, so a stolen session can't guess the password from many IPs.
 exports.accountPasswordLimiter = rateLimit({
+  store: new MongoRateLimitStore("accountPasswordLimiter"),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   windowMs: 15 * 60 * 1000,
@@ -54,6 +60,7 @@ exports.accountPasswordLimiter = rateLimit({
 });
 
 exports.registerLimiter = rateLimit({
+  store: new MongoRateLimitStore("registerLimiter"),
   ...base,
   windowMs: 60 * 60 * 1000,
   limit: 10,
@@ -62,6 +69,7 @@ exports.registerLimiter = rateLimit({
 
 // Each request can send an email, so keep it low.
 exports.forgotPasswordLimiter = rateLimit({
+  store: new MongoRateLimitStore("forgotPasswordLimiter"),
   ...base,
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -71,6 +79,7 @@ exports.forgotPasswordLimiter = rateLimit({
 // New reset codes per email, from any IP: each new code gives 5 more guesses (and an email in the
 // victim's inbox), so this is what keeps a 6-digit code safe. 3 an hour, every email counted.
 exports.forgotEmailLimiter = rateLimit({
+  store: new MongoRateLimitStore("forgotEmailLimiter"),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   windowMs: 60 * 60 * 1000,
@@ -81,6 +90,7 @@ exports.forgotEmailLimiter = rateLimit({
 });
 
 exports.resetPasswordLimiter = rateLimit({
+  store: new MongoRateLimitStore("resetPasswordLimiter"),
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -88,6 +98,7 @@ exports.resetPasswordLimiter = rateLimit({
 });
 
 exports.publicLimiter = rateLimit({
+  store: new MongoRateLimitStore("publicLimiter"),
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 300,
@@ -95,6 +106,7 @@ exports.publicLimiter = rateLimit({
 });
 
 exports.guestBookingLimiter = rateLimit({
+  store: new MongoRateLimitStore("guestBookingLimiter"),
   ...base,
   windowMs: 60 * 60 * 1000,
   limit: 10,
@@ -105,6 +117,7 @@ exports.guestBookingLimiter = rateLimit({
 // account can't hammer the booking route with a script. Every try counts (a 409 "taken" too):
 // 20 an hour is far more than a real person needs.
 exports.customerBookingLimiter = rateLimit({
+  store: new MongoRateLimitStore("customerBookingLimiter"),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   windowMs: 60 * 60 * 1000,
@@ -115,6 +128,7 @@ exports.customerBookingLimiter = rateLimit({
 
 // Every message is a Gemini call on the seller's key.
 exports.assistantLimiter = rateLimit({
+  store: new MongoRateLimitStore("assistantLimiter"),
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -122,6 +136,7 @@ exports.assistantLimiter = rateLimit({
 });
 
 exports.manageBookingLimiter = rateLimit({
+  store: new MongoRateLimitStore("manageBookingLimiter"),
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 30,
@@ -131,6 +146,7 @@ exports.manageBookingLimiter = rateLimit({
 // Adding staff (security review B-01): each try tells whether an email is free, so it's counted
 // per business owner - 20 an hour is plenty for a real business.
 exports.staffCreateLimiter = rateLimit({
+  store: new MongoRateLimitStore("staffCreateLimiter"),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   windowMs: 60 * 60 * 1000,
@@ -142,6 +158,7 @@ exports.staffCreateLimiter = rateLimit({
 // Email verification codes (security review M-01): the same protection as "forgot password".
 // Typing the code: per IP (each code also dies after 5 wrong tries).
 exports.verifyEmailLimiter = rateLimit({
+  store: new MongoRateLimitStore("verifyEmailLimiter"),
   ...base,
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -150,6 +167,7 @@ exports.verifyEmailLimiter = rateLimit({
 
 // Asking for a new code sends an email: per IP and per email, every email counted.
 exports.resendVerificationLimiter = rateLimit({
+  store: new MongoRateLimitStore("resendVerificationLimiter"),
   ...base,
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -157,6 +175,7 @@ exports.resendVerificationLimiter = rateLimit({
 });
 
 exports.resendVerificationEmailLimiter = rateLimit({
+  store: new MongoRateLimitStore("resendVerificationEmailLimiter"),
   standardHeaders: "draft-8",
   legacyHeaders: false,
   windowMs: 60 * 60 * 1000,
