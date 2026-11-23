@@ -506,6 +506,11 @@ exports.resetPassword = async (req, res) => {
   // (emailVerified, role and tenantId come with the default fields - markEmailVerified needs them.)
 
   for (const user of candidates) {
+    // Same rule as "forgot password" (canSignInHere): salon A's owner or staff can't finish a
+    // reset on salon B's site and get a login there. Checked before a try is spent, so the code
+    // still works on the account's own site.
+    if (!(await canSignInHere(req, user))) continue;
+
     // Spend one try first (atomically): no tries left = the code is dead.
     const { modifiedCount } = await User.updateOne(
       { _id: user._id, resetTokenHash: user.resetTokenHash, resetAttempts: { $lt: RESET_MAX_ATTEMPTS } },
