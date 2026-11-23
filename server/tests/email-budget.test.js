@@ -127,6 +127,8 @@ describe("Daily email budget", () => {
     process.env.EMAIL_DAILY_BUDGET = "1";
     process.env.EMAIL_ACCOUNT_RESERVE = "1"; // no room for "new booking" emails at all
     const biz = await h.makeBusiness("quiet-salon");
+    // The server warns once when the budget is reached - expected here, so kept out of the output.
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
 
     await call("post", `/api/public/businesses/${biz.tenant.slug}/appointments`)
       .send({
@@ -140,6 +142,8 @@ describe("Daily email budget", () => {
       .expect(201);
     await settle();
     expect(sent).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("daily budget reached"));
+    warn.mockRestore();
   });
 });
 

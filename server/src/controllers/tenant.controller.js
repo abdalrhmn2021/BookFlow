@@ -1,4 +1,5 @@
 const Tenant = require("../models/Tenant");
+const { countryCodeFor } = require("../utils/phone");
 
 const toTenantDTO = (t) => ({
   id: t._id,
@@ -7,6 +8,8 @@ const toTenantDTO = (t) => ({
   plan: t.plan,
   timezone: t.timezone,
   workingHours: t.workingHours,
+  // For the dashboard's WhatsApp buttons: local numbers (0599...) get this code (review M-3).
+  phoneCountryCode: countryCodeFor(t.phoneCountryCode),
 });
 
 exports.getMyTenant = async (req, res) => {

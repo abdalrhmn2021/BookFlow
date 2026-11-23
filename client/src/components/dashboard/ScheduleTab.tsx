@@ -38,11 +38,14 @@ const UPCOMING_SHOWN = 5;
 export default function ScheduleTab({
   timezone,
   slug,
+  countryCode,
   initialDate,
   refreshKey = 0,
 }: {
   timezone: string;
   slug: string;
+  // The business's country code for local numbers (security review M-3).
+  countryCode: string;
   initialDate?: string;
   refreshKey?: number;
 }) {
@@ -445,7 +448,7 @@ export default function ScheduleTab({
                                   {t.dashboard.booking.moveButton}
                                 </button>
                               )}
-                              {canRemind(a) && toWhatsAppNumber(phoneOf(a)) && (
+                              {canRemind(a) && toWhatsAppNumber(phoneOf(a), countryCode) && (
                                 <span className="ms-auto inline-flex flex-wrap items-center gap-2">
                                   {a.reminderSentAt && (
                                     <span className="text-xs text-emerald-700">
@@ -456,7 +459,7 @@ export default function ScheduleTab({
                                     </span>
                                   )}
                                   <a
-                                    href={whatsAppLink(toWhatsAppNumber(phoneOf(a))!, reminderText(a))}
+                                    href={whatsAppLink(toWhatsAppNumber(phoneOf(a), countryCode)!, reminderText(a))}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() => markReminded(a._id)}
@@ -486,6 +489,7 @@ export default function ScheduleTab({
           mode={form}
           slug={slug}
           timezone={timezone}
+          countryCode={countryCode}
           onClose={() => setForm(null)}
           onSaved={(savedDate) => {
             setDate(savedDate);

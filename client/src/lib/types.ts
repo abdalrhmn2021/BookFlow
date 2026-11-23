@@ -118,6 +118,8 @@ export interface TenantInfo {
   plan: string;
   timezone: string;
   workingHours: WorkingDay[];
+  // Country code for local phone numbers (0599...) in WhatsApp links - from the server.
+  phoneCountryCode: string;
 }
 
 export interface Service {

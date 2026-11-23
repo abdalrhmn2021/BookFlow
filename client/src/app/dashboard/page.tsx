@@ -96,6 +96,7 @@ function Dashboard() {
             key={date}
             timezone={tenant.timezone}
             slug={tenant.slug}
+            countryCode={tenant.phoneCountryCode}
             initialDate={date}
             refreshKey={refreshKey}
           />
