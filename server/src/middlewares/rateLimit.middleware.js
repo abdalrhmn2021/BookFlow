@@ -23,7 +23,12 @@ exports.loginLimiter = rateLimit({
 // about whether an account exists. The demo accounts are skipped: their password is public anyway,
 // and a stranger must not be able to lock everyone else out of the demo.
 const { isDemoEmail } = require("../config/demo");
+const { isKnownDevice } = require("../utils/deviceCookie");
 const loginEmail = (req) => (typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "");
+// Security review M-2: the per-email limits must not lock the real owner out of their account.
+// A browser that already logged in to this email (utils/deviceCookie.js) isn't counted or blocked
+// by them - only someone ELSE's wrong passwords are. The per-IP limits still apply to everyone.
+const knownDevice = (req) => isKnownDevice(req, loginEmail(req));
 
 exports.loginEmailLimiter = rateLimit({
   standardHeaders: "draft-8",
@@ -31,7 +36,7 @@ exports.loginEmailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   skipSuccessfulRequests: true,
-  skip: (req) => !loginEmail(req) || isDemoEmail(loginEmail(req)),
+  skip: (req) => !loginEmail(req) || isDemoEmail(loginEmail(req)) || knownDevice(req),
   keyGenerator: (req) => `email:${loginEmail(req)}`,
   message: { message: "Too many failed attempts on this account, please try again in 15 minutes" },
 });
@@ -70,7 +75,7 @@ exports.forgotEmailLimiter = rateLimit({
   legacyHeaders: false,
   windowMs: 60 * 60 * 1000,
   limit: 3,
-  skip: (req) => !loginEmail(req),
+  skip: (req) => !loginEmail(req) || knownDevice(req),
   keyGenerator: (req) => `forgot:${loginEmail(req)}`,
   message: { message: "Too many codes requested for this email, please try again in an hour" },
 });

@@ -12,6 +12,7 @@ const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
 const { isEmailConfigured, hasEmailBudget, sendPasswordResetEmail } = require("../services/notify.service");
 const { passesTurnstile } = require("../utils/turnstile");
+const { rememberDevice } = require("../utils/deviceCookie");
 const Appointment = require("../models/Appointment");
 const CustomerTenant = require("../models/CustomerTenant");
 const { ACTIVE_STATUSES } = require("../services/booking.service");
@@ -216,6 +217,8 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user);
     setAuthCookie(res, token);
+    // This browser now counts as a known device for this account (review M-2, utils/deviceCookie.js).
+    rememberDevice(req, res, user.email);
 
     res.status(200).json({
       user: {
@@ -521,6 +524,7 @@ exports.resetPassword = async (req, res) => {
     await user.save(); // validates (8+ chars), hashes, sets passwordChangedAt -> old sessions end
     // The code reached this inbox, so the email is proven too (and a waiting business goes live).
     await markEmailVerified(user);
+    rememberDevice(req, res, user.email); // the right code + the new password: a known device (M-2)
 
     // With two-step login on, the emailed code must not be a way around the app's code:
     // the password is changed, but the user still logs in normally (password + app code).
@@ -567,6 +571,7 @@ exports.verifyEmail = async (req, res) => {
 
   const token = generateToken(user);
   setAuthCookie(res, token);
+  rememberDevice(req, res, user.email);
   res.status(200).json({
     user: { id: user._id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
     ...devToken(token),
