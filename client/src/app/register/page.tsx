@@ -9,6 +9,7 @@ import { useBrand } from "@/context/BrandContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import Loading from "@/components/Loading";
 import VerifyEmailForm from "@/components/VerifyEmailForm";
+import { CaptchaBox, useCaptcha } from "@/components/Turnstile";
 
 export default function RegisterPage() {
   return (
@@ -30,6 +31,7 @@ function RegisterForm() {
   const [submitting, setSubmitting] = useState(false);
   // Set once the account is made and the server asks for the emailed code.
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -40,7 +42,7 @@ function RegisterForm() {
     setError("");
     setSubmitting(true);
     try {
-      const user = await register({ ...form, phone: form.phone || undefined });
+      const user = await register({ ...form, phone: form.phone || undefined, ...captcha.field });
       if (!user) {
         setVerifyEmail(form.email.trim());
         return;
@@ -48,6 +50,7 @@ function RegisterForm() {
       router.replace(next ?? homeFor(user.role));
     } catch (err) {
       setError(tError(err));
+      captcha.reset();
     } finally {
       setSubmitting(false);
     }
@@ -116,11 +119,12 @@ function RegisterForm() {
           />
         </label>
 
+        <CaptchaBox captcha={captcha} />
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !captcha.ready}
           className="w-full rounded-lg bg-brand-500 py-2.5 font-semibold text-brand-ink transition hover:bg-brand-600 disabled:opacity-50"
         >
           {submitting ? t.register.submitting : t.register.submit}

@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 // Cloudflare Turnstile ("are you a person?") for the guest booking form - usually invisible,
 // sometimes one click. Shown only when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set (docs/INSTALL.md);
 // the server checks the token with TURNSTILE_SECRET_KEY.
 // A token works once: give the component a new `key` after every booking attempt to get a new one.
+// Also on the forms that send an email (sign-up, "forgot password", a new code - security review
+// H-2): useCaptcha() + <CaptchaBox> below.
+
+// Set on sites that use Turnstile (with TURNSTILE_SECRET_KEY on the server). Empty = off.
+export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || "";
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string;
@@ -75,4 +81,31 @@ export default function Turnstile({
   }, [siteKey, language]);
 
   return <div ref={box} className="flex justify-center" />;
+}
+
+// A form protected by Turnstile: its one-use token, whether the form may be sent, and a reset
+// that shows a fresh widget (call it after every request, whatever the answer).
+export function useCaptcha() {
+  const required = Boolean(TURNSTILE_SITE_KEY);
+  const [token, setToken] = useState<string | null>(null);
+  const [round, setRound] = useState(0);
+  const reset = useCallback(() => {
+    setToken(null);
+    setRound((n) => n + 1);
+  }, []);
+  return {
+    required,
+    round,
+    setToken,
+    reset,
+    ready: !required || Boolean(token),
+    // Spread into the request body.
+    field: token ? { captchaToken: token } : {},
+  };
+}
+
+export function CaptchaBox({ captcha }: { captcha: ReturnType<typeof useCaptcha> }) {
+  const { lang } = useLanguage();
+  if (!captcha.required) return null;
+  return <Turnstile key={captcha.round} siteKey={TURNSTILE_SITE_KEY} language={lang} onToken={captcha.setToken} />;
 }
