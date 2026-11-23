@@ -115,5 +115,10 @@ describe("Known device", () => {
     for (let i = 0; i < 3; i++) await post("/api/auth/forgot-password", { email: customer.email }).expect(200);
     await post("/api/auth/forgot-password", { email: customer.email }).expect(429);
     await post("/api/auth/forgot-password", { email: customer.email }, device).expect(200);
+
+    // The emails go out in the background: wait for all 4 here, while the test sender is still in
+    // place - otherwise they leave after the test, through the real sender, to Brevo.
+    for (let i = 0; i < 100 && sent.length < 4; i++) await new Promise((r) => setTimeout(r, 20));
+    expect(sent).toHaveLength(4);
   });
 });
