@@ -1,0 +1,6 @@
+# One name for every commit made by the project's author, whatever the machine or the GitHub web
+# editor wrote at the time. Used by `git log`, `git shortlog` and `git blame` - history itself is
+# not changed. Format: Proper Name <proper@email> [Commit Name] <commit@email>
+Abdalrahman Al-Kahlout <alkhlwtbdalrhmn07@gmail.com>
+Abdalrahman Al-Kahlout <alkhlwtbdalrhmn07@gmail.com> <115067672+abdalrhmn2021@users.noreply.github.com>
+Abdalrahman Al-Kahlout <alkhlwtbdalrhmn07@gmail.com> <abdalrhmn2021@users.noreply.github.com>
