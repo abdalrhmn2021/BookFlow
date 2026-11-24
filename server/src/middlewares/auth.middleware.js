@@ -4,19 +4,47 @@ const RevokedToken = require("../models/RevokedToken");
 const { readAuthCookie } = require("../utils/authCookie");
 const { customerScope, OTHER_BUSINESS_MESSAGE } = require("./site.middleware");
 const { needsVerification } = require("../services/emailVerification.service");
+const { isId } = require("../utils/ids");
+
+// What jsonwebtoken throws for a token that is bad, expired or not valid yet. Only these mean
+// "you are not logged in" (401). Anything else - the database not answering, a bug - is a server
+// error and goes to the error handler (500 + the ALERT_EMAIL alert), so an outage isn't hidden
+// behind "please log in again".
+const TOKEN_ERRORS = new Set(["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"]);
+const INVALID_TOKEN = { message: "Not authorized, invalid token" };
+
+function readToken(req) {
+  const authHeader = req.headers.authorization;
+  return authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : readAuthCookie(req);
+}
 
 exports.protect = async (req, res, next) => {
+  let token;
+  let decoded;
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : readAuthCookie(req);
-
+    token = readToken(req);
     if (!token) {
       return res.status(401).json({ message: "Not authorized, no token" });
     }
-
     // Only the algorithm we sign with (review A-08): a token made any other way is refused.
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+    decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+  } catch (err) {
+    // A malformed cookie (URIError from decodeURIComponent) is the client's fault too.
+    if (TOKEN_ERRORS.has(err?.name) || err instanceof URIError) {
+      return res.status(401).json(INVALID_TOKEN);
+    }
+    return next(err);
+  }
 
+  // We only sign { id: <ObjectId> }. Anything else can't be one of our tokens (and must not reach
+  // findById, where it would become a CastError).
+  if (!decoded || typeof decoded !== "object" || !isId(decoded.id)) {
+    return res.status(401).json(INVALID_TOKEN);
+  }
+
+  // From here on the token itself is valid: an error now is a server problem, not a bad login.
+  // next(err) and nothing else, so a failed check can never fall through to the route.
+  try {
     // Logged out: this token was revoked (auth.controller logout), even if it hasn't expired yet.
     if (decoded.jti && (await RevokedToken.exists({ jti: decoded.jti }))) {
       return res.status(401).json({ message: "You logged out, please log in again" });
@@ -54,11 +82,10 @@ exports.protect = async (req, res, next) => {
       role: user.role,
       tenantId: user.tenantId,
     };
-
-    next();
-  } catch {
-    return res.status(401).json({ message: "Not authorized, invalid token" });
+  } catch (err) {
+    return next(err);
   }
+  next();
 };
 
 exports.restrictTo = (...roles) => {
