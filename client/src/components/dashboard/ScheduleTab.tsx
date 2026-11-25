@@ -138,6 +138,15 @@ export default function ScheduleTab({
 
   const today = todayIn(timezone);
   const list = current?.list ?? [];
+  // Under "All", cancelled and no-show bookings are listed but not counted as the day's bookings
+  // (same as the day strip and the Overview): "5 appointments · Cancelled 1".
+  const closed = (["cancelled", "no-show"] as const)
+    .map((status) => [status, list.filter((a) => a.status === status).length] as const)
+    .filter(([, n]) => filter === "all" && n > 0);
+  const listSummary = [
+    s.count(list.length - closed.reduce((sum, [, n]) => sum + n, 0)),
+    ...closed.map(([status, n]) => `${t.status[status]} ${n}`),
+  ].join(" · ");
   const localDateOf = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(iso));
   const countOn = new Map((upcoming?.days ?? []).map((d) => [d.date, d.count]));
   const strip = Array.from({ length: STRIP_DAYS }, (_, i) => addDays(today, i));
@@ -320,7 +329,7 @@ export default function ScheduleTab({
           </>
         ) : (
           <>
-            <p className="mb-4 text-sm text-ink-500">{s.count(list.length)}</p>
+            <p className="mb-4 text-sm text-ink-500">{listSummary}</p>
             <ol className="relative">
               {list.map((a, i) => {
                 const start = formatMomentIn(a.startTime, timezone, t.locale).time;
