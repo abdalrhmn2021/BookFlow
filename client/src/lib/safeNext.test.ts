@@ -23,4 +23,12 @@ describe("safeNext", () => {
       expect(safeNext(bad)).toBeNull();
     }
   });
+
+  // Security review M-1: dot segments that leave "//evil.com" after the URL is parsed.
+  it("refuses paths that turn into another site after dot segments are removed", () => {
+    for (const bad of ["/.//evil.com", "/..//evil.com", "/a/..//evil.com", "/%2e//evil.com", "/.///evil.com"]) {
+      expect(safeNext(bad)).toBeNull();
+    }
+    expect(safeNext("/a/../dashboard")).toBe("/dashboard");
+  });
 });

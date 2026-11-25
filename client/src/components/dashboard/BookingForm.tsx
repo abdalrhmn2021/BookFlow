@@ -21,12 +21,14 @@ export default function BookingForm({
   mode,
   slug,
   timezone,
+  countryCode,
   onSaved,
   onClose,
 }: {
   mode: BookingFormMode;
   slug: string;
   timezone: string;
+  countryCode: string;
   onSaved: (date: string) => void;
   onClose: () => void;
 }) {
@@ -118,7 +120,10 @@ export default function BookingForm({
     serviceName: string,
     link?: string,
   ) => {
-    if (!toWhatsAppNumber(apptPhone)) return null;
+    // The business's own country code: with a wrong one, the message (and its manage link) would
+    // go to a stranger's number (security review M-3).
+    const number = toWhatsAppNumber(apptPhone, countryCode);
+    if (!number) return null;
     const today = todayIn(timezone);
     const day =
       start === today
@@ -135,7 +140,7 @@ export default function BookingForm({
       staff: staffName,
     };
     const text = link ? b.bookedMessage(parts, link) : b.movedMessage(parts);
-    return whatsAppLink(toWhatsAppNumber(apptPhone)!, text);
+    return whatsAppLink(number, text);
   };
 
   const submit = async (e: React.FormEvent) => {

@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
+const EmailUsage = require("../models/EmailUsage");
 
 // New-booking emails to the business owner(s) and the staff member who was booked.
 // Sent through Brevo's HTTPS API: Render's free plan blocks SMTP ports (25/465/587),
@@ -31,6 +32,65 @@ let send = sendWithBrevo;
 const setSenderForTests = (fn) => {
   send = fn || sendWithBrevo;
 };
+
+// ---- Daily email budget (security review H-2) ----
+// Every email of the server goes out through ONE Brevo account (free plan: 300 a day). Without a
+// budget, a script signing up with made-up addresses could use the whole day's emails from one
+// IP - then no business on the server could send sign-up codes or "forgot password" codes.
+//   EMAIL_DAILY_BUDGET     emails per day (UTC) for the whole server. Default 250 (under Brevo's 300).
+//   EMAIL_ACCOUNT_RESERVE  the last part of the budget, kept for account emails (sign-up and
+//                          password codes, alerts to you): "new booking" emails stop before it.
+//                          Default 50.
+const posInt = (value, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+};
+const emailDailyBudget = () => posInt(process.env.EMAIL_DAILY_BUDGET, 250);
+const accountReserve = () => posInt(process.env.EMAIL_ACCOUNT_RESERVE, 50);
+const emailDay = () => new Date().toISOString().slice(0, 10);
+
+// kind: "account" (codes, alerts) may use the whole budget; "notification" stops at budget - reserve.
+const limitFor = (kind) => (kind === "notification" ? emailDailyBudget() - accountReserve() : emailDailyBudget());
+
+// Takes one email from today's budget in one atomic update (two requests can't both take the
+// last one). false = used up until tomorrow (UTC).
+async function takeEmailSlot(kind) {
+  const limit = limitFor(kind);
+  if (limit <= 0) return false;
+  const day = emailDay();
+  const take = (upsert) => EmailUsage.updateOne({ day, count: { $lt: limit } }, { $inc: { count: 1 } }, { upsert });
+  try {
+    await take(true); // the day's first email creates the document
+    return true;
+  } catch (err) {
+    // Duplicate key: today's document exists and is full - or another request just created it,
+    // so try once more without creating.
+    if (err.code !== 11000) throw err;
+    return (await take(false)).modifiedCount === 1;
+  }
+}
+
+// Is there still room today? For the routes that exist to send an email (sign-up, "forgot
+// password", a new code): they answer 503 up front instead of making an account whose code
+// can't be sent.
+async function hasEmailBudget(kind = "account") {
+  const today = await EmailUsage.findOne({ day: emailDay() }).select("count").lean();
+  return (today?.count ?? 0) < limitFor(kind);
+}
+
+let budgetWarnedOn = null;
+// Every email goes through here: one slot from the budget, then the real send.
+async function deliver(kind, message) {
+  if (!(await takeEmailSlot(kind))) {
+    if (budgetWarnedOn !== emailDay()) {
+      budgetWarnedOn = emailDay();
+      console.warn(`[email] daily budget reached (${kind} emails stop until tomorrow, UTC)`);
+    }
+    return false;
+  }
+  await send(message);
+  return true;
+}
 
 const escapeHtml = (value) =>
   String(value ?? "").replace(
@@ -164,10 +224,13 @@ async function notifyNewBooking({ tenant, appointment, staff, site }) {
 
   const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || tenant.name };
   // One email per person, so staff and owners don't see each other's addresses.
-  await Promise.all(
-    [...recipients].map(([email, name]) => send({ sender, to: [{ email, name }], subject, htmlContent: html })),
+  const results = await Promise.all(
+    [...recipients].map(([email, name]) =>
+      deliver("notification", { sender, to: [{ email, name }], subject, htmlContent: html }),
+    ),
   );
-  return { sent: recipients.size };
+  const sent = results.filter(Boolean).length;
+  return sent === recipients.size ? { sent } : { sent, skipped: "daily email budget" };
 }
 
 // Pure: the "reset your password" email, with the 6-digit code.
@@ -199,13 +262,45 @@ ${codeBox}
 async function sendPasswordResetEmail({ email, name, code, minutes }) {
   const { subject, html } = buildPasswordResetEmail({ name, code, minutes });
   const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
-  await send({ sender, to: [{ email, name }], subject, htmlContent: html });
+  await deliver("account", { sender, to: [{ email, name }], subject, htmlContent: html });
+}
+
+// Pure: the "confirm your email" email sent after signing up, with the 6-digit code.
+function buildVerificationEmail({ name, code, minutes }) {
+  const e = escapeHtml;
+  const codeBox = `<p style="font-size:28px;font-weight:bold;letter-spacing:8px;font-family:monospace;background:#f1f5f9;border-radius:8px;padding:12px 18px;display:inline-block;direction:ltr">${e(code)}</p>`;
+
+  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a">
+<div dir="rtl" style="text-align:right">
+<p>مرحباً ${e(name)}،</p>
+<p>شكراً لتسجيلك. لتأكيد بريدك الإلكتروني وتفعيل حسابك، اكتب هذا الرمز في صفحة التسجيل:</p>
+${codeBox}
+<p>الرمز صالح لمدة ${minutes} دقيقة. لا تعطه لأي شخص.</p>
+<p style="color:#64748b">إذا ما سجّلت أنت، تجاهل هذه الرسالة وما رح ينفعّل أي حساب ببريدك.</p>
+</div>
+<hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+<div dir="ltr" style="text-align:left">
+<p>Hi ${e(name)},</p>
+<p>Thanks for signing up. To confirm your email and activate your account, type this code on the sign-up page:</p>
+${codeBox}
+<p>The code works for ${minutes} minutes. Don't share it with anyone.</p>
+<p style="color:#64748b">If you didn't sign up, ignore this email - no account will be activated with your address.</p>
+</div>
+</body></html>`;
+
+  return { subject: `${code} رمز تأكيد البريد · Email confirmation code`, html };
+}
+
+async function sendVerificationEmail({ email, name, code, minutes }) {
+  const { subject, html } = buildVerificationEmail({ name, code, minutes });
+  const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
+  await deliver("account", { sender, to: [{ email, name }], subject, htmlContent: html });
 }
 
 // An email to the person running the server (ALERT_EMAIL), e.g. services/alert.service.js.
 async function sendOperatorEmail({ subject, html }) {
   const sender = { email: process.env.MAIL_FROM, name: process.env.MAIL_FROM_NAME || "BookFlow" };
-  await send({ sender, to: [{ email: process.env.ALERT_EMAIL.trim() }], subject, htmlContent: html });
+  await deliver("account", { sender, to: [{ email: process.env.ALERT_EMAIL.trim() }], subject, htmlContent: html });
 }
 
 module.exports = {
@@ -215,6 +310,10 @@ module.exports = {
   buildNewBookingEmail,
   buildPasswordResetEmail,
   sendPasswordResetEmail,
+  buildVerificationEmail,
+  sendVerificationEmail,
   isEmailConfigured,
+  hasEmailBudget,
+  takeEmailSlot,
   setSenderForTests,
 };

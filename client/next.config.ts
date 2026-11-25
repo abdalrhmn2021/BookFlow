@@ -7,17 +7,13 @@ const SINGLE_BUSINESS_SLUG = process.env.SINGLE_BUSINESS_SLUG?.trim().toLowerCas
 
 // Security headers for every page (security review F-01). The /api answers get their own from
 // helmet on the Express server. Pages had none, so another site could show ours in an iframe.
-//   frame-ancestors 'none' + X-Frame-Options: no site (ours included) may put a page in a frame
-//   object-src / base-uri / form-action: no plugins, no <base> swap, forms post only to us
-// There is no script-src on purpose: Next.js adds inline scripts, and allowing them safely needs a
-// nonce on every request. Add it later as Content-Security-Policy-Report-Only first, and allow
-// https://challenges.cloudflare.com (Turnstile) in script-src and frame-src.
+//   X-Frame-Options: no site (ours included) may put a page in a frame
+// The Content-Security-Policy is set per request in src/proxy.ts: it carries a new nonce each time
+// (only scripts with it may run), so it can't be a fixed header here.
 const SECURITY_HEADERS = [
-  {
-    key: "Content-Security-Policy",
-    value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
-  },
   { key: "X-Frame-Options", value: "DENY" },
+  // HTTPS only for 2 years, on whatever domain the site runs (browsers ignore it on http://localhost).
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },

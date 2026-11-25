@@ -10,6 +10,7 @@ const {
   bookAppointment,
   rescheduleAppointment,
   findFreeSlots,
+  customerMaxUpcoming,
   httpError,
   ACTIVE_STATUSES,
   CUSTOMER_CANCEL_LIMIT_MS,
@@ -19,11 +20,13 @@ const { notifyNewBooking } = require("../services/notify.service");
 const { createManageToken } = require("../utils/manageToken");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { siteAllows } = require("../middlewares/site.middleware");
-const { closeStalePending } = require("../services/maintenance.service");
+const { closeStalePendingForDashboard } = require("../services/maintenance.service");
 const { siteUrl } = require("../utils/siteUrl");
 const { canManageBookings, PROVIDER_STATUSES, DESK_ONLY } = require("../utils/bookingDesk");
 
 const WHEN_VALUES = ["upcoming", "past"];
+// GET /appointments/me sends at most this many bookings from before now (every upcoming one is sent).
+const MY_PAST_LIMIT = 50;
 
 // A customer account works on every site of the server, but each site shows only its own
 // business's appointments. Returns the filter to add: {} (any business) or { tenantId }.
@@ -50,6 +53,8 @@ exports.createAppointment = async (req, res) => {
     time,
     notes,
     customerId: req.user.id,
+    // At most CUSTOMER_MAX_UPCOMING upcoming bookings per account at this business (review H-1).
+    maxUpcoming: customerMaxUpcoming(),
     whatsappConsent: whatsappConsent === true,
     fromWebsite: true,
   });
@@ -121,15 +126,23 @@ exports.getMyAppointments = async (req, res) => {
   if (status) filter.status = status;
 
   const now = new Date();
-  if (when === "upcoming") filter.startTime = { $gte: now };
-  if (when === "past") filter.startTime = { $lt: now };
+  const find = (time) =>
+    Appointment.find({ ...filter, startTime: time })
+      .populate("tenantId", "name slug timezone")
+      .populate("staffId", "name");
+  // Every booking from now on, but only the latest MY_PAST_LIMIT before now: an account with years of
+  // history doesn't send all of it on every visit. The past ones are fetched newest first (so the
+  // limit keeps the recent ones); without ?when they are put back oldest first, as before.
+  const upcoming = () => find({ $gte: now }).sort({ startTime: 1 });
+  const past = () => find({ $lt: now }).sort({ startTime: -1 }).limit(MY_PAST_LIMIT);
 
-  const sortOrder = when === "past" ? -1 : 1;
-
-  const appointments = await Appointment.find(filter)
-    .populate("tenantId", "name slug timezone")
-    .populate("staffId", "name")
-    .sort({ startTime: sortOrder });
+  let appointments;
+  if (when === "upcoming") appointments = await upcoming();
+  else if (when === "past") appointments = await past();
+  else {
+    const [before, after] = await Promise.all([past(), upcoming()]);
+    appointments = [...before.reverse(), ...after];
+  }
 
   res.status(200).json({ count: appointments.length, appointments: appointments.map(toCustomerAppointment) });
 };
@@ -216,7 +229,8 @@ const ALLOWED_TRANSITIONS = {
 };
 
 exports.getBusinessAppointments = async (req, res) => {
-  await closeStalePending({ tenantId: req.tenantId }); // also works when the hourly timer can't (sleeping server)
+  // also works when the hourly timer can't (sleeping server); at most once per 5 minutes per business
+  await closeStalePendingForDashboard(req.tenantId);
   const { status } = req.query;
 
   if (status && !Appointment.STATUSES.includes(status)) {
@@ -225,16 +239,16 @@ exports.getBusinessAppointments = async (req, res) => {
     });
   }
 
-  const tenant = await Tenant.findById(req.tenantId).select("timezone");
-  const date = req.query.date || new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(new Date());
+  const timezone = req.tenantTimezone; // read by requireTenant
+  const date = req.query.date || new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
 
   if (!isValidDate(date)) {
     return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
 
   // Day boundaries in the business's timezone, not the server's.
-  const dayStart = localToDate(date, "00:00", tenant.timezone);
-  const dayEnd = localToDate(nextDate(date), "00:00", tenant.timezone);
+  const dayStart = localToDate(date, "00:00", timezone);
+  const dayEnd = localToDate(nextDate(date), "00:00", timezone);
 
   const filter = {
     ...businessFilter(req.user, req.tenantId),
@@ -254,9 +268,8 @@ const OVERVIEW_DAYS = 7;
 
 // Everything the dashboard Overview needs, in one request.
 exports.getBusinessStats = async (req, res) => {
-  await closeStalePending({ tenantId: req.tenantId });
-  const tenant = await Tenant.findById(req.tenantId).select("timezone");
-  const tz = tenant.timezone;
+  await closeStalePendingForDashboard(req.tenantId);
+  const tz = req.tenantTimezone; // read by requireTenant
   const now = new Date();
   const base = businessFilter(req.user, req.tenantId);
 
@@ -305,6 +318,51 @@ exports.getBusinessStats = async (req, res) => {
     toConfirm,
     next,
   });
+};
+
+const UPCOMING_DAYS = 60;
+// What the Overview and the day strip count as a booking of the day: all but cancelled and no-show.
+const COUNTED_STATUSES = ["pending", "confirmed", "completed"];
+const UPCOMING_LIST_LIMIT = 10;
+
+// The schedule shows one day at a time. This tells it which days ahead have bookings and lists
+// the next few, so a booking made for next week isn't hidden behind today's empty day.
+exports.getUpcomingBusinessAppointments = async (req, res) => {
+  await closeStalePendingForDashboard(req.tenantId);
+  const now = new Date();
+  const until = new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000);
+  const base = businessFilter(req.user, req.tenantId);
+
+  // The day strip counts the way the Overview does: from the start of today (the business's time
+  // zone), every booking but cancelled and no-show - so a booking that already started today still
+  // counts, and the strip, the Overview and the day list agree. The list of next bookings (and
+  // `total`, "N more") stays what it was: active bookings from now on.
+  const tz = req.tenantTimezone; // read by requireTenant
+  const todayStart = localToDate(new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now), "00:00", tz);
+
+  const [appointments, inRange] = await Promise.all([
+    Appointment.find({ ...base, status: { $in: ACTIVE_STATUSES }, startTime: { $gt: now, $lt: until } })
+      .sort({ startTime: 1 })
+      .limit(UPCOMING_LIST_LIMIT)
+      .select("serviceName startTime endTime status guest customerId staffId")
+      .populate("customerId", "name phone")
+      .populate("staffId", "name"),
+    Appointment.find({ ...base, status: { $in: COUNTED_STATUSES }, startTime: { $gte: todayStart, $lt: until } })
+      .select("startTime status")
+      .lean(),
+  ]);
+
+  // Counted per day in the business's time zone, not the server's.
+  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
+  const counts = new Map();
+  for (const a of inRange) {
+    const date = localDay.format(a.startTime);
+    counts.set(date, (counts.get(date) || 0) + 1);
+  }
+  const days = [...counts].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+  const total = inRange.filter((a) => ACTIVE_STATUSES.includes(a.status) && a.startTime > now).length;
+
+  res.status(200).json({ total, days, appointments });
 };
 
 const NEW_BOOKINGS_LOOKBACK_MS = 24 * 60 * 60 * 1000;

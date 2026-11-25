@@ -9,6 +9,7 @@ interface RegisterData {
   email: string;
   password: string;
   phone?: string;
+  captchaToken?: string;
 }
 
 interface RegisterBusinessData {
@@ -18,14 +19,19 @@ interface RegisterBusinessData {
   email: string;
   password: string;
   phone?: string;
+  captchaToken?: string;
 }
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string, code?: string) => Promise<User>;
-  register: (data: RegisterData) => Promise<User>;
-  registerBusiness: (data: RegisterBusinessData) => Promise<User>;
+  // null = the account was made, but the 6-digit code from the email must be typed first
+  // (verifyEmail) - the server's email verification is on.
+  register: (data: RegisterData) => Promise<User | null>;
+  registerBusiness: (data: RegisterBusinessData) => Promise<User | null>;
+  // The code from the "confirm your email" email: confirmed, then logged in.
+  verifyEmail: (email: string, code: string) => Promise<User>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // The 6-digit code from the "forgot password" email.
@@ -67,18 +73,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreSession().finally(() => setLoading(false));
   }, [loadMe]);
 
+  // Back/forward cache: after logging out, the browser's Back button can show an earlier page
+  // exactly as it was - still "logged in" on screen, though the server already refuses that login.
+  // Whenever a page comes back that way, ask the server again who is logged in.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) loadMe().catch(() => setUser(null));
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [loadMe]);
+
   const login = async (email: string, password: string, code?: string) => {
     await api.post("/auth/login", { email, password, ...(code && { code }) });
     return loadMe();
   };
 
   const register = async (data: RegisterData) => {
-    await api.post("/auth/register", data);
+    const res = await api.post<{ verificationRequired?: boolean }>("/auth/register", data);
+    if (res.verificationRequired) return null;
     return loadMe();
   };
 
   const registerBusiness = async (data: RegisterBusinessData) => {
-    await api.post("/auth/register-business", data);
+    const res = await api.post<{ verificationRequired?: boolean }>("/auth/register-business", data);
+    if (res.verificationRequired) return null;
+    return loadMe();
+  };
+
+  const verifyEmail = async (email: string, code: string) => {
+    await api.post("/auth/verify-email", { email, code });
     return loadMe();
   };
 
@@ -104,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, registerBusiness, logout, changePassword, resetPassword }}
+      value={{ user, loading, login, register, registerBusiness, verifyEmail, logout, changePassword, resetPassword }}
     >
       {children}
     </AuthContext.Provider>

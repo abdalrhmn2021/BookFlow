@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { protect, restrictTo } = require("../middlewares/auth.middleware");
 const { requireTenant } = require("../middlewares/tenant.middleware");
+const { customerBookingLimiter } = require("../middlewares/rateLimit.middleware");
 const { BUSINESS_ROLES, requireBookingDesk } = require("../utils/bookingDesk");
 const {
   createAppointment,
@@ -12,12 +13,13 @@ const {
   updateAppointmentStatus,
   markReminded,
   getNewBusinessAppointments,
+  getUpcomingBusinessAppointments,
   createBusinessAppointment,
   rescheduleBusinessAppointment,
   getBusinessAvailability,
 } = require("../controllers/appointment.controller");
 
-router.post("/", protect, restrictTo("customer"), createAppointment);
+router.post("/", protect, restrictTo("customer"), customerBookingLimiter, createAppointment);
 router.get("/me", protect, restrictTo("customer"), getMyAppointments);
 router.patch("/:id/cancel", protect, restrictTo("customer"), cancelMyAppointment);
 
@@ -26,6 +28,7 @@ const business = [protect, requireTenant, restrictTo(...BUSINESS_ROLES)];
 router.get("/business", ...business, getBusinessAppointments);
 router.get("/business/stats", ...business, getBusinessStats);
 router.get("/business/new", ...business, getNewBusinessAppointments);
+router.get("/business/upcoming", ...business, getUpcomingBusinessAppointments);
 // Status: the desk changes any; others only close their own (checked in the controller).
 router.patch("/:id/status", ...business, updateAppointmentStatus);
 

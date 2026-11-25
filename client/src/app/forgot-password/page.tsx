@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { homeFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
+import { CaptchaBox, useCaptcha } from "@/components/Turnstile";
 import { btnPrimary, errorBox, inputClass } from "@/lib/ui";
 
 const MIN_LENGTH = 8;
@@ -26,18 +27,21 @@ export default function ForgotPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Turnstile (when the site uses it): every code request needs a fresh token.
+  const captcha = useCaptcha();
 
   const sendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError("");
     setSubmitting(true);
     try {
-      await api.post("/auth/forgot-password", { email: email.trim() });
+      await api.post("/auth/forgot-password", { email: email.trim(), ...captcha.field });
       setCode("");
       setStep("code");
     } catch (err) {
       setError(tError(err));
     } finally {
+      captcha.reset();
       setSubmitting(false);
     }
   };
@@ -79,8 +83,9 @@ export default function ForgotPasswordPage() {
                 className={inputClass}
               />
             </label>
+            <CaptchaBox captcha={captcha} />
             {error && <p className={errorBox}>{error}</p>}
-            <button type="submit" disabled={submitting} className={`${btnPrimary} w-full`}>
+            <button type="submit" disabled={submitting || !captcha.ready} className={`${btnPrimary} w-full`}>
               {submitting ? p.sending : p.send}
             </button>
           </form>
@@ -145,11 +150,14 @@ export default function ForgotPasswordPage() {
               {submitting ? p.saving : p.save}
             </button>
           </form>
-          <p className="mt-4 text-center text-sm text-ink-600">
+          <div className="mt-4">
+            <CaptchaBox captcha={captcha} />
+          </div>
+          <p className="mt-2 text-center text-sm text-ink-600">
             {p.noCode}{" "}
             <button
               type="button"
-              disabled={submitting}
+              disabled={submitting || !captcha.ready}
               onClick={() => sendCode()}
               className="font-medium text-brand-700 hover:underline disabled:opacity-50"
             >

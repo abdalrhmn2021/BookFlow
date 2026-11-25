@@ -25,6 +25,9 @@ async function createBusinessWithOwner({
   whatsappReminders,
   phoneCountryCode,
   ownerBookable,
+  // Web sign-up with email verification on: the business stays inactive until the owner
+  // types the code from the email (services/emailVerification.service.js).
+  pendingVerification = false,
 }) {
   const [emailTaken, slugTaken] = await Promise.all([
     User.exists({ email: String(email).trim().toLowerCase(), scope: null }),
@@ -44,6 +47,7 @@ async function createBusinessWithOwner({
         ...(timezone && { timezone }),
         ...(whatsappReminders && { whatsappReminders: true }),
         ...(phoneCountryCode && { phoneCountryCode }),
+        ...(pendingVerification && { isActive: false, pendingVerification: true }),
       });
       await tenant.save({ session });
 
@@ -55,6 +59,7 @@ async function createBusinessWithOwner({
         role: "owner",
         tenantId: tenant._id,
         ...(ownerBookable && { bookable: true }),
+        ...(pendingVerification && { emailVerified: false }),
       });
       await owner.save({ session });
     });

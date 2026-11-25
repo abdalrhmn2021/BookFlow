@@ -5,17 +5,36 @@ const Tenant = require("../models/Tenant");
 const { SINGLE_BUSINESS_SLUG, SHARED_SERVER } = require("../config/mode");
 const { siteAllows, customerScope, OTHER_BUSINESS_MESSAGE } = require("../middlewares/site.middleware");
 const { isDemoEmail } = require("../config/demo");
-const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
+const { setAuthCookie, clearAuthCookie, readAuthCookie } = require("../utils/authCookie");
+const RevokedToken = require("../models/RevokedToken");
+const { isDevOrTest } = require("../config/env");
 const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
 const { BUSINESS_ROLES } = require("../utils/bookingDesk");
-const { isEmailConfigured, sendPasswordResetEmail } = require("../services/notify.service");
+const { isEmailConfigured, hasEmailBudget, sendPasswordResetEmail } = require("../services/notify.service");
+const { passesTurnstile } = require("../utils/turnstile");
+const { rememberDevice } = require("../utils/deviceCookie");
 const Appointment = require("../models/Appointment");
 const CustomerTenant = require("../models/CustomerTenant");
 const { ACTIVE_STATUSES } = require("../services/booking.service");
 const { REMOVED_NAME } = require("../services/maintenance.service");
+const {
+  isVerificationOn,
+  needsVerification,
+  sendVerificationCode,
+  markEmailVerified,
+  findByVerificationCode,
+  removeExpiredUnverified,
+} = require("../services/emailVerification.service");
 
 const ACCOUNT_DELETED_REASON = "The customer deleted their account";
+
+// Security review H-2: the routes that send an email (sign-up, "forgot password", a new code)
+// need a Turnstile token when TURNSTILE_SECRET_KEY is set (off otherwise), and answer 503 when the
+// server's daily email budget (notify.service.js) is used up.
+const CAPTCHA_FAILED = "Please confirm you're not a robot";
+const EMAIL_BUDGET_USED = "We can't send emails right now, please try again tomorrow";
+const notARobot = (req) => passesTurnstile(req.body?.captchaToken, req.clientIp);
 
 // Credentials must be real strings: an object like { "$gt": "" } would become a
 // MongoDB operator inside findOne (NoSQL injection).
@@ -26,20 +45,32 @@ async function accountsFor(req, email, extra = {}) {
   const scope = await customerScope(req);
   const scopes = scope ? [scope, null] : [null];
   const users = await User.find({ email: String(email).trim().toLowerCase(), scope: { $in: scopes }, ...extra }).select(
-    "+password +twoFactorSecret +twoFactorLastStep",
+    "+password +twoFactorSecret +twoFactorLastStep +verifyExpiresAt",
   );
   return users.sort((a, b) => Number(Boolean(b.scope)) - Number(Boolean(a.scope)));
 }
 
+// A real bcrypt hash of a random password: when the email has no account, the password is still
+// checked against it, so the answer takes as long as for a real account - the response time
+// doesn't tell which emails are registered.
+const bcrypt = require("bcryptjs");
+const DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString("hex"), User.bcryptRounds());
+
 async function findAccount(req, email, password) {
-  for (const user of await accountsFor(req, email)) {
+  const users = await accountsFor(req, email);
+  if (!users.length) {
+    await bcrypt.compare(password, DUMMY_HASH);
+    return null;
+  }
+  for (const user of users) {
     if (await user.comparePassword(password)) return user;
   }
   return null;
 }
 
 // The browser gets its login in the httpOnly cookie only. The token is also in the JSON answer
-// in development, for server/api-tests.http (VS Code REST Client) - never in production, where
+// in development, for server/api-tests.http (VS Code REST Client) - only with an explicit
+// NODE_ENV=development/test (config/env.js), never in production or with NODE_ENV missing, where
 // a copy readable by page scripts would undo the point of the httpOnly cookie.
 // Two-step login: with it on, the right password alone is not enough - the 6-digit code from the
 // authenticator app must come too. Each code works once (the step is saved atomically, so two
@@ -59,12 +90,13 @@ async function checkTwoFactor(user, code) {
   return modifiedCount === 1 ? null : TWO_FACTOR_INVALID;
 }
 
-const devToken = (token) => (process.env.NODE_ENV === "production" ? {} : { token });
+const devToken = (token) => (isDevOrTest() ? { token } : {});
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     algorithm: "HS256", // the only one protect() accepts
     expiresIn: process.env.JWT_EXPIRES_IN,
+    jwtid: crypto.randomUUID(), // its id: logout puts it on the revoked list (models/RevokedToken.js)
   });
 };
 
@@ -75,6 +107,7 @@ exports.register = async (req, res) => {
     if (!isText(name) || !isText(email) || !isText(password)) {
       return res.status(400).json({ message: "name, email and password are required" });
     }
+    if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
 
     // On a shared server the account belongs to this site's business only - so it can only be
     // made on that site. Straight on the server (no site) there is no business to give it to.
@@ -82,6 +115,12 @@ exports.register = async (req, res) => {
     if (SHARED_SERVER && !scope) {
       return res.status(403).json({ message: "Please sign up on the business's own booking site" });
     }
+    // With email verification on, an earlier sign-up with this email that was never confirmed
+    // (and whose code ran out) doesn't block this one.
+    const verify = isVerificationOn();
+    if (verify && !(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
+    if (verify) await removeExpiredUnverified({ email, scope });
+
     const existingUser = await User.findOne({ email: email.trim().toLowerCase(), scope });
     if (existingUser) {
       return res.status(409).json({ message: "Email already exists" });
@@ -94,7 +133,14 @@ exports.register = async (req, res) => {
       phone,
       role: "customer",
       scope,
+      ...(verify && { emailVerified: false }),
     });
+
+    // No login yet: the code from the email confirms the address and logs in (POST /verify-email).
+    if (verify) {
+      await sendVerificationCode(user);
+      return res.status(201).json({ verificationRequired: true, email: user.email });
+    }
 
     const token = generateToken(user);
     setAuthCookie(res, token);
@@ -116,7 +162,7 @@ exports.register = async (req, res) => {
       const errors = Object.values(error.errors).map((e) => e.message);
       return res.status(400).json({ message: "Validation failed", errors });
     }
-    console.error("[auth] error:", error);
+    console.error("[auth] error:", error?.stack || error?.message);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
@@ -135,6 +181,17 @@ exports.login = async (req, res) => {
     const user = await findAccount(req, email, password);
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Signed up but never typed the emailed code: a new code is sent (when the last one ran out)
+    // and the page asks for it. If email was turned off since, there's no way to send one, so the
+    // account is let in as it was before verification existed.
+    if (user.emailVerified === false) {
+      if (needsVerification(user)) {
+        if (!(user.verifyExpiresAt > new Date())) await sendVerificationCode(user);
+        return res.status(403).json({ message: VERIFY_REQUIRED, verificationRequired: true, email: user.email });
+      }
+      await markEmailVerified(user);
     }
 
     if (!user.isActive) {
@@ -161,6 +218,8 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user);
     setAuthCookie(res, token);
+    // This browser now counts as a known device for this account (review M-2, utils/deviceCookie.js).
+    rememberDevice(req, res, user.email);
 
     res.status(200).json({
       user: {
@@ -173,7 +232,7 @@ exports.login = async (req, res) => {
       ...devToken(token),
     });
   } catch (error) {
-    console.error("[auth] error:", error);
+    console.error("[auth] error:", error?.stack || error?.message);
     res.status(500).json({ message: "Something went wrong" });
   }
 };
@@ -192,8 +251,31 @@ exports.registerBusiness = async (req, res) => {
   if (SHARED_SERVER || (SINGLE_BUSINESS_SLUG && String(slug).trim().toLowerCase() !== SINGLE_BUSINESS_SLUG)) {
     return res.status(403).json({ message: "Business registration is disabled" });
   }
+  if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
 
-  const { tenant, owner } = await createBusinessWithOwner({ businessName, slug, ownerName, email, password, phone });
+  const verify = isVerificationOn();
+  if (verify && !(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
+  if (verify) await removeExpiredUnverified({ email, scope: null, slug });
+
+  const { tenant, owner } = await createBusinessWithOwner({
+    businessName,
+    slug,
+    ownerName,
+    email,
+    password,
+    phone,
+    pendingVerification: verify,
+  });
+
+  // The business stays hidden and the owner logged out until the emailed code is typed.
+  if (verify) {
+    await sendVerificationCode(owner);
+    return res.status(201).json({
+      verificationRequired: true,
+      email: owner.email,
+      tenant: { id: tenant._id, name: tenant.name, slug: tenant.slug, plan: tenant.plan },
+    });
+  }
 
   const token = generateToken(owner);
   setAuthCookie(res, token);
@@ -217,7 +299,8 @@ exports.registerBusiness = async (req, res) => {
 };
 
 exports.getMe = async (req, res) => {
-  const user = await User.findById(req.user.id).populate("tenantId", "name slug");
+  // protect already loaded this user: only the business is fetched here.
+  const user = await req.authUser.populate("tenantId", "name slug");
 
   const business = user.tenantId
     ? {
@@ -239,7 +322,25 @@ exports.getMe = async (req, res) => {
   });
 };
 
-exports.logout = (req, res) => {
+// Logout ends this login on the server too: its token goes on the revoked list until it would have
+// expired, so a copy of it (a stolen cookie, a saved Bearer token) is refused from now on.
+exports.logout = async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : readAuthCookie(req);
+  if (token) {
+    try {
+      const { jti, exp } = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+      if (jti && exp) {
+        await RevokedToken.updateOne(
+          { jti },
+          { $setOnInsert: { jti, expiresAt: new Date(exp * 1000) } },
+          { upsert: true },
+        );
+      }
+    } catch {
+      // Expired or not ours: nothing to revoke.
+    }
+  }
   clearAuthCookie(res);
   res.status(200).json({ message: "Logged out" });
 };
@@ -349,6 +450,9 @@ exports.forgotPassword = async (req, res) => {
   if (!isEmailConfigured()) {
     return res.status(503).json({ message: "Password reset by email isn't set up here, please contact the business" });
   }
+  if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
+  // The same 503 for every email, so it says nothing about which ones have an account.
+  if (!(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
 
   const cleanEmail = email.trim().toLowerCase();
   const user = isDemoEmail(cleanEmail) ? null : (await accountsFor(req, cleanEmail, { isActive: true }))[0];
@@ -387,6 +491,8 @@ exports.resetPassword = async (req, res) => {
 
   // Checked before a try is spent, so a too-short password doesn't use up the code.
   if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters" });
+  if (Buffer.byteLength(password, "utf8") > 72)
+    return res.status(400).json({ message: "Password is too long (72 bytes max)" });
 
   const invalid = () => res.status(400).json({ message: RESET_INVALID });
   const cleanCode = code.replace(/\s/g, "");
@@ -399,8 +505,14 @@ exports.resetPassword = async (req, res) => {
     isActive: true,
     resetTokenExpiresAt: { $gt: new Date() },
   }).select("+resetTokenHash +resetTokenExpiresAt +resetAttempts +twoFactorSecret");
+  // (emailVerified, role and tenantId come with the default fields - markEmailVerified needs them.)
 
   for (const user of candidates) {
+    // Same rule as "forgot password" (canSignInHere): salon A's owner or staff can't finish a
+    // reset on salon B's site and get a login there. Checked before a try is spent, so the code
+    // still works on the account's own site.
+    if (!(await canSignInHere(req, user))) continue;
+
     // Spend one try first (atomically): no tries left = the code is dead.
     const { modifiedCount } = await User.updateOne(
       { _id: user._id, resetTokenHash: user.resetTokenHash, resetAttempts: { $lt: RESET_MAX_ATTEMPTS } },
@@ -417,6 +529,9 @@ exports.resetPassword = async (req, res) => {
     user.resetTokenExpiresAt = undefined;
     user.resetAttempts = undefined;
     await user.save(); // validates (8+ chars), hashes, sets passwordChangedAt -> old sessions end
+    // The code reached this inbox, so the email is proven too (and a waiting business goes live).
+    await markEmailVerified(user);
+    rememberDevice(req, res, user.email); // the right code + the new password: a known device (M-2)
 
     // With two-step login on, the emailed code must not be a way around the app's code:
     // the password is changed, but the user still logs in normally (password + app code).
@@ -432,4 +547,57 @@ exports.resetPassword = async (req, res) => {
   }
 
   return invalid();
+};
+
+// ---- Email verification after signing up (services/emailVerification.service.js) ----
+// 1. POST /register or /register-business      -> { verificationRequired: true }, a code is emailed
+// 2. POST /verify-email { email, code }          -> the email is confirmed and the user is logged in
+//    POST /resend-verification { email }         -> a new code (same answer whether or not it exists)
+const VERIFY_REQUIRED = "Please confirm your email first";
+const VERIFY_INVALID = "This code is wrong or has expired";
+const VERIFY_SENT = "If this email is waiting for confirmation, a new code is on its way";
+
+exports.verifyEmail = async (req, res) => {
+  const { email, code } = req.body || {};
+  if (!isText(email) || !isText(code)) return res.status(400).json({ message: "email and code are required" });
+
+  const candidates = await User.find({
+    email: email.trim().toLowerCase(),
+    scope: { $in: [await customerScope(req), null] },
+    emailVerified: false,
+    verifyExpiresAt: { $gt: new Date() },
+  }).select("+verifyCodeHash +verifyExpiresAt +verifyAttempts");
+
+  const user = await findByVerificationCode(candidates, code.replace(/\s/g, ""));
+  if (!user) return res.status(400).json({ message: VERIFY_INVALID });
+
+  await markEmailVerified(user);
+
+  if (!user.isActive) return res.status(403).json({ message: "Account is disabled" });
+  if (!(await canSignInHere(req, user))) return res.status(403).json({ message: OTHER_BUSINESS_MESSAGE });
+
+  const token = generateToken(user);
+  setAuthCookie(res, token);
+  rememberDevice(req, res, user.email);
+  res.status(200).json({
+    user: { id: user._id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId },
+    ...devToken(token),
+  });
+};
+
+exports.resendVerification = async (req, res) => {
+  const { email } = req.body || {};
+  if (!isText(email)) return res.status(400).json({ message: "email is required" });
+  if (!(await notARobot(req))) return res.status(400).json({ message: CAPTCHA_FAILED });
+
+  if (isVerificationOn()) {
+    if (!(await hasEmailBudget())) return res.status(503).json({ message: EMAIL_BUDGET_USED });
+    const waiting = await User.find({
+      email: email.trim().toLowerCase(),
+      scope: { $in: [await customerScope(req), null] },
+      emailVerified: false,
+    });
+    for (const user of waiting) await sendVerificationCode(user);
+  }
+  res.status(200).json({ message: VERIFY_SENT });
 };

@@ -82,7 +82,11 @@ describe("error emails to ALERT_EMAIL", () => {
     app.use(errorHandler);
     return app;
   }
-  const flush = () => new Promise((resolve) => setImmediate(resolve));
+  // The alert goes out in the background (after a database step: the daily email budget, H-2).
+  // Waits until an email arrived, or ~0.5 s - long enough to be sure none is coming.
+  const flush = async () => {
+    for (let i = 0; i < 25 && !sent.length; i++) await new Promise((resolve) => setTimeout(resolve, 20));
+  };
   const quietConsole = () => jest.spyOn(console, "error").mockImplementation(() => {});
 
   test("a 500 sends one email with the route pattern, never the real address (it holds a token)", async () => {

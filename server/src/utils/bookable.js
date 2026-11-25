@@ -5,4 +5,4 @@ const BOOKABLE_ROLE = { $or: [{ role: "staff" }, { role: "owner", bookable: true
 
 const bookableFilter = (tenantId, extra = {}) => ({ tenantId, isActive: true, ...BOOKABLE_ROLE, ...extra });
 
-module.exports = { bookableFilter };
+module.exports = { bookableFilter, BOOKABLE_ROLE };

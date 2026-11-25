@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { btnPrimary, errorBox, inputClass } from "@/lib/ui";
+import VerifyEmailForm from "@/components/VerifyEmailForm";
+import { CaptchaBox, useCaptcha } from "@/components/Turnstile";
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -27,6 +29,9 @@ export default function RegisterBusinessPage() {
   const [slugEdited, setSlugEdited] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Set once the business is made and the server asks for the emailed code.
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,16 +52,29 @@ export default function RegisterBusinessPage() {
     setError("");
     setSubmitting(true);
     try {
-      await registerBusiness({ ...form, phone: form.phone || undefined });
+      const user = await registerBusiness({ ...form, phone: form.phone || undefined, ...captcha.field });
+      if (!user) {
+        setVerifyEmail(form.email.trim());
+        return;
+      }
       router.replace("/dashboard");
     } catch (err) {
       setError(tError(err));
+      captcha.reset();
     } finally {
       setSubmitting(false);
     }
   };
 
   const r = t.registerBusiness;
+
+  if (verifyEmail) {
+    return (
+      <div className="mx-auto mt-12 mb-16 max-w-md rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
+        <VerifyEmailForm email={verifyEmail} onVerified={() => router.replace("/dashboard")} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto mt-12 mb-16 max-w-md rounded-xl border border-ink-100 bg-white p-8 shadow-sm">
@@ -146,9 +164,10 @@ export default function RegisterBusinessPage() {
           />
         </label>
 
+        <CaptchaBox captcha={captcha} />
         {error && <p className={errorBox}>{error}</p>}
 
-        <button type="submit" disabled={submitting || !slugValid} className={`w-full ${btnPrimary}`}>
+        <button type="submit" disabled={submitting || !slugValid || !captcha.ready} className={`w-full ${btnPrimary}`}>
           {submitting ? r.submitting : r.submit}
         </button>
         <LegalNotice text={t.legal.agreeSignup} />

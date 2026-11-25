@@ -97,6 +97,9 @@ appointmentSchema.index({ tenantId: 1, startTime: 1 });
 appointmentSchema.index({ tenantId: 1, createdAt: 1 }); // dashboard "new bookings" alerts
 appointmentSchema.index({ customerId: 1, startTime: -1 });
 appointmentSchema.index({ status: 1, startTime: 1 }); // reminder job: active bookings starting soon
+// closeStalePending (maintenance.service.js) runs each time a dashboard loads: one business's
+// "pending" bookings that ended long ago. Without this it read every booking the business ever had.
+appointmentSchema.index({ tenantId: 1, status: 1, endTime: 1 });
 appointmentSchema.index(
   { tenantId: 1, "guest.phoneKey": 1, startTime: 1 },
   { partialFilterExpression: { "guest.phoneKey": { $exists: true } } },

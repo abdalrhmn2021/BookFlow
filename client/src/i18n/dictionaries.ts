@@ -154,6 +154,17 @@ const en = {
     login: "Log in",
   },
 
+  verifyEmail: {
+    title: "Confirm your email",
+    text: "We sent a 6-digit code to your email (valid 30 minutes, check the spam folder too). Type it here to activate your account:",
+    code: "The code from the email",
+    submit: "Confirm",
+    submitting: "Confirming...",
+    noCode: "No code?",
+    resend: "Send a new one",
+    resent: "A new code is on its way.",
+  },
+
   registerBusiness: {
     cta: "Own a business? Register it here",
     title: "Register your business",
@@ -236,6 +247,11 @@ const en = {
       dayToday: "today",
       dayTomorrow: "tomorrow",
       dayOn: (date: string) => `on ${date}`,
+      upcomingDays: "Days with bookings",
+      upcomingTitle: "Next bookings",
+      upcomingHint: "Nothing on this day - here are the next ones:",
+      upcomingNone: "No bookings coming up yet.",
+      upcomingMore: (n: number) => (n === 1 ? "+1 more coming up" : `+${n} more coming up`),
       reminderMessage: (p: ReminderParts) =>
         `Hi ${p.name} 👋\nA reminder of your appointment at ${p.business} ${p.day} at ${p.time}` +
         ` (${p.service} with ${p.staff}).\nTo cancel or change it, just reply to this message. See you soon!`,
@@ -337,7 +353,6 @@ const en = {
     },
     hours: {
       subtitle: "Customers can only book inside these hours.",
-      open: "Open",
       closed: "Closed",
       from: "From",
       to: "To",
@@ -367,6 +382,7 @@ const en = {
     switchOff: "Switch off",
     switchOn: "Switch on",
     whatsapp: "WhatsApp reminders",
+    assistant: "AI booking assistant",
     plan: "Plan",
     paidUntil: "Paid until",
     note: "Note (only you see it)",
@@ -408,6 +424,7 @@ const en = {
     price: "Price",
     guestTitle: "Your details",
     guestHint: "No account needed. The business will use this number only about your booking.",
+    rememberGuest: "Remember my name and number on this device",
     guestName: "Your name",
     guestNamePlaceholder: "e.g. Ahmad Ali",
     guestPhone: "Phone number",
@@ -438,8 +455,20 @@ const en = {
     manageWhatsApp: (business: string, link: string) => `My booking at ${business} - see or cancel it here:\n${link}`,
   },
 
+  // The booking page's AI chat (components/BookingAssistant.tsx).
+  assistant: {
+    open: "Ask about booking",
+    title: (business: string) => `${business} assistant`,
+    subtitle: "AI - it can make mistakes. Book with the form on this page.",
+    greeting: (business: string) => `Hi! Ask me about ${business}'s services, prices, opening hours or free times.`,
+    suggestions: ["What services do you offer?", "Any free time tomorrow?", "What are your opening hours?"],
+    placeholder: "Type your question...",
+    send: "Send",
+    close: "Close",
+    thinking: "Typing...",
+  },
+
   manage: {
-    loading: "Loading your booking...",
     notFoundTitle: "Booking not found",
     notFoundText: "This link is wrong or doesn't work anymore. Make sure you copied all of it.",
     title: "Your booking",
@@ -478,6 +507,7 @@ const en = {
     cancel: "Cancel appointment",
     cancelReason: "Why are you cancelling?",
     cancelReasonPlaceholder: "e.g. Something came up at work",
+    reasonMinLength: (min: number, left: number) => `At least ${min} characters (${left} to go)`,
   },
 
   status: {
@@ -630,6 +660,17 @@ const ar: Dictionary = {
     login: "سجّل الدخول",
   },
 
+  verifyEmail: {
+    title: "أكّد بريدك الإلكتروني",
+    text: "أرسلنا رمزاً من 6 أرقام إلى بريدك (صالح 30 دقيقة، شيّك على مجلد الرسائل غير المرغوب فيها كمان). اكتبه هنا لتفعيل حسابك:",
+    code: "الرمز من الإيميل",
+    submit: "تأكيد",
+    submitting: "جارٍ التأكيد...",
+    noCode: "ما وصلك الرمز؟",
+    resend: "أرسل رمزاً جديداً",
+    resent: "رمز جديد في الطريق إليك.",
+  },
+
   registerBusiness: {
     cta: "صاحب عمل؟ سجّل عملك من هنا",
     title: "سجّل عملك",
@@ -712,6 +753,11 @@ const ar: Dictionary = {
       dayToday: "اليوم",
       dayTomorrow: "غداً",
       dayOn: (date) => `يوم ${date}`,
+      upcomingDays: "الأيام التي فيها حجوزات",
+      upcomingTitle: "الحجوزات القادمة",
+      upcomingHint: "لا شيء في هذا اليوم - هذه أقرب الحجوزات:",
+      upcomingNone: "لا توجد حجوزات قادمة بعد.",
+      upcomingMore: (n) => (n === 1 ? "+ حجز آخر قادم" : n === 2 ? "+ حجزان آخران قادمان" : `+ ${n} حجوزات أخرى قادمة`),
       reminderMessage: (p) =>
         `مرحباً ${p.name} 👋\nنذكّرك بموعدك في ${p.business} ${p.day} الساعة ${p.time}` +
         ` (${p.service} مع ${p.staff}).\nللإلغاء أو التعديل، ردّ على هذه الرسالة. بانتظارك!`,
@@ -813,7 +859,6 @@ const ar: Dictionary = {
     },
     hours: {
       subtitle: "يمكن للزبائن الحجز ضمن هذه الساعات فقط.",
-      open: "مفتوح",
       closed: "مغلق",
       from: "من",
       to: "إلى",
@@ -843,6 +888,7 @@ const ar: Dictionary = {
     switchOff: "إيقاف",
     switchOn: "تفعيل",
     whatsapp: "تذكير واتساب",
+    assistant: "مساعد الحجز الذكي",
     plan: "الباقة",
     paidUntil: "مدفوع حتى",
     note: "ملاحظة (تظهر لك فقط)",
@@ -883,6 +929,7 @@ const ar: Dictionary = {
     price: "السعر",
     guestTitle: "بياناتك",
     guestHint: "بدون حساب. سيستخدم المكان هذا الرقم فقط بخصوص حجزك.",
+    rememberGuest: "تذكّر اسمي ورقمي على هذا الجهاز",
     guestName: "الاسم",
     guestNamePlaceholder: "مثلاً: أحمد علي",
     guestPhone: "رقم الجوال",
@@ -912,8 +959,19 @@ const ar: Dictionary = {
     manageWhatsApp: (business, link) => `حجزي عند ${business} - لمشاهدته أو إلغائه:\n${link}`,
   },
 
+  assistant: {
+    open: "اسأل عن الحجز",
+    title: (business) => `مساعد ${business}`,
+    subtitle: "ذكاء اصطناعي - قد يخطئ أحياناً. الحجز يتم من النموذج في هذه الصفحة.",
+    greeting: (business) => `أهلاً! اسألني عن خدمات ${business} وأسعارها ومواعيد العمل والأوقات المتاحة.`,
+    suggestions: ["ما الخدمات المتوفرة؟", "هل يوجد وقت متاح غداً؟", "ما مواعيد العمل؟"],
+    placeholder: "اكتب سؤالك...",
+    send: "إرسال",
+    close: "إغلاق",
+    thinking: "يكتب...",
+  },
+
   manage: {
-    loading: "جاري تحميل حجزك...",
     notFoundTitle: "الحجز غير موجود",
     notFoundText: "الرابط غير صحيح أو لم يعد يعمل. تأكد أنك نسخته كاملاً.",
     title: "حجزك",
@@ -951,6 +1009,7 @@ const ar: Dictionary = {
     cancel: "إلغاء الموعد",
     cancelReason: "لماذا تريد الإلغاء؟",
     cancelReasonPlaceholder: "مثلاً: طرأ ظرف في العمل",
+    reasonMinLength: (min, left) => `${min} أحرف على الأقل (باقي ${left})`,
   },
 
   status: {
@@ -968,8 +1027,18 @@ const ar: Dictionary = {
   },
 
   errors: {
+    "You logged out, please log in again": "سجّلت خروجك، سجّل دخولك من جديد",
+    "Please confirm your email first": "أكّد بريدك الإلكتروني أولاً",
+    "email and code are required": "البريد الإلكتروني والرمز مطلوبان",
+    "Too many codes requested, please try again later": "طلبت رموزاً كثيرة، حاول لاحقاً",
+    "Password is too long (72 bytes max)": "كلمة المرور طويلة جداً",
     "Can't reach the server. Is the backend running?": "تعذّر الاتصال بالخادم. تأكد أن الخادم يعمل.",
     "Something went wrong": "حدث خطأ ما، حاول مرة أخرى",
+    "The assistant can't answer right now, please try again": "المساعد لا يستطيع الرد الآن، حاول مرة أخرى",
+    "Too many messages, please try again in a few minutes": "رسائل كثيرة، حاول مرة أخرى بعد بضع دقائق",
+    "The assistant has answered enough for today, please try again tomorrow":
+      "المساعد وصل لحد الرسائل اليوم، حاول مرة أخرى غداً",
+    "The assistant isn't available for this business": "المساعد غير متاح لهذا النشاط",
     "Invalid credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
     "email and password are required": "البريد الإلكتروني وكلمة المرور مطلوبان",
     "name, email and password are required": "الاسم والبريد الإلكتروني وكلمة المرور مطلوبة",
@@ -982,6 +1051,7 @@ const ar: Dictionary = {
     "You do not have permission to perform this action": "ليس لديك صلاحية للقيام بهذا الإجراء",
     "Too many login attempts, please try again in 15 minutes": "محاولات دخول كثيرة، حاول مجدداً بعد 15 دقيقة",
     "Please confirm you're not a robot": "أكّد إنك مش روبوت (المربع فوق الزر) وجرّب تاني",
+    "We can't send emails right now, please try again tomorrow": "ما بنقدر نبعث إيميلات هلّق، جرّب بكرة",
     "You can only book up to 60 days ahead": "الحجز متاح لحد 60 يوم لقدّام بس",
     "Too many online bookings here today, please sign in or contact the business":
       "في حجوزات أونلاين كتير هنا النهارده، سجّل دخول أو تواصل مع المكان مباشرة",
@@ -1035,6 +1105,7 @@ const ar: Dictionary = {
     "Please provide a valid phone number": "أدخل رقم جوال صحيح",
     "You already have too many upcoming bookings here": "لديك حجوزات قادمة كثيرة هنا بالفعل",
     "Too many bookings from this device, please try again later": "حجوزات كثيرة من هذا الجهاز، حاول لاحقاً",
+    "Too many booking attempts, please try again later": "محاولات حجز كثيرة، حاول لاحقاً",
     "Staff can only manage their own bookings": "يمكن للموظف إدارة حجوزاته فقط",
     "You don't have permission to manage bookings": "ليس لديك صلاحية إدارة الحجوزات",
     "role must be staff or receptionist": "الدور يجب أن يكون موظفاً أو سكرتيراً",

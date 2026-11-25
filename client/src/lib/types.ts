@@ -51,6 +51,7 @@ export interface PublicBusinessPage {
     slug: string;
     timezone: string;
     workingHours: WorkingDay[];
+    assistant: boolean;
   };
   services: PublicService[];
   staff: PublicStaff[];
@@ -126,6 +127,8 @@ export interface TenantInfo {
   plan: string;
   timezone: string;
   workingHours: WorkingDay[];
+  // Country code for local phone numbers (0599...) in WhatsApp links - from the server.
+  phoneCountryCode: string;
 }
 
 export interface Service {
@@ -168,6 +171,12 @@ export interface BusinessAppointment {
   rescheduled?: { from: string; at: string };
 }
 
+export interface UpcomingBookings {
+  total: number;
+  days: { date: string; count: number }[];
+  appointments: BusinessAppointment[];
+}
+
 export interface NewBooking {
   _id: string;
   serviceName: string;
@@ -199,6 +208,7 @@ export interface AdminBusiness {
   plan: string;
   isActive: boolean;
   whatsappReminders: boolean;
+  aiAssistant: boolean;
   timezone: string;
   createdAt: string;
   paidUntil: string | null;

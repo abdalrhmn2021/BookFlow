@@ -1,7 +1,7 @@
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
-const { bookableFilter } = require("../utils/bookable");
+const { bookableFilter, BOOKABLE_ROLE } = require("../utils/bookable");
 const Appointment = require("../models/Appointment");
 const { siteAllows } = require("../middlewares/site.middleware");
 const { siteUrl } = require("../utils/siteUrl");
@@ -9,6 +9,7 @@ const {
   bookAppointment,
   findFreeSlots,
   findFreeSlotsAny,
+  peopleForService,
   ANY_STAFF,
   httpError,
   ACTIVE_STATUSES,
@@ -21,6 +22,7 @@ const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { isValidDate } = require("../utils/time");
 const { passesTurnstile } = require("../utils/turnstile");
 const { isId } = require("../utils/ids");
+const { isAssistantConfigured, takeDailyMessage, askAssistant } = require("../services/assistant.service");
 
 exports.listBusinesses = async (req, res) => {
   // A one-business site lists only its own business. A shared server answering a request
@@ -52,6 +54,7 @@ exports.getBusinessBySlug = async (req, res) => {
       slug: tenant.slug,
       timezone: tenant.timezone,
       workingHours: tenant.workingHours,
+      assistant: isAssistantConfigured() && Boolean(tenant.aiAssistant),
     },
     services: services.map((s) => ({
       id: s._id,
@@ -65,6 +68,9 @@ exports.getBusinessBySlug = async (req, res) => {
   });
 };
 
+// A service or staff member found by id belongs to this business (and not to another one).
+const sameBusiness = (doc, tenant) => String(doc.tenantId) === String(tenant._id);
+
 exports.getAvailability = async (req, res) => {
   const { serviceId, staffId, date } = req.query;
 
@@ -77,14 +83,27 @@ exports.getAvailability = async (req, res) => {
     return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
 
-  const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true });
-  if (!tenant) return res.status(404).json({ message: "Business not found" });
+  // The business, the service and the staff member are looked up at the same time, not one after
+  // the other (each trip to the database is a round trip). So the service and the staff member are
+  // found by id alone, and THEN checked to belong to this business - with the same 404s as before,
+  // in the same order. Nothing of another business's service or staff is ever put in the answer.
+  const slug = req.params.slug.toLowerCase();
 
-  // "Any staff member": the free times of everyone who does this service, merged.
+  // "Any staff member": the free times of everyone who does this service, merged. Who does it is
+  // looked up as soon as the service is known (by its own business id), alongside the business.
   if (staffId === ANY_STAFF) {
-    const service = await Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true });
-    if (!service) return res.status(404).json({ message: "Service not found" });
-    const { isOpen, slots } = await findFreeSlotsAny({ tenant, service, date });
+    const serviceAndPeople = Service.findOne({ _id: serviceId, isActive: true }).then(async (service) => ({
+      service,
+      people: service ? await peopleForService({ _id: service.tenantId }, service) : [],
+    }));
+    const [tenant, { service, people }] = await Promise.all([
+      Tenant.findOne({ slug, isActive: true }),
+      serviceAndPeople,
+    ]);
+    if (!tenant) return res.status(404).json({ message: "Business not found" });
+    if (!service || !sameBusiness(service, tenant)) return res.status(404).json({ message: "Service not found" });
+
+    const { isOpen, slots } = await findFreeSlotsAny({ tenant, service, date, people });
     return res.status(200).json({
       date,
       isOpen,
@@ -94,12 +113,14 @@ exports.getAvailability = async (req, res) => {
     });
   }
 
-  const [service, staff] = await Promise.all([
-    Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
-    User.findOne(bookableFilter(tenant._id, { _id: staffId })),
+  const [tenant, service, staff] = await Promise.all([
+    Tenant.findOne({ slug, isActive: true }),
+    Service.findOne({ _id: serviceId, isActive: true }),
+    User.findOne({ _id: staffId, isActive: true, ...BOOKABLE_ROLE }),
   ]);
-  if (!service) return res.status(404).json({ message: "Service not found" });
-  if (!staff) return res.status(404).json({ message: "Staff member not found" });
+  if (!tenant) return res.status(404).json({ message: "Business not found" });
+  if (!service || !sameBusiness(service, tenant)) return res.status(404).json({ message: "Service not found" });
+  if (!staff || !sameBusiness(staff, tenant)) return res.status(404).json({ message: "Staff member not found" });
 
   const { isOpen, slots } = await findFreeSlots({ tenant, service, staff, date });
   if (!isOpen) return res.status(200).json({ date, isOpen: false, slots: [] });
@@ -111,6 +132,52 @@ exports.getAvailability = async (req, res) => {
     staff: { id: staff._id, name: staff.name },
     slots,
   });
+};
+
+const ASSISTANT_MAX_MESSAGES = 12;
+const ASSISTANT_MAX_LENGTH = 500;
+const ASSISTANT_OFF = "The assistant isn't available for this business";
+
+// POST /api/public/businesses/:slug/assistant  { messages: [{ role: "user" | "assistant", text }] }
+// The whole (short) chat is sent each time: nothing about it is stored on the server.
+exports.askBookingAssistant = async (req, res) => {
+  const { messages } = req.body || {};
+  const valid =
+    Array.isArray(messages) &&
+    messages.length >= 1 &&
+    messages.length <= ASSISTANT_MAX_MESSAGES &&
+    messages.every(
+      (m) =>
+        m &&
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.text === "string" &&
+        m.text.trim() &&
+        m.text.length <= ASSISTANT_MAX_LENGTH,
+    ) &&
+    messages[messages.length - 1].role === "user";
+  if (!valid) {
+    return res.status(400).json({
+      message: `messages must be 1-${ASSISTANT_MAX_MESSAGES} messages of up to ${ASSISTANT_MAX_LENGTH} characters, the last one from the user`,
+    });
+  }
+
+  const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true });
+  if (!tenant) return res.status(404).json({ message: "Business not found" });
+  if (!isAssistantConfigured() || !tenant.aiAssistant) return res.status(404).json({ message: ASSISTANT_OFF });
+  if (!(await takeDailyMessage(tenant))) {
+    return res.status(429).json({ message: "The assistant has answered enough for today, please try again tomorrow" });
+  }
+
+  try {
+    const reply = await askAssistant({
+      tenant,
+      messages: messages.map((m) => ({ role: m.role, text: m.text.trim() })),
+    });
+    res.status(200).json({ reply });
+  } catch (err) {
+    console.error(`[assistant] ${tenant.slug}:`, err.message);
+    res.status(502).json({ message: "The assistant can't answer right now, please try again" });
+  }
 };
 
 const MAX_GUEST_UPCOMING = 3;
@@ -150,7 +217,7 @@ exports.createGuestAppointment = async (req, res) => {
     guest: { name: cleanName, phone: cleanPhone },
     manageTokenHash,
     // Checked inside the booking transaction, under a per-phone lock (booking.service).
-    maxGuestUpcoming: MAX_GUEST_UPCOMING,
+    maxUpcoming: MAX_GUEST_UPCOMING,
     whatsappConsent: whatsappConsent === true,
     fromWebsite: true,
   });

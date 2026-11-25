@@ -10,6 +10,8 @@ const {
   forgotPassword,
   resetPassword,
   deleteMyAccount,
+  verifyEmail,
+  resendVerification,
 } = require("../controllers/auth.controller");
 const { protect, restrictTo } = require("../middlewares/auth.middleware");
 const {
@@ -20,12 +22,19 @@ const {
   forgotPasswordLimiter,
   forgotEmailLimiter,
   resetPasswordLimiter,
+  verifyEmailLimiter,
+  resendVerificationLimiter,
+  resendVerificationEmailLimiter,
 } = require("../middlewares/rateLimit.middleware");
 
 router.post("/register", registerLimiter, register);
 router.post("/login", loginLimiter, loginEmailLimiter, login);
 router.post("/register-business", registerLimiter, registerBusiness);
 router.post("/logout", logout);
+
+// Email verification after signing up (the code from the email logs the new account in).
+router.post("/verify-email", verifyEmailLimiter, verifyEmail);
+router.post("/resend-verification", resendVerificationLimiter, resendVerificationEmailLimiter, resendVerification);
 
 router.post("/forgot-password", forgotPasswordLimiter, forgotEmailLimiter, forgotPassword);
 router.post("/reset-password", resetPasswordLimiter, resetPassword);

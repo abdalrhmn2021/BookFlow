@@ -4,6 +4,13 @@ const { workingDaySchema } = require("./Tenant");
 const { isValidDate } = require("../utils/time");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 
+// bcrypt cost (security review): 12 by default, ~4x slower to guess than 10. Never below 10.
+// Older hashes (cost 10) keep working. Tests set BCRYPT_ROUNDS=10 to stay fast.
+const bcryptRounds = () => {
+  const n = Number(process.env.BCRYPT_ROUNDS);
+  return Number.isInteger(n) && n >= 10 && n <= 15 ? n : 12;
+};
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -24,6 +31,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [8, "Password must be at least 8 characters"],
+      // bcrypt only uses the first 72 bytes: a longer password would silently match any other
+      // password with the same start. Checked only when it's set or changed (not on the stored hash).
+      validate: {
+        validator(v) {
+          if (typeof this?.isModified === "function" && !this.isModified("password")) return true;
+          return typeof v !== "string" || Buffer.byteLength(v, "utf8") <= 72;
+        },
+        message: "Password is too long (72 bytes max)",
+      },
       select: false,
     },
     // Same cleaning and format as guests' phones ("0599 123-456" -> "0599123456"). Checked only
@@ -91,6 +107,13 @@ const userSchema = new mongoose.Schema(
         { validator: (dates) => !dates || dates.length <= 120, message: "Too many days off (120 max)" },
       ],
     },
+    // Email verification (services/emailVerification.service.js). false = signed up, code not
+    // typed yet: can't log in. Not set (older accounts, staff, scripts) or true = verified.
+    // Only an HMAC of the code is stored, with an expiry and a count of wrong tries.
+    emailVerified: { type: Boolean },
+    verifyCodeHash: { type: String, select: false },
+    verifyExpiresAt: { type: Date, select: false },
+    verifyAttempts: { type: Number, select: false },
     // Login tokens issued before this moment stop working (see auth.middleware).
     passwordChangedAt: { type: Date },
     // "Forgot password": a 6-digit code sent by email. Only its HMAC is stored (never the code),
@@ -116,7 +139,7 @@ userSchema.index({ email: 1, scope: 1 }, { unique: true });
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(bcryptRounds());
   this.password = await bcrypt.hash(this.password, salt);
   // A new password signs out every other device. Not on sign-up (nothing to sign out).
   if (!this.isNew) this.passwordChangedAt = new Date();
@@ -138,5 +161,7 @@ User.dropLegacyEmailIndex = async () => {
   }
   await User.createIndexes();
 };
+
+User.bcryptRounds = bcryptRounds;
 
 module.exports = User;
