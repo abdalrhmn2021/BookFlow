@@ -29,10 +29,13 @@ export default function OverviewTab({
   timezone,
   onOpenDay,
   refreshKey = 0,
+  takeEarlyStats,
 }: {
   timezone: string;
   onOpenDay: (date: string) => void;
   refreshKey?: number;
+  // The numbers the dashboard page already asked for when it opened (once; null after that).
+  takeEarlyStats?: () => Promise<BusinessStats> | null;
 }) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
@@ -43,8 +46,9 @@ export default function OverviewTab({
 
   useEffect(() => {
     let ignore = false;
-    api
-      .get<BusinessStats>("/appointments/business/stats")
+    // Only the first load can use the early request; a refresh (new booking) always asks again.
+    const early = refreshKey === 0 ? takeEarlyStats?.() : null;
+    (early ?? api.get<BusinessStats>("/appointments/business/stats"))
       .then((data) => {
         if (!ignore) setStats(data);
       })
@@ -54,7 +58,7 @@ export default function OverviewTab({
     return () => {
       ignore = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, takeEarlyStats]);
 
   if (error) return <p className={errorBox}>{tError(error)}</p>;
   if (!stats) return <p className="text-sm text-ink-500">{o.loading}</p>;

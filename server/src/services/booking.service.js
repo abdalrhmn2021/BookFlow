@@ -55,14 +55,27 @@ async function withStaffLock(staffId, work) {
   return result;
 }
 
-const hasConflict = (staffId, startTime, endTime, session, excludeId) =>
-  Appointment.exists({
-    staffId,
+// A booking lasts at most 8 hours (Service.duration max 480 minutes); 24 hours leaves a wide margin.
+const LONGEST_BOOKING_MS = 24 * 60 * 60 * 1000;
+
+// This staff member's active bookings that overlap [from, to). Used by the free times and by the
+// conflict check inside the booking transaction, so both always agree.
+// tenantId (a staff member works for one business) and the lower bound on startTime don't change
+// the result: they let MongoDB use the {tenantId, staffId, startTime} index and read only the
+// bookings around that time - not every active booking of every business ever made.
+function staffBusyFilter(staff, from, to, excludeId) {
+  return {
+    tenantId: staff.tenantId,
+    staffId: staff._id,
     status: { $in: ACTIVE_STATUSES },
-    startTime: { $lt: endTime },
-    endTime: { $gt: startTime },
+    startTime: { $lt: to, $gt: new Date(from.getTime() - LONGEST_BOOKING_MS) },
+    endTime: { $gt: from },
     ...(excludeId && { _id: { $ne: excludeId } }),
-  }).session(session);
+  };
+}
+
+const hasConflict = (staff, startTime, endTime, session, excludeId) =>
+  Appointment.exists(staffBusyFilter(staff, startTime, endTime, excludeId)).session(session);
 
 // How far ahead customers and guests may book (the business itself has no limit).
 // Without it, fake bookings could block slots months ahead where nobody looks.
@@ -200,7 +213,7 @@ async function insertWithLock(staff, startTime, endTime, fields, limits = []) {
       const used = await Appointment.countDocuments(limit.filter()).session(session);
       if (used >= limit.max) throw httpError(429, limit.message);
     }
-    if (await hasConflict(staff._id, startTime, endTime, session)) return null;
+    if (await hasConflict(staff, startTime, endTime, session)) return null;
     const [created] = await Appointment.create([{ ...fields, staffId: staff._id, startTime, endTime }], { session });
     return created;
   });
@@ -333,7 +346,7 @@ async function rescheduleAppointment({ appointment, tenant, staffId, date, time,
   }
 
   const updated = await withStaffLock(staff._id, async (session) => {
-    if (await hasConflict(staff._id, startTime, endTime, session, appointment._id)) return "taken";
+    if (await hasConflict(staff, startTime, endTime, session, appointment._id)) return "taken";
     // Only if nobody changed it meanwhile (still active, still at the old time).
     return Appointment.findOneAndUpdate(
       { _id: appointment._id, status: { $in: ACTIVE_STATUSES }, startTime: appointment.startTime },
@@ -368,13 +381,9 @@ async function findFreeSlots({ tenant, service, staff, date, excludeId }) {
   const dayOpen = localToDate(date, day.open, tenant.timezone);
   const dayClose = localToDate(date, day.close, tenant.timezone);
 
-  const booked = await Appointment.find({
-    staffId: staff._id,
-    status: { $in: ACTIVE_STATUSES },
-    startTime: { $lt: dayClose },
-    endTime: { $gt: dayOpen },
-    ...(excludeId && { _id: { $ne: excludeId } }),
-  }).select("startTime endTime");
+  const booked = await Appointment.find(staffBusyFilter(staff, dayOpen, dayClose, excludeId)).select(
+    "startTime endTime",
+  );
 
   const busy = booked.map((a) => ({
     start: openMin + (a.startTime - dayOpen) / 60000,
@@ -393,8 +402,9 @@ async function findFreeSlots({ tenant, service, staff, date, excludeId }) {
 }
 
 // "Any staff member": every time at which at least one person who does the service is free.
-async function findFreeSlotsAny({ tenant, service, date }) {
-  const people = await peopleForService(tenant, service);
+// people: peopleForService(tenant, service) when the caller already has it (public availability).
+async function findFreeSlotsAny({ tenant, service, date, people: known }) {
+  const people = known ?? (await peopleForService(tenant, service));
   const results = await Promise.all(people.map((staff) => findFreeSlots({ tenant, service, staff, date })));
   return {
     isOpen: results.some((r) => r.isOpen),
@@ -407,6 +417,8 @@ module.exports = {
   rescheduleAppointment,
   findFreeSlots,
   findFreeSlotsAny,
+  peopleForService,
+  staffBusyFilter,
   ANY_STAFF,
   customerMaxUpcoming,
   httpError,

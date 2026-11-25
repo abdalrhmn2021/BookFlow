@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import RequireAuth from "@/components/RequireAuth";
 import DashboardShell, { type Tab } from "@/components/dashboard/DashboardShell";
@@ -15,23 +15,62 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
 import { errorBox } from "@/lib/ui";
-import type { TenantInfo } from "@/lib/types";
+import type { BusinessStats, TenantInfo } from "@/lib/types";
 
 const OWNER_TABS: Tab[] = ["overview", "schedule", "services", "staff", "hours"];
 const STAFF_TABS: Tab[] = ["overview", "schedule"];
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+type TenantRequest = Promise<{ tenant: TenantInfo }>;
+type StatsRequest = Promise<BusinessStats>;
+
+// Tabs other than the Overview. Any other ?tab= value (or none) opens the Overview.
+const NOT_OVERVIEW = new Set<string>(["schedule", "services", "staff", "hours"]);
+
+// Started as soon as the page opens, at the same time as the login check (AuthContext's /auth/me),
+// instead of one after the other: the business, and the Overview's numbers when the Overview is the
+// tab being opened. Not logged in = 401s nobody waits for (RequireAuth sends the visitor to /login).
+// The server checks the login on these requests like on any other. Browser only: the server-side
+// render has no login cookie to send.
+function startRequests(): { tenant: TenantRequest; stats: StatsRequest | null } | null {
+  if (typeof window === "undefined") return null;
+  // .catch here only stops an "unhandled rejection" after a redirect; the components handle errors.
+  const tenant = api.get<{ tenant: TenantInfo }>("/tenants/me");
+  tenant.catch(() => {});
+  const tab = new URLSearchParams(window.location.search).get("tab");
+  const stats = tab && NOT_OVERVIEW.has(tab) ? null : api.get<BusinessStats>("/appointments/business/stats");
+  stats?.catch(() => {});
+  return { tenant, stats };
+}
+
 export default function DashboardPage() {
+  const [early] = useState(startRequests);
+
+  // The early Overview numbers are used once, by the first Overview shown. Coming back to the tab
+  // later, or a new booking (refreshKey), asks the server again - never shows these old numbers.
+  const earlyStats = useRef(early?.stats ?? null);
+  const takeEarlyStats = useCallback(() => {
+    const request = earlyStats.current;
+    earlyStats.current = null;
+    return request;
+  }, []);
+
   return (
     <RequireAuth roles={["owner", "staff"]}>
       <Suspense fallback={<Loading />}>
-        <Dashboard />
+        {early ? <Dashboard tenantRequest={early.tenant} takeEarlyStats={takeEarlyStats} /> : <Loading />}
       </Suspense>
     </RequireAuth>
   );
 }
 
-function Dashboard() {
+function Dashboard({
+  tenantRequest,
+  takeEarlyStats,
+}: {
+  tenantRequest: TenantRequest;
+  takeEarlyStats: () => StatsRequest | null;
+}) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
   const router = useRouter();
@@ -45,8 +84,7 @@ function Dashboard() {
 
   useEffect(() => {
     let ignore = false;
-    api
-      .get<{ tenant: TenantInfo }>("/tenants/me")
+    tenantRequest
       .then((data) => {
         if (!ignore) setTenant(data.tenant);
       })
@@ -56,7 +94,7 @@ function Dashboard() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [tenantRequest]);
 
   if (error) {
     return (
@@ -89,7 +127,12 @@ function Dashboard() {
       <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{t.dashboard.tabs[tab]}</h1>
       <div className="mt-6">
         {tab === "overview" && (
-          <OverviewTab timezone={tenant.timezone} onOpenDay={(d) => go("schedule", d)} refreshKey={refreshKey} />
+          <OverviewTab
+            timezone={tenant.timezone}
+            onOpenDay={(d) => go("schedule", d)}
+            refreshKey={refreshKey}
+            takeEarlyStats={takeEarlyStats}
+          />
         )}
         {tab === "schedule" && (
           <ScheduleTab

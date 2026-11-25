@@ -6,7 +6,9 @@ exports.requireTenant = async (req, res, next) => {
     return res.status(403).json({ message: "This action requires a business account" });
   }
 
-  const tenant = await Tenant.findOne({ _id: req.user.tenantId }).select("slug isActive").lean();
+  // timezone too: the dashboard's read routes need it, and reading it here saves them a second
+  // trip to the database for the same business.
+  const tenant = await Tenant.findOne({ _id: req.user.tenantId }).select("slug isActive timezone").lean();
   if (!tenant || !tenant.isActive) {
     return res.status(403).json({ message: "This business account is disabled" });
   }
@@ -17,5 +19,6 @@ exports.requireTenant = async (req, res, next) => {
   }
 
   req.tenantId = req.user.tenantId;
+  req.tenantTimezone = tenant.timezone;
   next();
 };

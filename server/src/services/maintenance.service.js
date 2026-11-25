@@ -42,6 +42,30 @@ async function closeStalePending({ tenantId, now = new Date() } = {}) {
   return result.modifiedCount;
 }
 
+// The dashboard's own run of closeStalePending (stats, the day list and upcoming call it before
+// reading). Each call is a write to the database, and opening the dashboard makes several within
+// seconds - almost always with nothing to close. So one business runs it at most once per
+// DASHBOARD_CLOSE_EVERY_MS in this server process. A booking only becomes stale 24h after it ended,
+// so a few minutes later changes nothing. Requests at the same moment wait for the same run (they
+// must not read before it finished); a failed run is forgotten, so the next request tries again.
+// The hourly job (startMaintenanceJob) still covers every business.
+const DASHBOARD_CLOSE_EVERY_MS = 5 * 60 * 1000;
+const dashboardCloses = new Map(); // tenantId -> { at, run }
+
+function closeStalePendingForDashboard(tenantId, now = Date.now()) {
+  const key = String(tenantId);
+  const last = dashboardCloses.get(key);
+  if (last && now - last.at < DASHBOARD_CLOSE_EVERY_MS) return last.run;
+
+  if (dashboardCloses.size > 10_000) dashboardCloses.clear(); // never grows without end
+  const run = closeStalePending({ tenantId, now: new Date(now) });
+  dashboardCloses.set(key, { at: now, run });
+  run.catch(() => {
+    if (dashboardCloses.get(key)?.run === run) dashboardCloses.delete(key);
+  });
+  return run;
+}
+
 // Removes guests' personal details (name, phone, notes, the manage link, a cancel reason they
 // wrote) from bookings that ended more than the retention period ago. Registered customers keep
 // theirs until they delete their account. Returns how many bookings were cleaned.
@@ -90,6 +114,8 @@ function startMaintenanceJob() {
 
 module.exports = {
   closeStalePending,
+  closeStalePendingForDashboard,
+  DASHBOARD_CLOSE_EVERY_MS,
   removeOldGuestData,
   startMaintenanceJob,
   REMOVED_NAME,
