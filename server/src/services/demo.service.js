@@ -12,23 +12,25 @@ const { localToDate, nextDate, dayNameOf } = require("../utils/time");
 // The maintenance job resets it every DEMO_RESET_HOURS. Off unless it's set (review Q-01): only the
 // demo platform's server sets it (24), so a client's copy never runs it, even by mistake.
 
+// The demo is shown to Arabic-speaking visitors first (the site's default language), so its
+// names are in Arabic. The emails stay Latin: the login page's demo buttons use them.
 const SLUG = "demo-salon";
 const PASSWORD = "password123";
 
-const OWNER = { name: "Omar (Owner)", email: "owner@demo.com", phone: "0590000001" };
+const OWNER = { name: "عمر (صاحب الصالون)", email: "owner@demo.com", phone: "0590000001" };
 const STAFF = [
-  { name: "Sara", email: "sara@demo.com", phone: "0590000002" },
-  { name: "Ahmad", email: "ahmad@demo.com", phone: "0590000003" },
+  { name: "سارة", email: "sara@demo.com", phone: "0590000002" },
+  { name: "أحمد", email: "ahmad@demo.com", phone: "0590000003" },
 ];
-const CUSTOMER = { name: "Lina (Customer)", email: "customer@demo.com", phone: "0590000004" };
+const CUSTOMER = { name: "لينا (زبونة)", email: "customer@demo.com", phone: "0590000004" };
 const OTHER_CUSTOMERS = [
-  { name: "Khaled", email: "khaled@demo.com", phone: "0590000005" },
-  { name: "Maya", email: "maya@demo.com", phone: "0590000006" },
+  { name: "خالد", email: "khaled@demo.com", phone: "0590000005" },
+  { name: "مايا", email: "maya@demo.com", phone: "0590000006" },
 ];
 const SERVICES = [
-  { name: "Haircut", description: "Wash, cut and style", price: 50, duration: 30 },
-  { name: "Beard trim", description: "Shape and trim", price: 25, duration: 15 },
-  { name: "Hair coloring", description: "Full color with a professional product", price: 150, duration: 90 },
+  { name: "قص شعر", description: "غسيل وقص وتسريح", price: 50, duration: 30 },
+  { name: "تهذيب لحية", description: "تحديد وتهذيب", price: 25, duration: 15 },
+  { name: "صبغة شعر", description: "صبغة كاملة بمنتج احترافي", price: 150, duration: 90 },
 ];
 
 const DEMO_EMAILS = [OWNER, ...STAFF, CUSTOMER, ...OTHER_CUSTOMERS].map((u) => u.email);
@@ -91,7 +93,7 @@ async function seed({ log = console.log } = {}) {
     return;
   }
 
-  const tenant = await Tenant.create({ name: "Demo Salon", slug: SLUG });
+  const tenant = await Tenant.create({ name: "صالون تجريبي", slug: SLUG });
 
   await User.create({ ...OWNER, password: PASSWORD, role: "owner", tenantId: tenant._id });
   for (const s of STAFF) {
@@ -130,7 +132,7 @@ async function seed({ log = console.log } = {}) {
       appointments.push({
         tenantId: tenant._id,
         ...(i === 3
-          ? { guest: { name: "Khaled Mansour", phone: "0599000111" } }
+          ? { guest: { name: "خالد منصور", phone: "0599000111" } }
           : { customerId: customers[customerI]._id }),
         staffId: staff[staffI]._id,
         serviceId: service._id,
@@ -140,7 +142,7 @@ async function seed({ log = console.log } = {}) {
         startTime,
         endTime,
         status,
-        notes: i === 1 ? "First time coloring - please call me before" : undefined,
+        notes: i === 1 ? "أول مرة أصبغ، اتصلوا فيّ قبل الموعد" : undefined,
       });
     });
   });

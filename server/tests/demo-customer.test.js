@@ -35,7 +35,7 @@ describe("demo customer (Lina)", () => {
     await seed({ log: () => {} });
     const lina = await User.findOne({ email: "customer@demo.com" });
     const sara = await User.findOne({ email: "sara@demo.com" });
-    const haircut = await Service.findOne({ name: "Haircut" });
+    const haircut = await Service.findOne({ name: "قص شعر" });
 
     const res = await request(h.app)
       .post("/api/appointments")
