@@ -6,12 +6,13 @@ import RequireAuth from "@/components/RequireAuth";
 import { homeFor, useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { btnPrimary, errorBox, inputClass } from "@/lib/ui";
+import { BUSINESS_ROLES } from "@/lib/types";
 
 const MIN_LENGTH = 8;
 
 export default function ChangePasswordPage() {
   return (
-    <RequireAuth roles={["customer", "owner", "staff"]}>
+    <RequireAuth roles={["customer", ...BUSINESS_ROLES]}>
       <ChangePasswordForm />
     </RequireAuth>
   );

@@ -74,6 +74,7 @@ const en = {
     superadmin: "admin",
     owner: "owner",
     staff: "staff",
+    receptionist: "receptionist",
     customer: "customer",
   } satisfies Record<Role, string>,
 
@@ -206,6 +207,12 @@ const en = {
       enable: "Allow notifications",
       later: "Not now",
     },
+    desk: {
+      ownerWatching:
+        "Your receptionist handles the bookings. You can follow everything here; confirming, new bookings and changes are done from the receptionist's account.",
+      staffView:
+        "These are your own appointments. Once one starts, mark it completed or no-show. Confirming and changing bookings is done by the receptionist (or the owner).",
+    },
     tabs: {
       overview: "Overview",
       schedule: "Schedule",
@@ -314,7 +321,11 @@ const en = {
       takeBookings: "I take bookings too",
       stopBookings: "Stop taking bookings",
       ownerOff: "Not bookable - switch it on if you serve customers yourself.",
-      hint: "Each staff member logs in with this email and password to see their own schedule.",
+      hint: "Each person logs in with this email and password. Staff see their own schedule; a receptionist handles everyone's bookings.",
+      role: "Role",
+      roleStaff: "Staff - customers book them",
+      roleReceptionist: "Receptionist - handles the bookings",
+      receptionistInfo: "Confirms, enters and moves everyone's bookings. Nobody books them.",
       name: "Name",
       email: "Email",
       phone: "Phone",
@@ -569,6 +580,7 @@ const ar: Dictionary = {
     superadmin: "مدير النظام",
     owner: "صاحب العمل",
     staff: "موظف",
+    receptionist: "سكرتير",
     customer: "زبون",
   },
 
@@ -701,6 +713,12 @@ const ar: Dictionary = {
       enable: "اسمح بالإشعارات",
       later: "ليس الآن",
     },
+    desk: {
+      ownerWatching:
+        "السكرتير هو من يدير الحجوزات. يمكنك متابعة كل شيء من هنا، أما التأكيد والحجز الجديد والتعديل فتتم من حساب السكرتير.",
+      staffView:
+        "هذه مواعيدك أنت. بعد بدء الموعد علّمه «مكتمل» أو «لم يحضر». تأكيد الحجوزات وتعديلها من صلاحية السكرتير (أو صاحب العمل).",
+    },
     tabs: {
       overview: "نظرة عامة",
       schedule: "المواعيد",
@@ -809,7 +827,11 @@ const ar: Dictionary = {
       takeBookings: "أستقبل حجوزات أيضاً",
       stopBookings: "إيقاف استقبال الحجوزات",
       ownerOff: "لا يمكن الحجز عندك - فعّلها إذا كنت تخدم الزبائن بنفسك.",
-      hint: "كل موظف يسجّل الدخول بهذا البريد وكلمة المرور ليرى مواعيده.",
+      hint: "كل شخص يسجّل الدخول بهذا البريد وكلمة المرور. الموظف يرى مواعيده، والسكرتير يدير حجوزات الجميع.",
+      role: "الدور",
+      roleStaff: "موظف - يحجز الزبائن عنده",
+      roleReceptionist: "سكرتير - يدير الحجوزات",
+      receptionistInfo: "يؤكد ويضيف ويعدّل حجوزات الجميع. لا يُحجز عنده.",
       name: "الاسم",
       email: "البريد الإلكتروني",
       phone: "رقم الهاتف",
@@ -1085,6 +1107,10 @@ const ar: Dictionary = {
     "Too many bookings from this device, please try again later": "حجوزات كثيرة من هذا الجهاز، حاول لاحقاً",
     "Too many booking attempts, please try again later": "محاولات حجز كثيرة، حاول لاحقاً",
     "Staff can only manage their own bookings": "يمكن للموظف إدارة حجوزاته فقط",
+    "You don't have permission to manage bookings": "ليس لديك صلاحية إدارة الحجوزات",
+    "role must be staff or receptionist": "الدور يجب أن يكون موظفاً أو سكرتيراً",
+    "A receptionist has no booking schedule": "السكرتير ليس له دوام حجوزات",
+    "The demo can't have a receptionist": "لا يمكن إضافة سكرتير في النسخة التجريبية",
     "Can't reschedule an appointment that already started": "لا يمكن تغيير موعد بدأ بالفعل",
     "Can't reschedule an appointment that is cancelled": "هذا الموعد ملغى، لا يمكن تغييره",
     "Can't reschedule an appointment that is completed": "هذا الموعد مكتمل، لا يمكن تغييره",

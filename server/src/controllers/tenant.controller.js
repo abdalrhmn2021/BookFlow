@@ -1,4 +1,5 @@
 const Tenant = require("../models/Tenant");
+const { canManageBookings, hasReceptionist } = require("../utils/bookingDesk");
 const { countryCodeFor } = require("../utils/phone");
 
 const toTenantDTO = (t) => ({
@@ -15,7 +16,13 @@ const toTenantDTO = (t) => ({
 exports.getMyTenant = async (req, res) => {
   const tenant = await Tenant.findById(req.tenantId);
   if (!tenant) return res.status(404).json({ message: "Business not found" });
-  res.status(200).json({ tenant: toTenantDTO(tenant) });
+  // Next to the business (not inside it): they depend on WHO is asking, and decide which
+  // booking buttons the dashboard shows (utils/bookingDesk.js). The API checks again anyway.
+  const [manageBookings, receptionist] = await Promise.all([
+    canManageBookings(req.user, req.tenantId),
+    hasReceptionist(req.tenantId),
+  ]);
+  res.status(200).json({ tenant: toTenantDTO(tenant), access: { manageBookings, hasReceptionist: receptionist } });
 };
 
 exports.updateWorkingHours = async (req, res) => {

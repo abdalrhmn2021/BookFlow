@@ -10,6 +10,7 @@ const RevokedToken = require("../models/RevokedToken");
 const { isDevOrTest } = require("../config/env");
 const { verifyCode } = require("../utils/totp");
 const { createBusinessWithOwner } = require("../services/business.service");
+const { BUSINESS_ROLES } = require("../utils/bookingDesk");
 const { isEmailConfigured, hasEmailBudget, sendPasswordResetEmail } = require("../services/notify.service");
 const { passesTurnstile } = require("../utils/turnstile");
 const { rememberDevice } = require("../utils/deviceCookie");
@@ -197,7 +198,7 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "Account is disabled" });
     }
 
-    if (user.role === "owner" || user.role === "staff") {
+    if (BUSINESS_ROLES.includes(user.role)) {
       const tenant = await Tenant.findById(user.tenantId);
       if (!tenant || !tenant.isActive) {
         return res.status(403).json({ message: "This business account is disabled" });
@@ -437,7 +438,7 @@ const RESET_INVALID = "This code is wrong or has expired";
 // who is registered. The email goes out in the background (no timing difference either).
 // Customers can sign in on every site; owners and staff only on their own business's site.
 async function canSignInHere(req, user) {
-  if (!req.siteLocked || (user.role !== "owner" && user.role !== "staff")) return true;
+  if (!req.siteLocked || !BUSINESS_ROLES.includes(user.role)) return true;
   const tenant = await Tenant.findById(user.tenantId).select("slug").lean();
   return Boolean(tenant) && siteAllows(req, tenant.slug);
 }

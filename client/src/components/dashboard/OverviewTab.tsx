@@ -82,7 +82,7 @@ export default function OverviewTab({
               next={next}
               timezone={timezone}
               today={stats.date}
-              showStaff={user?.role === "owner"}
+              showStaff={user?.role !== "staff"}
               onOpen={() =>
                 onOpenDay(new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(next.startTime)))
               }

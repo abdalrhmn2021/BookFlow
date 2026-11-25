@@ -1,8 +1,10 @@
 const User = require("../models/User");
 const Service = require("../models/Service");
 const { isDemoEmail } = require("../config/demo");
+const { TEAM_ROLES } = require("../utils/bookingDesk");
 
-// A business can have at most this many staff accounts (active or not). MAX_STAFF in .env.
+// A business can have at most this many team accounts - staff and receptionists, active or not.
+// MAX_STAFF in .env.
 const maxStaff = () => {
   const n = Number(process.env.MAX_STAFF);
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 50;
@@ -32,7 +34,8 @@ const toStaffDTO = (u) => ({
   daysOff: [...(u.daysOff ?? [])].sort(),
 });
 
-const staffFilter = (req, extra = {}) => ({ tenantId: req.tenantId, role: "staff", ...extra });
+// The team the owner manages here: staff (who take bookings) and receptionists (who handle them).
+const staffFilter = (req, extra = {}) => ({ tenantId: req.tenantId, role: { $in: TEAM_ROLES }, ...extra });
 
 // A staff member, or the logged-in owner themself (for "I take bookings too" and their own hours).
 const isSelf = (req) => String(req.params.id) === String(req.user.id);
@@ -45,6 +48,11 @@ exports.createStaff = async (req, res) => {
   if (!data.name || !data.email || !data.password) {
     return res.status(400).json({ message: "name, email and password are required" });
   }
+  // "staff" (default): customers book them. "receptionist": handles everyone's bookings.
+  const role = req.body.role ?? "staff";
+  if (!TEAM_ROLES.includes(role)) {
+    return res.status(400).json({ message: "role must be staff or receptionist" });
+  }
 
   // The demo owner's password is public: a visitor must not tie a real person's email to the
   // demo business. Demo staff use @demo.com addresses only (they're deleted at the next reset).
@@ -52,14 +60,18 @@ exports.createStaff = async (req, res) => {
   if (isDemoEmail(owner?.email) && !isDemoEmail(String(data.email))) {
     return res.status(403).json({ message: "In the demo, staff emails must end with @demo.com" });
   }
+  // A receptionist would take the bookings away from the demo owner for every other visitor.
+  if (isDemoEmail(owner?.email) && role === "receptionist") {
+    return res.status(403).json({ message: "The demo can't have a receptionist" });
+  }
 
-  if ((await User.countDocuments({ tenantId: req.tenantId, role: "staff" })) >= maxStaff()) {
+  if ((await User.countDocuments(staffFilter(req))) >= maxStaff()) {
     return res.status(400).json({ message: "You have reached the maximum number of staff members" });
   }
 
   let staff;
   try {
-    staff = await User.create({ ...data, role: "staff", tenantId: req.tenantId });
+    staff = await User.create({ ...data, role, tenantId: req.tenantId });
   } catch (err) {
     // Not "email already exists": that would say this person has an account somewhere on the server.
     if (err.code === 11000) return res.status(409).json({ message: EMAIL_TAKEN });
@@ -108,6 +120,10 @@ exports.updateStaffSchedule = async (req, res) => {
   const { workingHours, services, daysOff } = req.body || {};
   const staff = await User.findOne(memberFilter(req));
   if (!staff) return res.status(404).json({ message: "Staff member not found" });
+  // Nobody books a receptionist, so there are no hours / services / days off to set.
+  if (staff.role === "receptionist") {
+    return res.status(400).json({ message: "A receptionist has no booking schedule" });
+  }
 
   if (workingHours !== undefined) {
     if (workingHours === null || (Array.isArray(workingHours) && workingHours.length === 0)) {

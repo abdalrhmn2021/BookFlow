@@ -198,8 +198,9 @@ async function notifyNewBooking({ tenant, appointment, staff, site }) {
   });
   if (lastDay > newBookingEmailsPerDay()) return { sent: 0, skipped: "daily email limit" };
 
+  // The owner (to keep an eye on things) and the receptionist (who confirms it).
   const [owners, customer] = await Promise.all([
-    User.find({ tenantId: tenant._id, role: "owner", isActive: true }).select("name email"),
+    User.find({ tenantId: tenant._id, role: { $in: ["owner", "receptionist"] }, isActive: true }).select("name email"),
     appointment.customerId ? User.findById(appointment.customerId).select("name phone") : null,
   ]);
 

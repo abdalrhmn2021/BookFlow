@@ -15,13 +15,18 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { api } from "@/lib/api";
 import { errorBox } from "@/lib/ui";
-import type { BusinessStats, TenantInfo } from "@/lib/types";
+import { BUSINESS_ROLES, type BusinessStats, type DashboardAccess, type Role, type TenantInfo } from "@/lib/types";
 
-const OWNER_TABS: Tab[] = ["overview", "schedule", "services", "staff", "hours"];
-const STAFF_TABS: Tab[] = ["overview", "schedule"];
+const TABS: Record<Role, Tab[]> = {
+  owner: ["overview", "schedule", "services", "staff", "hours"],
+  receptionist: ["overview", "schedule"],
+  staff: ["overview", "schedule"],
+  customer: [],
+  superadmin: [],
+};
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-type TenantRequest = Promise<{ tenant: TenantInfo }>;
+type TenantRequest = Promise<{ tenant: TenantInfo; access: DashboardAccess }>;
 type StatsRequest = Promise<BusinessStats>;
 
 // Tabs other than the Overview. Any other ?tab= value (or none) opens the Overview.
@@ -35,7 +40,7 @@ const NOT_OVERVIEW = new Set<string>(["schedule", "services", "staff", "hours"])
 function startRequests(): { tenant: TenantRequest; stats: StatsRequest | null } | null {
   if (typeof window === "undefined") return null;
   // .catch here only stops an "unhandled rejection" after a redirect; the components handle errors.
-  const tenant = api.get<{ tenant: TenantInfo }>("/tenants/me");
+  const tenant = api.get<{ tenant: TenantInfo; access: DashboardAccess }>("/tenants/me");
   tenant.catch(() => {});
   const tab = new URLSearchParams(window.location.search).get("tab");
   const stats = tab && NOT_OVERVIEW.has(tab) ? null : api.get<BusinessStats>("/appointments/business/stats");
@@ -56,7 +61,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <RequireAuth roles={["owner", "staff"]}>
+    <RequireAuth roles={BUSINESS_ROLES}>
       <Suspense fallback={<Loading />}>
         {early ? <Dashboard tenantRequest={early.tenant} takeEarlyStats={takeEarlyStats} /> : <Loading />}
       </Suspense>
@@ -78,6 +83,8 @@ function Dashboard({
   const params = useSearchParams();
 
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
+  // Who handles the bookings decides which buttons show (see server utils/bookingDesk.js).
+  const [access, setAccess] = useState<DashboardAccess | null>(null);
   const [error, setError] = useState<unknown>(null);
   // Bumped by NewBookingAlerts: the open tab re-fetches so the new booking shows up.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -86,7 +93,9 @@ function Dashboard({
     let ignore = false;
     tenantRequest
       .then((data) => {
-        if (!ignore) setTenant(data.tenant);
+        if (ignore) return;
+        setTenant(data.tenant);
+        setAccess(data.access);
       })
       .catch((err) => {
         if (!ignore) setError(err);
@@ -103,9 +112,9 @@ function Dashboard({
       </div>
     );
   }
-  if (!tenant || !user) return <Loading />;
+  if (!tenant || !access || !user) return <Loading />;
 
-  const tabs = user.role === "owner" ? OWNER_TABS : STAFF_TABS;
+  const tabs = TABS[user.role];
   const requested = params.get("tab") as Tab | null;
   const tab: Tab = requested && tabs.includes(requested) ? requested : tabs[0];
   const dateParam = params.get("date");
@@ -125,6 +134,11 @@ function Dashboard({
         onNew={() => setRefreshKey((n) => n + 1)}
       />
       <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{t.dashboard.tabs[tab]}</h1>
+      {!access.manageBookings && (tab === "overview" || tab === "schedule") && (
+        <p className="mt-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-ink-700">
+          {user.role === "staff" ? t.dashboard.desk.staffView : t.dashboard.desk.ownerWatching}
+        </p>
+      )}
       <div className="mt-6">
         {tab === "overview" && (
           <OverviewTab
@@ -142,6 +156,7 @@ function Dashboard({
             countryCode={tenant.phoneCountryCode}
             initialDate={date}
             refreshKey={refreshKey}
+            canManage={access.manageBookings}
           />
         )}
         {tab === "services" && <ServicesTab />}
