@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 const h = require("./helpers");
 const RevokedToken = require("../src/models/RevokedToken");
 const Tenant = require("../src/models/Tenant");
+const Appointment = require("../src/models/Appointment");
+const { closeStalePending } = require("../src/services/maintenance.service");
 
 beforeAll(h.connect);
 afterEach(h.clear);
@@ -94,5 +96,60 @@ describe("dashboard routes read the time zone from requireTenant", () => {
         .set(bearer(h.tokenFor(biz.owner)))
         .expect(403);
     }
+  });
+});
+
+describe("closeStalePending has an index of its own", () => {
+  const STALE_INDEX = "tenantId_1_status_1_endTime_1";
+
+  function booking(biz, startTime, status) {
+    return {
+      tenantId: biz.tenant._id,
+      guest: { name: "Guest", phone: "0590000000" },
+      staffId: biz.staff[0]._id,
+      serviceId: biz.service._id,
+      serviceName: "Haircut",
+      price: 20,
+      duration: 30,
+      startTime,
+      endTime: new Date(startTime.getTime() + 30 * 60 * 1000),
+      status,
+    };
+  }
+
+  test("its query uses the {tenantId, status, endTime} index", async () => {
+    await Appointment.createIndexes();
+    const biz = await h.makeBusiness("roundtrips-index");
+    // A business with history, so the planner has a real choice between this index and
+    // {tenantId, startTime} (which would read every one of these).
+    const day = 24 * HOUR;
+    await Appointment.insertMany(
+      Array.from({ length: 40 }, (_, i) => booking(biz, new Date(Date.now() - (i + 2) * day), "completed")),
+    );
+    const plan = await Appointment.find({
+      tenantId: biz.tenant._id,
+      status: "pending",
+      endTime: { $lte: new Date(Date.now() - 24 * HOUR) },
+    }).explain("queryPlanner");
+    expect(JSON.stringify(plan)).toContain(STALE_INDEX);
+  });
+
+  test("it still closes only old pending bookings of that business", async () => {
+    const [biz, other] = [await h.makeBusiness("roundtrips-stale"), await h.makeBusiness("roundtrips-other")];
+    const old = new Date(Date.now() - 3 * 24 * HOUR);
+    const [stale, confirmed, recent, otherStale] = await Appointment.insertMany([
+      booking(biz, old, "pending"),
+      booking(biz, old, "confirmed"),
+      booking(biz, new Date(Date.now() - 2 * HOUR), "pending"),
+      booking(other, old, "pending"),
+    ]);
+
+    expect(await closeStalePending({ tenantId: biz.tenant._id })).toBe(1);
+
+    const status = async (a) => (await Appointment.findById(a._id)).status;
+    expect(await status(stale)).toBe("cancelled");
+    expect(await status(confirmed)).toBe("confirmed");
+    expect(await status(recent)).toBe("pending");
+    expect(await status(otherStale)).toBe("pending"); // another business: not touched
   });
 });
