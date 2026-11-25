@@ -8,8 +8,7 @@ import Loading from "@/components/Loading";
 import StatusBadge from "@/components/StatusBadge";
 import { formatDuration, formatMomentIn, formatPrice } from "@/lib/format";
 import type { GuestBooking } from "@/lib/types";
-
-const MIN_REASON_LENGTH = 10;
+import ReasonHint, { MIN_REASON_LENGTH } from "@/components/ReasonHint";
 
 export default function ManageBookingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -155,12 +154,13 @@ export default function ManageBookingPage({ params }: { params: Promise<{ token:
                     placeholder={t.myAppointments.cancelReasonPlaceholder}
                     className="mt-1 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 outline-none focus:border-red-400"
                   />
+                  <ReasonHint reason={reason} />
                 </label>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={handleCancel}
                     disabled={cancelling || reason.trim().length < MIN_REASON_LENGTH}
-                    className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                    className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {cancelling ? t.myAppointments.cancelling : t.myAppointments.yesCancel}
                   </button>

@@ -13,6 +13,7 @@ import { formatDuration, formatMomentIn, formatPrice } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import { IconCalendar, IconClock, IconNote } from "@/components/icons";
 import type { MyAppointment } from "@/lib/types";
+import ReasonHint, { MIN_REASON_LENGTH } from "@/components/ReasonHint";
 
 export default function MyAppointmentsPage() {
   return (
@@ -21,8 +22,6 @@ export default function MyAppointmentsPage() {
     </RequireAuth>
   );
 }
-
-const MIN_REASON_LENGTH = 10;
 
 function isUpcoming(a: MyAppointment): boolean {
   return (a.status === "pending" || a.status === "confirmed") && new Date(a.startTime) > new Date();
@@ -134,12 +133,13 @@ function Content() {
                           placeholder={t.myAppointments.cancelReasonPlaceholder}
                           className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-1.5 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
                         />
+                        <ReasonHint reason={reason} />
                       </label>
                       <div className="flex flex-wrap items-center gap-3">
                         <button
                           onClick={() => handleCancel(a._id)}
                           disabled={cancellingId === a._id || reason.trim().length < MIN_REASON_LENGTH}
-                          className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                          className="rounded-lg bg-red-600 px-3 py-1.5 font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {cancellingId === a._id ? t.myAppointments.cancelling : t.myAppointments.yesCancel}
                         </button>

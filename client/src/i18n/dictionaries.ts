@@ -496,6 +496,7 @@ const en = {
     cancel: "Cancel appointment",
     cancelReason: "Why are you cancelling?",
     cancelReasonPlaceholder: "e.g. Something came up at work",
+    reasonMinLength: (min: number, left: number) => `At least ${min} characters (${left} to go)`,
   },
 
   status: {
@@ -986,6 +987,7 @@ const ar: Dictionary = {
     cancel: "إلغاء الموعد",
     cancelReason: "لماذا تريد الإلغاء؟",
     cancelReasonPlaceholder: "مثلاً: طرأ ظرف في العمل",
+    reasonMinLength: (min, left) => `${min} أحرف على الأقل (باقي ${left})`,
   },
 
   status: {
