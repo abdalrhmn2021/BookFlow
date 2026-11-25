@@ -45,12 +45,18 @@ exports.protect = async (req, res, next) => {
   // From here on the token itself is valid: an error now is a server problem, not a bad login.
   // next(err) and nothing else, so a failed check can never fall through to the route.
   try {
+    // Both lookups at once: each trip to the database is a round trip (~180ms when Render and
+    // Atlas are far apart), and they don't depend on each other. Every check below still runs,
+    // in the same order, before the route is reached.
+    const [revoked, user] = await Promise.all([
+      decoded.jti ? RevokedToken.exists({ jti: decoded.jti }) : null,
+      User.findById(decoded.id),
+    ]);
+
     // Logged out: this token was revoked (auth.controller logout), even if it hasn't expired yet.
-    if (decoded.jti && (await RevokedToken.exists({ jti: decoded.jti }))) {
+    if (revoked) {
       return res.status(401).json({ message: "You logged out, please log in again" });
     }
-
-    const user = await User.findById(decoded.id);
 
     if (!user) {
       return res.status(401).json({ message: "User no longer exists" });
