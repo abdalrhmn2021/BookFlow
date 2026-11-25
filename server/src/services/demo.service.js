@@ -62,6 +62,23 @@ async function reset({ log = () => {} } = {}) {
   log("Old demo data deleted.");
 }
 
+// Lina is the account behind the login page's "Customer" button: every visitor who tries booking
+// as a customer books as her. A customer may have at most CUSTOMER_MAX_UPCOMING (5) active upcoming
+// bookings at one business, and the day plan gave her 6-8 - so every visitor's booking was refused.
+// She keeps her past bookings (her history) and her first LINA_UPCOMING upcoming ones; the rest go
+// to another demo customer, so the calendar itself stays exactly the same.
+const LINA_UPCOMING = 2;
+const ACTIVE = ["pending", "confirmed"];
+
+function keepRoomForVisitors(appointments, linaId, otherId, now) {
+  let kept = 0;
+  for (const a of [...appointments].sort((x, y) => x.startTime - y.startTime)) {
+    if (!a.customerId?.equals(linaId) || a.startTime <= now || !ACTIVE.includes(a.status)) continue;
+    if (kept < LINA_UPCOMING) kept += 1;
+    else a.customerId = otherId;
+  }
+}
+
 async function seed({ log = console.log } = {}) {
   if (await Tenant.exists({ slug: SLUG })) {
     log(`"${SLUG}" already exists - nothing to do. Use "npm run seed -- --reset" to recreate it.`);
@@ -127,6 +144,7 @@ async function seed({ log = console.log } = {}) {
       });
     });
   });
+  keepRoomForVisitors(appointments, customers[0]._id, customers[1]._id, now);
   await Appointment.insertMany(appointments);
   await CustomerTenant.insertMany(customers.map((c) => ({ userId: c._id, tenantId: tenant._id })));
 

@@ -11,14 +11,13 @@ import { IconChevron, IconNote, IconPhone, IconWhatsApp } from "@/components/ico
 import { btnPrimary, btnSecondary, emptyBox, errorBox } from "@/lib/ui";
 import { toWhatsAppNumber, whatsAppLink } from "@/lib/whatsapp";
 import type { AppointmentStatus, BusinessAppointment, UpcomingBookings } from "@/lib/types";
+import ReasonHint, { MIN_REASON_LENGTH } from "@/components/ReasonHint";
 
 const phoneOf = (a: BusinessAppointment) => a.guest?.phone ?? a.customerId?.phone;
 const nameOf = (a: BusinessAppointment) => a.guest?.name ?? a.customerId?.name;
 
 const canRemind = (a: BusinessAppointment) =>
   (a.status === "pending" || a.status === "confirmed") && new Date(a.startTime) > new Date();
-
-const MIN_REASON_LENGTH = 10;
 
 // Mirrors the API's allowed transitions; only decides which buttons to show.
 function nextStatuses(a: BusinessAppointment): AppointmentStatus[] {
@@ -139,6 +138,15 @@ export default function ScheduleTab({
 
   const today = todayIn(timezone);
   const list = current?.list ?? [];
+  // Under "All", cancelled and no-show bookings are listed but not counted as the day's bookings
+  // (same as the day strip and the Overview): "5 appointments · Cancelled 1".
+  const closed = (["cancelled", "no-show"] as const)
+    .map((status) => [status, list.filter((a) => a.status === status).length] as const)
+    .filter(([, n]) => filter === "all" && n > 0);
+  const listSummary = [
+    s.count(list.length - closed.reduce((sum, [, n]) => sum + n, 0)),
+    ...closed.map(([status, n]) => `${t.status[status]} ${n}`),
+  ].join(" · ");
   const localDateOf = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(iso));
   const countOn = new Map((upcoming?.days ?? []).map((d) => [d.date, d.count]));
   const strip = Array.from({ length: STRIP_DAYS }, (_, i) => addDays(today, i));
@@ -321,7 +329,7 @@ export default function ScheduleTab({
           </>
         ) : (
           <>
-            <p className="mb-4 text-sm text-ink-500">{s.count(list.length)}</p>
+            <p className="mb-4 text-sm text-ink-500">{listSummary}</p>
             <ol className="relative">
               {list.map((a, i) => {
                 const start = formatMomentIn(a.startTime, timezone, t.locale).time;
@@ -405,12 +413,13 @@ export default function ScheduleTab({
                                   placeholder={s.cancelReasonPlaceholder}
                                   className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100"
                                 />
+                                <ReasonHint reason={cancelReason} />
                               </label>
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   onClick={() => changeStatus(a._id, "cancelled")}
                                   disabled={busy || cancelReason.trim().length < MIN_REASON_LENGTH}
-                                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                  className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   {s.yesCancel}
                                 </button>

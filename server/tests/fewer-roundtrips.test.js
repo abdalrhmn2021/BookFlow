@@ -412,3 +412,52 @@ describe("free times and the conflict check read only the bookings around that t
     expect((await book(second, biz, biz.staff[1], date, "16:00")).status).toBe(201);
   });
 });
+
+describe("the day strip counts like the Overview", () => {
+  function at(biz, startTime, status) {
+    return Appointment.create({
+      tenantId: biz.tenant._id,
+      guest: { name: "Guest", phone: "0590000000" },
+      staffId: biz.staff[0]._id,
+      serviceId: biz.service._id,
+      serviceName: "Haircut",
+      price: 20,
+      duration: 30,
+      startTime,
+      endTime: new Date(startTime.getTime() + 30 * 60 * 1000),
+      status,
+    });
+  }
+
+  test("a booking that started today counts; cancelled and no-show don't; total stays 'from now on'", async () => {
+    const biz = await h.makeBusiness("roundtrips-strip");
+    const tz = biz.tenant.timezone;
+    const localDay = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+    const owner = bearer(h.tokenFor(biz.owner));
+
+    // Tomorrow at noon (local), so every booking below is on the same local day whatever the time now.
+    const tomorrow = localDay(new Date(Date.now() + 24 * HOUR));
+    const { localToDate } = require("../src/utils/time");
+    const noon = localToDate(tomorrow, "12:00", tz);
+    await at(biz, noon, "confirmed");
+    await at(biz, new Date(noon.getTime() + HOUR), "pending");
+    await at(biz, new Date(noon.getTime() + 2 * HOUR), "cancelled");
+
+    // Today: one that already started (completed), one that started 10 minutes ago (still confirmed).
+    const started = await at(biz, new Date(Date.now() - 10 * 60 * 1000), "confirmed");
+
+    const res = await request(h.app).get("/api/appointments/business/upcoming").set(owner).expect(200);
+    const count = (date) => res.body.days.find((d) => d.date === date)?.count ?? 0;
+
+    expect(count(tomorrow)).toBe(2); // the cancelled one isn't counted
+    if (localDay(started.startTime) === localDay(new Date())) {
+      expect(count(localDay(started.startTime))).toBe(1); // started today: still counted
+    }
+    expect(res.body.total).toBe(2); // "N more" is still only bookings from now on
+    expect(res.body.appointments.map((a) => a._id)).not.toContain(String(started._id));
+
+    // The Overview's week counts the same days the same way.
+    const stats = await request(h.app).get("/api/appointments/business/stats").set(owner).expect(200);
+    for (const d of stats.body.week) expect(count(d.date)).toBe(d.count);
+  });
+});

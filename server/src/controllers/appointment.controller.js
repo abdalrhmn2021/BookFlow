@@ -320,6 +320,8 @@ exports.getBusinessStats = async (req, res) => {
 };
 
 const UPCOMING_DAYS = 60;
+// What the Overview and the day strip count as a booking of the day: all but cancelled and no-show.
+const COUNTED_STATUSES = ["pending", "confirmed", "completed"];
 const UPCOMING_LIST_LIMIT = 10;
 
 // The schedule shows one day at a time. This tells it which days ahead have bookings and lists
@@ -327,32 +329,39 @@ const UPCOMING_LIST_LIMIT = 10;
 exports.getUpcomingBusinessAppointments = async (req, res) => {
   await closeStalePendingForDashboard(req.tenantId);
   const now = new Date();
-  const filter = {
-    ...businessFilter(req.user, req.tenantId),
-    status: { $in: ACTIVE_STATUSES },
-    startTime: { $gt: now, $lt: new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000) },
-  };
+  const until = new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000);
+  const base = businessFilter(req.user, req.tenantId);
 
-  const [appointments, all] = await Promise.all([
-    Appointment.find(filter)
+  // The day strip counts the way the Overview does: from the start of today (the business's time
+  // zone), every booking but cancelled and no-show - so a booking that already started today still
+  // counts, and the strip, the Overview and the day list agree. The list of next bookings (and
+  // `total`, "N more") stays what it was: active bookings from now on.
+  const tz = req.tenantTimezone; // read by requireTenant
+  const todayStart = localToDate(new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(now), "00:00", tz);
+
+  const [appointments, inRange] = await Promise.all([
+    Appointment.find({ ...base, status: { $in: ACTIVE_STATUSES }, startTime: { $gt: now, $lt: until } })
       .sort({ startTime: 1 })
       .limit(UPCOMING_LIST_LIMIT)
       .select("serviceName startTime endTime status guest customerId staffId")
       .populate("customerId", "name phone")
       .populate("staffId", "name"),
-    Appointment.find(filter).select("startTime").lean(),
+    Appointment.find({ ...base, status: { $in: COUNTED_STATUSES }, startTime: { $gte: todayStart, $lt: until } })
+      .select("startTime status")
+      .lean(),
   ]);
 
   // Counted per day in the business's time zone, not the server's.
-  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: req.tenantTimezone }); // read by requireTenant
+  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
   const counts = new Map();
-  for (const a of all) {
+  for (const a of inRange) {
     const date = localDay.format(a.startTime);
     counts.set(date, (counts.get(date) || 0) + 1);
   }
   const days = [...counts].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+  const total = inRange.filter((a) => ACTIVE_STATUSES.includes(a.status) && a.startTime > now).length;
 
-  res.status(200).json({ total: all.length, days, appointments });
+  res.status(200).json({ total, days, appointments });
 };
 
 const NEW_BOOKINGS_LOOKBACK_MS = 24 * 60 * 60 * 1000;

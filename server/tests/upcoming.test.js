@@ -30,12 +30,12 @@ const booking = (biz, hoursAhead, { status = "confirmed", staff = biz.staff[0], 
 const localDay = (biz, date) => new Intl.DateTimeFormat("en-CA", { timeZone: biz.tenant.timezone }).format(date);
 
 describe("Upcoming bookings (dashboard)", () => {
-  test("lists the next active bookings and counts them per day, past and closed ones left out", async () => {
+  test("lists the next active bookings; counts per day like the Overview (from today's start, closed ones left out)", async () => {
     const biz = await h.makeBusiness("upcoming-a");
     const later = await booking(biz, 5 * 24, { status: "pending", name: "Later" });
     const soon = await booking(biz, 3, { name: "Soon" });
     const sameDay = await booking(biz, 5 * 24 + 1, { name: "Same day" });
-    await booking(biz, -2); // already happened
+    const started = await booking(biz, -2); // already happened: not in the list, counted if it was today
     await booking(biz, 30, { status: "cancelled" });
     await booking(biz, 70 * 24); // further than the window
 
@@ -46,11 +46,16 @@ describe("Upcoming bookings (dashboard)", () => {
     expect(res.body.appointments[0].staffId.name).toBe("Staff 1");
     // Expected counts per local day ("Later" and "Same day" are an hour apart, usually one day).
     const expected = new Map();
-    for (const a of [soon, later, sameDay]) {
+    const today = localDay(biz, new Date());
+    const counted =
+      localDay(biz, started.startTime) === today ? [started, soon, later, sameDay] : [soon, later, sameDay];
+    for (const a of counted) {
       const day = localDay(biz, a.startTime);
       expected.set(day, (expected.get(day) || 0) + 1);
     }
-    expect(res.body.days).toEqual([...expected].map(([date, count]) => ({ date, count })));
+    expect(res.body.days).toEqual(
+      [...expected].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date)),
+    );
   });
 
   test("staff see only their own, and other businesses never show", async () => {
