@@ -227,16 +227,16 @@ exports.getBusinessAppointments = async (req, res) => {
     });
   }
 
-  const tenant = await Tenant.findById(req.tenantId).select("timezone");
-  const date = req.query.date || new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(new Date());
+  const timezone = req.tenantTimezone; // read by requireTenant
+  const date = req.query.date || new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
 
   if (!isValidDate(date)) {
     return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
 
   // Day boundaries in the business's timezone, not the server's.
-  const dayStart = localToDate(date, "00:00", tenant.timezone);
-  const dayEnd = localToDate(nextDate(date), "00:00", tenant.timezone);
+  const dayStart = localToDate(date, "00:00", timezone);
+  const dayEnd = localToDate(nextDate(date), "00:00", timezone);
 
   const filter = {
     ...businessFilter(req.user, req.tenantId),
@@ -257,8 +257,7 @@ const OVERVIEW_DAYS = 7;
 // Everything the dashboard Overview needs, in one request.
 exports.getBusinessStats = async (req, res) => {
   await closeStalePending({ tenantId: req.tenantId });
-  const tenant = await Tenant.findById(req.tenantId).select("timezone");
-  const tz = tenant.timezone;
+  const tz = req.tenantTimezone; // read by requireTenant
   const now = new Date();
   const base = businessFilter(req.user, req.tenantId);
 
@@ -316,7 +315,6 @@ const UPCOMING_LIST_LIMIT = 10;
 // the next few, so a booking made for next week isn't hidden behind today's empty day.
 exports.getUpcomingBusinessAppointments = async (req, res) => {
   await closeStalePending({ tenantId: req.tenantId });
-  const tenant = await Tenant.findById(req.tenantId).select("timezone");
   const now = new Date();
   const filter = {
     ...businessFilter(req.user, req.tenantId),
@@ -335,7 +333,7 @@ exports.getUpcomingBusinessAppointments = async (req, res) => {
   ]);
 
   // Counted per day in the business's time zone, not the server's.
-  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone });
+  const localDay = new Intl.DateTimeFormat("en-CA", { timeZone: req.tenantTimezone }); // read by requireTenant
   const counts = new Map();
   for (const a of all) {
     const date = localDay.format(a.startTime);

@@ -4,6 +4,7 @@ const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const h = require("./helpers");
 const RevokedToken = require("../src/models/RevokedToken");
+const Tenant = require("../src/models/Tenant");
 
 beforeAll(h.connect);
 afterEach(h.clear);
@@ -63,5 +64,35 @@ describe("GET /auth/me reuses the user protect loaded", () => {
       .expect(200);
     expect(me.body.user).toMatchObject({ role: "customer", business: null });
     expect(me.body.user.password).toBeUndefined();
+  });
+});
+
+describe("dashboard routes read the time zone from requireTenant", () => {
+  test("stats and the day list use the business's own time zone", async () => {
+    const biz = await h.makeBusiness("roundtrips-tz");
+    // UTC+14: a wrong zone would give another date for most of the day.
+    await Tenant.updateOne({ _id: biz.tenant._id }, { timezone: "Pacific/Kiritimati" });
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Kiritimati" }).format(new Date());
+    const owner = bearer(h.tokenFor(biz.owner));
+
+    const stats = await request(h.app).get("/api/appointments/business/stats").set(owner).expect(200);
+    expect(stats.body.date).toBe(today);
+    expect(stats.body.week[0].date).toBe(today);
+
+    const day = await request(h.app).get("/api/appointments/business").set(owner).expect(200);
+    expect(day.body.date).toBe(today);
+
+    await request(h.app).get("/api/appointments/business/upcoming").set(owner).expect(200);
+  });
+
+  test("a disabled business is still refused on all three", async () => {
+    const biz = await h.makeBusiness("roundtrips-off");
+    await Tenant.updateOne({ _id: biz.tenant._id }, { isActive: false });
+    for (const path of ["/business", "/business/stats", "/business/upcoming"]) {
+      await request(h.app)
+        .get(`/api/appointments${path}`)
+        .set(bearer(h.tokenFor(biz.owner)))
+        .expect(403);
+    }
   });
 });
