@@ -21,17 +21,31 @@ const OWNER_TABS: Tab[] = ["overview", "schedule", "services", "staff", "hours"]
 const STAFF_TABS: Tab[] = ["overview", "schedule"];
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+type TenantRequest = Promise<{ tenant: TenantInfo }>;
+
 export default function DashboardPage() {
+  // The business is asked for as soon as the page opens, at the same time as the login check
+  // (AuthContext's /auth/me), instead of after it: one round trip less before the dashboard shows.
+  // Not logged in = a 401 nobody waits for (RequireAuth sends the visitor to /login). The server
+  // checks the login on this request like on any other.
+  // Started once, in the browser only (the server-side render has no login cookie to send).
+  const [tenantRequest] = useState<TenantRequest | null>(() => {
+    if (typeof window === "undefined") return null;
+    const request = api.get<{ tenant: TenantInfo }>("/tenants/me");
+    request.catch(() => {}); // handled by Dashboard; this only stops an "unhandled rejection" after a redirect
+    return request;
+  });
+
   return (
     <RequireAuth roles={["owner", "staff"]}>
       <Suspense fallback={<Loading />}>
-        <Dashboard />
+        {tenantRequest ? <Dashboard tenantRequest={tenantRequest} /> : <Loading />}
       </Suspense>
     </RequireAuth>
   );
 }
 
-function Dashboard() {
+function Dashboard({ tenantRequest }: { tenantRequest: TenantRequest }) {
   const { user } = useAuth();
   const { t, tError } = useLanguage();
   const router = useRouter();
@@ -45,8 +59,7 @@ function Dashboard() {
 
   useEffect(() => {
     let ignore = false;
-    api
-      .get<{ tenant: TenantInfo }>("/tenants/me")
+    tenantRequest
       .then((data) => {
         if (!ignore) setTenant(data.tenant);
       })
@@ -56,7 +69,7 @@ function Dashboard() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [tenantRequest]);
 
   if (error) {
     return (
