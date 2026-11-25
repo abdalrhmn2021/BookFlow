@@ -18,6 +18,20 @@ function readToken(req) {
   return authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : readAuthCookie(req);
 }
 
+// GET /auth/session: a visitor with no login at all gets { user: null } (200) instead of a 401, so
+// every page load of a logged-out visitor doesn't log an error in the browser console. As soon as
+// there is any token - even a bad or expired one - protect decides, exactly as for /auth/me.
+exports.skipIfNoToken = (req, res, next) => {
+  let token;
+  try {
+    token = readToken(req);
+  } catch {
+    return next(); // a malformed cookie: protect answers it (401)
+  }
+  if (!token) return res.status(200).json({ user: null });
+  next();
+};
+
 exports.protect = async (req, res, next) => {
   let token;
   let decoded;

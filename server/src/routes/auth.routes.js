@@ -13,7 +13,7 @@ const {
   verifyEmail,
   resendVerification,
 } = require("../controllers/auth.controller");
-const { protect, restrictTo } = require("../middlewares/auth.middleware");
+const { protect, restrictTo, skipIfNoToken } = require("../middlewares/auth.middleware");
 const {
   loginLimiter,
   loginEmailLimiter,
@@ -42,6 +42,9 @@ router.post("/reset-password", resetPasswordLimiter, resetPassword);
 router.patch("/password", protect, loginLimiter, accountPasswordLimiter, changePassword);
 
 router.get("/me", protect, getMe);
+// Who is logged in, for the site's own page loads: { user: null } instead of a 401 when there is
+// no login at all (see skipIfNoToken). With a token it is /me exactly.
+router.get("/session", skipIfNoToken, protect, getMe);
 // Customers only (owners / staff are refused before the limiter, so they don't use up the
 // attempts); then the same limiter as login, because it checks a password.
 router.delete("/me", protect, restrictTo("customer"), loginLimiter, accountPasswordLimiter, deleteMyAccount);
