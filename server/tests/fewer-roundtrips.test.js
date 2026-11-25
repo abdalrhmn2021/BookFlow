@@ -6,7 +6,11 @@ const h = require("./helpers");
 const RevokedToken = require("../src/models/RevokedToken");
 const Tenant = require("../src/models/Tenant");
 const Appointment = require("../src/models/Appointment");
-const { closeStalePending } = require("../src/services/maintenance.service");
+const {
+  closeStalePending,
+  closeStalePendingForDashboard,
+  DASHBOARD_CLOSE_EVERY_MS,
+} = require("../src/services/maintenance.service");
 
 beforeAll(h.connect);
 afterEach(h.clear);
@@ -225,5 +229,71 @@ describe("GET /appointments/me: every upcoming booking, the latest 50 past ones"
       .set(bearer(h.tokenFor(me)))
       .expect(200);
     expect(res.body.count).toBe(0);
+  });
+});
+
+describe("the dashboard closes stale pending bookings at most once per 5 minutes per business", () => {
+  function pending(biz, startTime) {
+    return Appointment.create({
+      tenantId: biz.tenant._id,
+      guest: { name: "Guest", phone: "0590000000" },
+      staffId: biz.staff[0]._id,
+      serviceId: biz.service._id,
+      serviceName: "Haircut",
+      price: 20,
+      duration: 30,
+      startTime,
+      endTime: new Date(startTime.getTime() + 30 * 60 * 1000),
+      status: "pending",
+    });
+  }
+  const threeDaysAgo = () => new Date(Date.now() - 3 * 24 * HOUR);
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test("three dashboard requests close it, with one write to the database", async () => {
+    const biz = await h.makeBusiness("roundtrips-once");
+    const stale = await pending(biz, threeDaysAgo());
+    const writes = jest.spyOn(Appointment, "updateMany");
+    const owner = bearer(h.tokenFor(biz.owner));
+    const date = new Intl.DateTimeFormat("en-CA", { timeZone: biz.tenant.timezone }).format(stale.startTime);
+
+    // The schedule tab asks for the day and upcoming at the same moment: both must see it closed.
+    const [day] = await Promise.all([
+      request(h.app).get(`/api/appointments/business?date=${date}`).set(owner),
+      request(h.app).get("/api/appointments/business/upcoming").set(owner),
+    ]);
+    await request(h.app).get("/api/appointments/business/stats").set(owner).expect(200);
+
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(day.body.appointments.find((a) => a._id === String(stale._id)).status).toBe("cancelled");
+  });
+
+  test("after 5 minutes it runs again; another business is not held back", async () => {
+    const [a, b] = [await h.makeBusiness("roundtrips-later-a"), await h.makeBusiness("roundtrips-later-b")];
+    const start = Date.now();
+    await closeStalePendingForDashboard(a.tenant._id, start);
+
+    const late = await pending(a, threeDaysAgo());
+    expect(await closeStalePendingForDashboard(a.tenant._id, start + 60 * 1000)).toBe(0); // within 5 min
+    expect((await Appointment.findById(late._id)).status).toBe("pending");
+
+    expect(await closeStalePendingForDashboard(a.tenant._id, start + DASHBOARD_CLOSE_EVERY_MS + 1)).toBe(1);
+    expect((await Appointment.findById(late._id)).status).toBe("cancelled");
+
+    const other = await pending(b, threeDaysAgo());
+    expect(await closeStalePendingForDashboard(b.tenant._id, start + 60 * 1000)).toBe(1);
+    expect((await Appointment.findById(other._id)).status).toBe("cancelled");
+  });
+
+  test("a failed run is forgotten, so the next request tries again", async () => {
+    const biz = await h.makeBusiness("roundtrips-retry");
+    const start = Date.now();
+    jest.spyOn(Appointment, "updateMany").mockRejectedValueOnce(new Error("db down"));
+    await expect(closeStalePendingForDashboard(biz.tenant._id, start)).rejects.toThrow("db down");
+
+    const stale = await pending(biz, threeDaysAgo());
+    expect(await closeStalePendingForDashboard(biz.tenant._id, start + 1000)).toBe(1);
+    expect((await Appointment.findById(stale._id)).status).toBe("cancelled");
   });
 });

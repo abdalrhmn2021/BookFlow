@@ -20,7 +20,7 @@ const { notifyNewBooking } = require("../services/notify.service");
 const { createManageToken } = require("../utils/manageToken");
 const { normalizePhone, PHONE_REGEX } = require("../utils/phone");
 const { siteAllows } = require("../middlewares/site.middleware");
-const { closeStalePending } = require("../services/maintenance.service");
+const { closeStalePendingForDashboard } = require("../services/maintenance.service");
 const { siteUrl } = require("../utils/siteUrl");
 
 const WHEN_VALUES = ["upcoming", "past"];
@@ -228,7 +228,8 @@ const ALLOWED_TRANSITIONS = {
 };
 
 exports.getBusinessAppointments = async (req, res) => {
-  await closeStalePending({ tenantId: req.tenantId }); // also works when the hourly timer can't (sleeping server)
+  // also works when the hourly timer can't (sleeping server); at most once per 5 minutes per business
+  await closeStalePendingForDashboard(req.tenantId);
   const { status } = req.query;
 
   if (status && !Appointment.STATUSES.includes(status)) {
@@ -266,7 +267,7 @@ const OVERVIEW_DAYS = 7;
 
 // Everything the dashboard Overview needs, in one request.
 exports.getBusinessStats = async (req, res) => {
-  await closeStalePending({ tenantId: req.tenantId });
+  await closeStalePendingForDashboard(req.tenantId);
   const tz = req.tenantTimezone; // read by requireTenant
   const now = new Date();
   const base = businessFilter(req.user, req.tenantId);
@@ -324,7 +325,7 @@ const UPCOMING_LIST_LIMIT = 10;
 // The schedule shows one day at a time. This tells it which days ahead have bookings and lists
 // the next few, so a booking made for next week isn't hidden behind today's empty day.
 exports.getUpcomingBusinessAppointments = async (req, res) => {
-  await closeStalePending({ tenantId: req.tenantId });
+  await closeStalePendingForDashboard(req.tenantId);
   const now = new Date();
   const filter = {
     ...businessFilter(req.user, req.tenantId),
