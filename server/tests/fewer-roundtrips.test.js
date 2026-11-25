@@ -353,3 +353,62 @@ describe("public availability: business, service and staff looked up together, c
     }
   });
 });
+
+describe("free times and the conflict check read only the bookings around that time", () => {
+  const { staffBusyFilter } = require("../src/services/booking.service");
+  const book = (customer, biz, staff, date, time, serviceId = biz.service._id) =>
+    request(h.app)
+      .post("/api/appointments")
+      .set(bearer(h.tokenFor(customer)))
+      .send({ slug: biz.tenant.slug, serviceId, staffId: staff._id, date, time });
+
+  test("the query uses the {tenantId, staffId, startTime} index", async () => {
+    await Appointment.createIndexes();
+    const biz = await h.makeBusiness("roundtrips-busy-index", { staffCount: 2 });
+    const from = new Date();
+    // Bookings the other indexes would have to read but this one skips: the other staff member's
+    // bookings in the same hours, and this staff member's old ones (still "confirmed").
+    const at = (staff, startTime) => ({
+      tenantId: biz.tenant._id,
+      guest: { name: "Guest", phone: "0590000000" },
+      staffId: staff._id,
+      serviceId: biz.service._id,
+      serviceName: "Haircut",
+      price: 20,
+      duration: 30,
+      startTime,
+      endTime: new Date(startTime.getTime() + 30 * 60 * 1000),
+      status: "confirmed",
+    });
+    await Appointment.insertMany([
+      ...Array.from({ length: 30 }, (_, i) => at(biz.staff[1], new Date(from.getTime() + (i % 8) * HOUR))),
+      ...Array.from({ length: 30 }, (_, i) => at(biz.staff[0], new Date(from.getTime() - (i + 3) * 24 * HOUR))),
+    ]);
+    const plan = await Appointment.find(
+      staffBusyFilter(biz.staff[0], from, new Date(from.getTime() + 8 * HOUR)),
+    ).explain("queryPlanner");
+    expect(JSON.stringify(plan.queryPlanner.winningPlan)).toContain("tenantId_1_staffId_1_startTime_1");
+  });
+
+  test("an 8-hour booking still blocks every time it covers; another staff member stays free", async () => {
+    const biz = await h.makeBusiness("roundtrips-long", { staffCount: 2 });
+    const long = await Service.create({ tenantId: biz.tenant._id, name: "All day", price: 100, duration: 480 });
+    const customer = await h.makeCustomer("longbooker");
+    const date = h.nextOpenDate();
+    expect((await book(customer, biz, biz.staff[0], date, "09:00", long._id)).status).toBe(201);
+
+    const free = (staff) =>
+      request(h.app)
+        .get("/api/public/businesses/roundtrips-long/availability")
+        .query({ serviceId: String(biz.service._id), staffId: String(staff._id), date });
+    const busy = (await free(biz.staff[0]).expect(200)).body.slots;
+    expect(busy).not.toContain("09:00");
+    expect(busy).not.toContain("16:30"); // 09:00 + 8h = 17:00
+    expect((await free(biz.staff[1]).expect(200)).body.slots).toContain("16:30");
+
+    // The conflict check inside the booking transaction agrees.
+    const second = await h.makeCustomer("second");
+    expect((await book(second, biz, biz.staff[0], date, "16:00")).status).toBe(409);
+    expect((await book(second, biz, biz.staff[1], date, "16:00")).status).toBe(201);
+  });
+});
