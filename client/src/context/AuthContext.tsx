@@ -61,28 +61,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user;
   }, []);
 
+  // On page load (and when Back shows a cached page): who is logged in, if anyone. /auth/session
+  // answers { user: null } for a visitor with no login, where /auth/me would answer 401 - an error
+  // in the console on every page of every logged-out visitor.
+  const loadSession = useCallback(async () => {
+    const { user } = await api.get<{ user: User | null }>("/auth/session");
+    setUser(user);
+  }, []);
+
   useEffect(() => {
     const restoreSession = async () => {
       localStorage.removeItem("bookflow_token");
       try {
-        await loadMe();
+        await loadSession();
       } catch {
         setUser(null);
       }
     };
     restoreSession().finally(() => setLoading(false));
-  }, [loadMe]);
+  }, [loadSession]);
 
   // Back/forward cache: after logging out, the browser's Back button can show an earlier page
   // exactly as it was - still "logged in" on screen, though the server already refuses that login.
   // Whenever a page comes back that way, ask the server again who is logged in.
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) loadMe().catch(() => setUser(null));
+      if (event.persisted) loadSession().catch(() => setUser(null));
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
-  }, [loadMe]);
+  }, [loadSession]);
 
   const login = async (email: string, password: string, code?: string) => {
     await api.post("/auth/login", { email, password, ...(code && { code }) });

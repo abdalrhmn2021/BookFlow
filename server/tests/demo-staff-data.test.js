@@ -62,7 +62,7 @@ describe("B-02: the demo puts itself back", () => {
     expect(await resetDemoIfDue()).toBe(true);
 
     const fresh = await Tenant.findOne({ slug: DEMO_SLUG });
-    expect(fresh.name).toBe("Demo Salon");
+    expect(fresh.name).toBe("صالون تجريبي");
     expect(String(fresh._id)).not.toBe(String(demo._id));
     expect(await User.exists({ email: "extra@demo.com" })).toBeNull();
     const staff = await User.find({ tenantId: fresh._id, role: "staff" });
