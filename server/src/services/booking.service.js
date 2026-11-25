@@ -393,8 +393,9 @@ async function findFreeSlots({ tenant, service, staff, date, excludeId }) {
 }
 
 // "Any staff member": every time at which at least one person who does the service is free.
-async function findFreeSlotsAny({ tenant, service, date }) {
-  const people = await peopleForService(tenant, service);
+// people: peopleForService(tenant, service) when the caller already has it (public availability).
+async function findFreeSlotsAny({ tenant, service, date, people: known }) {
+  const people = known ?? (await peopleForService(tenant, service));
   const results = await Promise.all(people.map((staff) => findFreeSlots({ tenant, service, staff, date })));
   return {
     isOpen: results.some((r) => r.isOpen),
@@ -407,6 +408,7 @@ module.exports = {
   rescheduleAppointment,
   findFreeSlots,
   findFreeSlotsAny,
+  peopleForService,
   ANY_STAFF,
   customerMaxUpcoming,
   httpError,

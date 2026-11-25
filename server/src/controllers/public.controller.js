@@ -1,7 +1,7 @@
 const Tenant = require("../models/Tenant");
 const Service = require("../models/Service");
 const User = require("../models/User");
-const { bookableFilter } = require("../utils/bookable");
+const { bookableFilter, BOOKABLE_ROLE } = require("../utils/bookable");
 const Appointment = require("../models/Appointment");
 const { siteAllows } = require("../middlewares/site.middleware");
 const { siteUrl } = require("../utils/siteUrl");
@@ -9,6 +9,7 @@ const {
   bookAppointment,
   findFreeSlots,
   findFreeSlotsAny,
+  peopleForService,
   ANY_STAFF,
   httpError,
   ACTIVE_STATUSES,
@@ -67,6 +68,9 @@ exports.getBusinessBySlug = async (req, res) => {
   });
 };
 
+// A service or staff member found by id belongs to this business (and not to another one).
+const sameBusiness = (doc, tenant) => String(doc.tenantId) === String(tenant._id);
+
 exports.getAvailability = async (req, res) => {
   const { serviceId, staffId, date } = req.query;
 
@@ -79,14 +83,27 @@ exports.getAvailability = async (req, res) => {
     return res.status(400).json({ message: "date must be a real date in YYYY-MM-DD format" });
   }
 
-  const tenant = await Tenant.findOne({ slug: req.params.slug.toLowerCase(), isActive: true });
-  if (!tenant) return res.status(404).json({ message: "Business not found" });
+  // The business, the service and the staff member are looked up at the same time, not one after
+  // the other (each trip to the database is a round trip). So the service and the staff member are
+  // found by id alone, and THEN checked to belong to this business - with the same 404s as before,
+  // in the same order. Nothing of another business's service or staff is ever put in the answer.
+  const slug = req.params.slug.toLowerCase();
 
-  // "Any staff member": the free times of everyone who does this service, merged.
+  // "Any staff member": the free times of everyone who does this service, merged. Who does it is
+  // looked up as soon as the service is known (by its own business id), alongside the business.
   if (staffId === ANY_STAFF) {
-    const service = await Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true });
-    if (!service) return res.status(404).json({ message: "Service not found" });
-    const { isOpen, slots } = await findFreeSlotsAny({ tenant, service, date });
+    const serviceAndPeople = Service.findOne({ _id: serviceId, isActive: true }).then(async (service) => ({
+      service,
+      people: service ? await peopleForService({ _id: service.tenantId }, service) : [],
+    }));
+    const [tenant, { service, people }] = await Promise.all([
+      Tenant.findOne({ slug, isActive: true }),
+      serviceAndPeople,
+    ]);
+    if (!tenant) return res.status(404).json({ message: "Business not found" });
+    if (!service || !sameBusiness(service, tenant)) return res.status(404).json({ message: "Service not found" });
+
+    const { isOpen, slots } = await findFreeSlotsAny({ tenant, service, date, people });
     return res.status(200).json({
       date,
       isOpen,
@@ -96,12 +113,14 @@ exports.getAvailability = async (req, res) => {
     });
   }
 
-  const [service, staff] = await Promise.all([
-    Service.findOne({ _id: serviceId, tenantId: tenant._id, isActive: true }),
-    User.findOne(bookableFilter(tenant._id, { _id: staffId })),
+  const [tenant, service, staff] = await Promise.all([
+    Tenant.findOne({ slug, isActive: true }),
+    Service.findOne({ _id: serviceId, isActive: true }),
+    User.findOne({ _id: staffId, isActive: true, ...BOOKABLE_ROLE }),
   ]);
-  if (!service) return res.status(404).json({ message: "Service not found" });
-  if (!staff) return res.status(404).json({ message: "Staff member not found" });
+  if (!tenant) return res.status(404).json({ message: "Business not found" });
+  if (!service || !sameBusiness(service, tenant)) return res.status(404).json({ message: "Service not found" });
+  if (!staff || !sameBusiness(staff, tenant)) return res.status(404).json({ message: "Staff member not found" });
 
   const { isOpen, slots } = await findFreeSlots({ tenant, service, staff, date });
   if (!isOpen) return res.status(200).json({ date, isOpen: false, slots: [] });

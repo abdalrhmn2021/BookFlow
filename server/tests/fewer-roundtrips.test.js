@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 const h = require("./helpers");
 const RevokedToken = require("../src/models/RevokedToken");
 const Tenant = require("../src/models/Tenant");
+const Service = require("../src/models/Service");
+const User = require("../src/models/User");
 const Appointment = require("../src/models/Appointment");
 const {
   closeStalePending,
@@ -295,5 +297,59 @@ describe("the dashboard closes stale pending bookings at most once per 5 minutes
     const stale = await pending(biz, threeDaysAgo());
     expect(await closeStalePendingForDashboard(biz.tenant._id, start + 1000)).toBe(1);
     expect((await Appointment.findById(stale._id)).status).toBe("cancelled");
+  });
+});
+
+describe("public availability: business, service and staff looked up together, checked after", () => {
+  const slots = (slug, serviceId, staffId, date = h.nextOpenDate()) =>
+    request(h.app)
+      .get(`/api/public/businesses/${slug}/availability`)
+      .query({ serviceId: String(serviceId), staffId: String(staffId), date });
+
+  test("same free times as before, for one staff member and for 'any'", async () => {
+    const biz = await h.makeBusiness("roundtrips-slots", { staffCount: 2 });
+    const one = await slots("roundtrips-slots", biz.service._id, biz.staff[0]._id).expect(200);
+    expect(one.body.isOpen).toBe(true);
+    expect(one.body.slots).toContain("09:00");
+    expect(one.body.staff).toEqual({ id: String(biz.staff[0]._id), name: "Staff 1" });
+
+    const any = await slots("roundtrips-slots", biz.service._id, "any").expect(200);
+    expect(any.body.slots).toEqual(one.body.slots); // both staff work the business's hours
+    expect(any.body.service.id).toBe(String(biz.service._id));
+  });
+
+  test("another business's service or staff member: the same 404s, nothing of theirs in the answer", async () => {
+    const mine = await h.makeBusiness("roundtrips-mine-slots");
+    const theirs = await h.makeBusiness("roundtrips-their-slots");
+
+    for (const staffId of [mine.staff[0]._id, "any"]) {
+      const res = await slots("roundtrips-mine-slots", theirs.service._id, staffId).expect(404);
+      expect(res.body).toEqual({ message: "Service not found" });
+    }
+    const res = await slots("roundtrips-mine-slots", mine.service._id, theirs.staff[0]._id).expect(404);
+    expect(res.body).toEqual({ message: "Staff member not found" });
+  });
+
+  test("an inactive service or staff member, or an unknown business, is still not found", async () => {
+    const biz = await h.makeBusiness("roundtrips-inactive");
+    await Service.updateOne({ _id: biz.service._id }, { isActive: false });
+    for (const staffId of [biz.staff[0]._id, "any"]) {
+      expect((await slots("roundtrips-inactive", biz.service._id, staffId).expect(404)).body.message).toBe(
+        "Service not found",
+      );
+    }
+
+    const other = await h.makeBusiness("roundtrips-inactive-staff");
+    await User.updateOne({ _id: other.staff[0]._id }, { isActive: false });
+    expect(
+      (await slots("roundtrips-inactive-staff", other.service._id, other.staff[0]._id).expect(404)).body.message,
+    ).toBe("Staff member not found");
+
+    // A real service, but on a business that doesn't exist: the business is reported first.
+    for (const staffId of [other.staff[0]._id, "any"]) {
+      expect((await slots("no-such-business", other.service._id, staffId).expect(404)).body.message).toBe(
+        "Business not found",
+      );
+    }
   });
 });
