@@ -317,7 +317,7 @@ export default function ScheduleTab({
                                 <span className="block truncate font-medium">{nameOf(a) ?? s.noCustomer}</span>
                                 <span className="block truncate text-sm text-ink-600">
                                   {a.serviceName}
-                                  {user?.role === "owner" && ` ${s.with} ${a.staffId.name}`}
+                                  {user?.role !== "staff" && ` ${s.with} ${a.staffId.name}`}
                                 </span>
                               </span>
                               <StatusBadge status={a.status} />

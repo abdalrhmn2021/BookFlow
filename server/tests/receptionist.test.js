@@ -221,3 +221,34 @@ describe("Staff see their schedule and close their own appointments", () => {
     expect((await access(reem)).body.access).toEqual({ manageBookings: true, hasReceptionist: true });
   });
 });
+
+// Things that reached main after this role was written.
+describe("receptionist and the newer dashboard routes", () => {
+  const upcoming = (user) => request(h.app).get("/api/appointments/business/upcoming").set(auth(user)).expect(200);
+
+  test("the receptionist reads upcoming for the whole business; staff only their own", async () => {
+    const biz = await h.makeBusiness("rec-upcoming", { staffCount: 2 });
+    const reem = await addReceptionist(biz);
+    await makeAppointment(biz, { staff: biz.staff[0] });
+    await makeAppointment(biz, { staff: biz.staff[1], startsInMinutes: ONE_DAY + 60 });
+
+    const asDesk = await upcoming(reem);
+    expect(asDesk.body.total).toBe(2);
+    expect(asDesk.body.appointments.map((a) => a.staffId.name).sort()).toEqual(["Staff 1", "Staff 2"]);
+
+    const asStaff = await upcoming(biz.staff[0]);
+    expect(asStaff.body.total).toBe(1);
+    expect(asStaff.body.appointments[0].staffId.name).toBe("Staff 1");
+  });
+
+  test("another business's receptionist can't see or confirm these bookings", async () => {
+    const biz = await h.makeBusiness("rec-mine");
+    const other = await h.makeBusiness("rec-other");
+    const theirDesk = await addReceptionist(other);
+    const appt = await makeAppointment(biz);
+
+    expect((await setStatus(theirDesk, appt, { status: "confirmed" })).status).toBe(404);
+    expect((await Appointment.findById(appt._id)).status).toBe("pending");
+    expect((await upcoming(theirDesk)).body.total).toBe(0);
+  });
+});
