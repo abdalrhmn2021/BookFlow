@@ -88,6 +88,9 @@ exports.protect = async (req, res, next) => {
       role: user.role,
       tenantId: user.tenantId,
     };
+    // The whole document, set only after every check above passed, so a route that needs more of
+    // this user (GET /auth/me) doesn't fetch it from the database again.
+    req.authUser = user;
   } catch (err) {
     return next(err);
   }

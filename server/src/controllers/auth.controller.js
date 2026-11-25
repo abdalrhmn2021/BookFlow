@@ -298,7 +298,8 @@ exports.registerBusiness = async (req, res) => {
 };
 
 exports.getMe = async (req, res) => {
-  const user = await User.findById(req.user.id).populate("tenantId", "name slug");
+  // protect already loaded this user: only the business is fetched here.
+  const user = await req.authUser.populate("tenantId", "name slug");
 
   const business = user.tenantId
     ? {
