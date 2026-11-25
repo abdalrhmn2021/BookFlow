@@ -153,3 +153,77 @@ describe("closeStalePending has an index of its own", () => {
     expect(await status(otherStale)).toBe("pending"); // another business: not touched
   });
 });
+
+describe("GET /appointments/me: every upcoming booking, the latest 50 past ones", () => {
+  const DAY = 24 * HOUR;
+
+  function booking(biz, customer, startTime, status = "completed") {
+    return {
+      tenantId: biz.tenant._id,
+      customerId: customer._id,
+      staffId: biz.staff[0]._id,
+      serviceId: biz.service._id,
+      serviceName: "Haircut",
+      price: 20,
+      duration: 30,
+      startTime,
+      endTime: new Date(startTime.getTime() + 30 * 60 * 1000),
+      status,
+    };
+  }
+
+  test("55 past + 3 upcoming: 53 sent, oldest first, the 5 oldest left out", async () => {
+    const biz = await h.makeBusiness("roundtrips-mine");
+    const customer = await h.makeCustomer("historian");
+    const now = Date.now();
+    await Appointment.insertMany([
+      ...Array.from({ length: 55 }, (_, i) => booking(biz, customer, new Date(now - (i + 1) * DAY))),
+      ...[1, 2, 3].map((d) => booking(biz, customer, new Date(now + d * DAY), "pending")),
+    ]);
+
+    const res = await request(h.app)
+      .get("/api/appointments/me")
+      .set(bearer(h.tokenFor(customer)))
+      .expect(200);
+    const times = res.body.appointments.map((a) => new Date(a.startTime).getTime());
+
+    expect(res.body.count).toBe(53);
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+    expect(times.filter((t) => t > now)).toHaveLength(3);
+    expect(Math.min(...times)).toBe(now - 50 * DAY);
+    expect(res.body.appointments[0].tenantId.slug).toBe("roundtrips-mine"); // still populated
+    expect(res.body.appointments[0].staffId.name).toBe("Staff 1");
+  });
+
+  test("?when=past: newest first, capped at 50; ?when=upcoming unchanged", async () => {
+    const biz = await h.makeBusiness("roundtrips-when");
+    const customer = await h.makeCustomer("when");
+    const now = Date.now();
+    await Appointment.insertMany([
+      ...Array.from({ length: 52 }, (_, i) => booking(biz, customer, new Date(now - (i + 1) * HOUR))),
+      booking(biz, customer, new Date(now + 2 * HOUR), "pending"),
+    ]);
+    const auth = bearer(h.tokenFor(customer));
+
+    const past = await request(h.app).get("/api/appointments/me?when=past").set(auth).expect(200);
+    expect(past.body.count).toBe(50);
+    expect(new Date(past.body.appointments[0].startTime).getTime()).toBe(now - HOUR);
+
+    const next = await request(h.app).get("/api/appointments/me?when=upcoming").set(auth).expect(200);
+    expect(next.body.count).toBe(1);
+  });
+
+  test("another customer's bookings never show up", async () => {
+    const biz = await h.makeBusiness("roundtrips-iso");
+    const [me, other] = [await h.makeCustomer("me"), await h.makeCustomer("other")];
+    await Appointment.insertMany([
+      booking(biz, other, new Date(Date.now() - HOUR)),
+      booking(biz, other, new Date(Date.now() + DAY), "pending"),
+    ]);
+    const res = await request(h.app)
+      .get("/api/appointments/me")
+      .set(bearer(h.tokenFor(me)))
+      .expect(200);
+    expect(res.body.count).toBe(0);
+  });
+});

@@ -24,6 +24,8 @@ const { closeStalePending } = require("../services/maintenance.service");
 const { siteUrl } = require("../utils/siteUrl");
 
 const WHEN_VALUES = ["upcoming", "past"];
+// GET /appointments/me sends at most this many bookings from before now (every upcoming one is sent).
+const MY_PAST_LIMIT = 50;
 
 // A customer account works on every site of the server, but each site shows only its own
 // business's appointments. Returns the filter to add: {} (any business) or { tenantId }.
@@ -123,15 +125,23 @@ exports.getMyAppointments = async (req, res) => {
   if (status) filter.status = status;
 
   const now = new Date();
-  if (when === "upcoming") filter.startTime = { $gte: now };
-  if (when === "past") filter.startTime = { $lt: now };
+  const find = (time) =>
+    Appointment.find({ ...filter, startTime: time })
+      .populate("tenantId", "name slug timezone")
+      .populate("staffId", "name");
+  // Every booking from now on, but only the latest MY_PAST_LIMIT before now: an account with years of
+  // history doesn't send all of it on every visit. The past ones are fetched newest first (so the
+  // limit keeps the recent ones); without ?when they are put back oldest first, as before.
+  const upcoming = () => find({ $gte: now }).sort({ startTime: 1 });
+  const past = () => find({ $lt: now }).sort({ startTime: -1 }).limit(MY_PAST_LIMIT);
 
-  const sortOrder = when === "past" ? -1 : 1;
-
-  const appointments = await Appointment.find(filter)
-    .populate("tenantId", "name slug timezone")
-    .populate("staffId", "name")
-    .sort({ startTime: sortOrder });
+  let appointments;
+  if (when === "upcoming") appointments = await upcoming();
+  else if (when === "past") appointments = await past();
+  else {
+    const [before, after] = await Promise.all([past(), upcoming()]);
+    appointments = [...before.reverse(), ...after];
+  }
 
   res.status(200).json({ count: appointments.length, appointments: appointments.map(toCustomerAppointment) });
 };
